@@ -106,3 +106,26 @@ RETURNS JSONB AS $$
     response.raise_for_status()
     return response.text
 $$ LANGUAGE 'plpython3u';
+
+CREATE OR REPLACE FUNCTION reclada_user.parse_token(access_token VARCHAR)
+RETURNS JSONB AS $$
+    import jwt, json
+    import cryptography
+    return json.dumps({"Ver": cryptography.__version__})
+
+    settings = plpy.execute("select jwk from reclada.auth_setting", 1)
+    if not settings and access_token:
+        raise ValueError
+    elif not settings:
+        return {}
+
+    jwk = json.loads(settings[0]["jwk"])[0]
+    cert = jwt.algorithms.RSAAlgorithm.from_jwk(jwk)
+    res = jwt.decode(
+        access_token,
+        options={"verify_signature": True, "verify_aud": False},
+        # audience="account",
+        key=cert, algorithms=[jwk["alg"]]
+    )
+    return json.dumps(res)
+$$ LANGUAGE 'plpython3u';
