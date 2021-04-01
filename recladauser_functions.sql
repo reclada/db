@@ -18,10 +18,10 @@ $$ LANGUAGE PLPGSQL STABLE;
 ---------------------------------------
 CREATE OR REPLACE FUNCTION reclada_user.get_jwk(url VARCHAR)
 RETURNS JSONB as $$
-import requests, json
-response = requests.get(f"{url}/certs")
-response.raise_for_status()
-return json.dumps(response.json()["keys"])
+    import requests, json
+    response = requests.get(f"{url}/certs")
+    response.raise_for_status()
+    return json.dumps(response.json()["keys"])
 $$ LANGUAGE 'plpython3u';
 
 
@@ -84,3 +84,25 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
+
+
+CREATE OR REPLACE FUNCTION reclada_user.get_token(data JSONB)
+RETURNS JSONB AS $$
+    import requests, json
+    code = json.loads(data)["code"]
+    settings = plpy.execute("select oidc_url, oidc_client_id from reclada.auth_setting", 1)
+    if not settings:
+        raise ValueError
+
+    token_url = f'{settings[0]["oidc_url"]}/token'
+    response = requests.post(
+        token_url,
+        data={
+            "code": code,
+            "grant_type": "authorization_code",
+            "client_id": settings[0]["oidc_client_id"],
+        }
+    )
+    response.raise_for_status()
+    return response.text
+$$ LANGUAGE 'plpython3u';
