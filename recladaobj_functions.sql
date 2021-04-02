@@ -16,7 +16,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token((data->>'authToken')) INTO user_info;
+    SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
 
     IF(NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
@@ -42,7 +42,7 @@ BEGIN
 
     branch := data->'branch';
 
-    SELECT reclada_revision.create(user_info, branch) INTO revid;
+    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
     SELECT uuid_generate_v4() INTO objid;
 
     data := data || format(
@@ -68,7 +68,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token(data->>'authToken') INTO user_info;
+    SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
 
     IF(NOT(reclada_user.is_allowed(user_info, 'create', '"jsonschema"'))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', 'jsonschema';
@@ -128,7 +128,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token(data->'authToken') INTO user_info;
+    SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
 
     IF(NOT(reclada_user.is_allowed(user_info, 'list', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;
@@ -196,7 +196,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token(data->'authToken') INTO user_info;
+    SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
 
     IF(NOT(reclada_user.is_allowed(user_info, 'update', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'update', class;
@@ -265,7 +265,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token(data->'authToken') INTO user_info;
+    SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
 
     IF(NOT(reclada_user.is_allowed(user_info, 'delete', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;

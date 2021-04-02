@@ -14,7 +14,7 @@ INSERT INTO reclada.object VALUES(format(
         },
         "id": "%s",
         "revision": %s
-    }', uuid_generate_v4(), reclada_revision.create(uuid_generate_v4(), NULL)
+    }', uuid_generate_v4(), reclada_revision.create('', NULL)
     )::jsonb
 );
 SELECT reclada_object.create('{
