@@ -1,13 +1,20 @@
 DROP FUNCTION IF EXISTS reclada_user.auth_by_token(uuid);
-CREATE OR REPLACE FUNCTION reclada_user.auth_by_token(token uuid)
-RETURNS uuid AS $$
+CREATE OR REPLACE FUNCTION reclada_user.auth_by_token(token VARCHAR)
+RETURNS JSONB AS $$
+DECLARE
+    current_jwk JSONB;
 BEGIN
-    RETURN uuid_generate_v4();
+    SELECT jwk INTO current_jwk FROM reclada.auth_setting LIMIT 1;
+    IF current_jwk IS NULL THEN
+        RETURN jsonb_build_object('sub', ''); -- stub user
+    ELSE
+        RETURN reclada_user.parse_token(token, current_jwk);
+    end if;
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 
 DROP FUNCTION IF EXISTS reclada_user.is_allowed(uuid, text, jsonb);
-CREATE OR REPLACE FUNCTION reclada_user.is_allowed(uuid, text, jsonb)
+CREATE OR REPLACE FUNCTION reclada_user.is_allowed(jsonb, text, jsonb)
 RETURNS boolean AS $$
 BEGIN
     RETURN TRUE;
@@ -107,19 +114,9 @@ RETURNS JSONB AS $$
     return response.text
 $$ LANGUAGE 'plpython3u';
 
-CREATE OR REPLACE FUNCTION reclada_user.parse_token(access_token VARCHAR)
+CREATE OR REPLACE FUNCTION reclada_user.parse_token(access_token VARCHAR, jwk JSONB)
 RETURNS JSONB AS $$
     import jwt, json
-    import cryptography
-    return json.dumps({"Ver": cryptography.__version__})
-
-    settings = plpy.execute("select jwk from reclada.auth_setting", 1)
-    if not settings and access_token:
-        raise ValueError
-    elif not settings:
-        return {}
-
-    jwk = json.loads(settings[0]["jwk"])[0]
     cert = jwt.algorithms.RSAAlgorithm.from_jwk(jwk)
     res = jwt.decode(
         access_token,

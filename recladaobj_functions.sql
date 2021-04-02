@@ -2,13 +2,13 @@ DROP FUNCTION IF EXISTS reclada_object.create(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.create(data jsonb)
 RETURNS VOID AS $$
 DECLARE
-    class   jsonb;
-    attrs   jsonb;
-    schema  jsonb;
-    userid  uuid;
-    branch  uuid;
-    revid   integer;
-    objid   uuid;
+    class      jsonb;
+    attrs      jsonb;
+    schema     jsonb;
+    user_info  jsonb;
+    branch     uuid;
+    revid      integer;
+    objid      uuid;
 BEGIN
     class := data->'class';
 
@@ -16,13 +16,9 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token((data->'authToken')::text::uuid) INTO userid;
+    SELECT reclada_user.auth_by_token((data->>'authToken')) INTO user_info;
 
-    IF(userid IS NULL) THEN
-        RAISE EXCEPTION 'Authorization failed';
-    END IF;
-
-    IF(NOT(reclada_user.is_allowed(userid, 'create', class))) THEN
+    IF(NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
     END IF;
 
@@ -46,7 +42,7 @@ BEGIN
 
     branch := data->'branch';
 
-    SELECT reclada_revision.create(userid, branch) INTO revid;
+    SELECT reclada_revision.create(user_info, branch) INTO revid;
     SELECT uuid_generate_v4() INTO objid;
 
     data := data || format(
@@ -64,7 +60,7 @@ DECLARE
     class_schema    jsonb;
     class           jsonb;
     attrs           jsonb;
-    userid          uuid;
+    user_info       jsonb;
 BEGIN
     class := data->'class';
 
@@ -72,13 +68,9 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token((data->'authToken')::text::uuid) INTO userid;
+    SELECT reclada_user.auth_by_token(data->>'authToken') INTO user_info;
 
-    IF(userid IS NULL) THEN
-        RAISE EXCEPTION 'Authorization failed';
-    END IF;
-
-    IF(NOT(reclada_user.is_allowed(userid, 'create', '"jsonschema"'))) THEN
+    IF(NOT(reclada_user.is_allowed(user_info, 'create', '"jsonschema"'))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', 'jsonschema';
     END IF;
 
@@ -121,14 +113,14 @@ DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class   jsonb;
-    attrs   jsonb;
-    schema  jsonb;
-    userid  uuid;
-    branch  uuid;
-    revid   integer;
+    class               jsonb;
+    attrs               jsonb;
+    schema              jsonb;
+    user_info           jsonb;
+    branch              uuid;
+    revid               integer;
     query_conditions    text;
-    res     jsonb;
+    res                 jsonb;
 BEGIN
     class := data->'class';
 
@@ -136,13 +128,9 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token((data->'authToken')::text::uuid) INTO userid;
+    SELECT reclada_user.auth_by_token(data->'authToken') INTO user_info;
 
-    IF(userid IS NULL) THEN
-        RAISE EXCEPTION 'Authorization failed';
-    END IF;
-
-    IF(NOT(reclada_user.is_allowed(userid, 'list', class))) THEN
+    IF(NOT(reclada_user.is_allowed(user_info, 'list', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;
     END IF;
 
@@ -193,14 +181,14 @@ DROP FUNCTION IF EXISTS reclada_object.update(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.update(data jsonb)
 RETURNS VOID AS $$
 DECLARE
-    class   jsonb;
-    attrs   jsonb;
-    schema  jsonb;
-    userid  uuid;
-    branch  uuid;
-    revid   integer;
-    objid   uuid;
-    oldobj  jsonb;
+    class       jsonb;
+    attrs       jsonb;
+    schema      jsonb;
+    user_info   jsonb;
+    branch      uuid;
+    revid       integer;
+    objid       uuid;
+    oldobj      jsonb;
 BEGIN
     class := data->'class';
 
@@ -208,13 +196,9 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token((data->'authToken')::text::uuid) INTO userid;
+    SELECT reclada_user.auth_by_token(data->'authToken') INTO user_info;
 
-    IF(userid IS NULL) THEN
-        RAISE EXCEPTION 'Authorization failed';
-    END IF;
-
-    IF(NOT(reclada_user.is_allowed(userid, 'update', class))) THEN
+    IF(NOT(reclada_user.is_allowed(user_info, 'update', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'update', class;
     END IF;
 
@@ -238,7 +222,7 @@ BEGIN
 
     branch := data->'branch';
 
-    SELECT reclada_revision.create(userid, branch) INTO revid;
+    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
     objid := data->>'id';
     IF(objid IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no id';
@@ -266,14 +250,14 @@ DROP FUNCTION IF EXISTS reclada_object.delete(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.delete(data jsonb)
 RETURNS VOID AS $$
 DECLARE
-    class   jsonb;
-    attrs   jsonb;
-    schema  jsonb;
-    userid  uuid;
-    branch  uuid;
-    revid   integer;
-    objid   uuid;
-    oldobj  jsonb;
+    class       jsonb;
+    attrs       jsonb;
+    schema      jsonb;
+    user_info   jsonb;
+    branch      uuid;
+    revid       integer;
+    objid       uuid;
+    oldobj      jsonb;
 BEGIN
     class := data->'class';
 
@@ -281,19 +265,15 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token((data->'authToken')::text::uuid) INTO userid;
+    SELECT reclada_user.auth_by_token(data->'authToken') INTO user_info;
 
-    IF(userid IS NULL) THEN
-        RAISE EXCEPTION 'Authorization failed';
-    END IF;
-
-    IF(NOT(reclada_user.is_allowed(userid, 'delete', class))) THEN
+    IF(NOT(reclada_user.is_allowed(user_info, 'delete', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;
     END IF;
 
     branch := data->'branch';
 
-    SELECT reclada_revision.create(userid, branch) INTO revid;
+    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
     objid := data->>'id';
     IF(objid IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
