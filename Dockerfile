@@ -12,3 +12,6 @@ RUN apt-get install -y git make && \
 
 RUN pip3 install -U pip wheel && \
     pip3 install requests pyjwt[crypto]
+
+WORKDIR /src
+COPY . /src
