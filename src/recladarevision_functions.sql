@@ -1,5 +1,5 @@
 DROP FUNCTION IF EXISTS reclada_revision.create(uuid, uuid);
-CREATE OR REPLACE FUNCTION reclada_revision.create(userid uuid, branch uuid)
+CREATE OR REPLACE FUNCTION reclada_revision.create(userid varchar, branch uuid)
 RETURNS integer AS $$
     INSERT INTO reclada.object VALUES(format(
         '{
