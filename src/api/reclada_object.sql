@@ -1,5 +1,5 @@
-DROP FUNCTION IF EXISTS reclada_object.create(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.create(data jsonb)
+DROP FUNCTION IF EXISTS api.reclada_object_create(jsonb);
+CREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb)
 RETURNS VOID AS $$
 DECLARE
     class      jsonb;
@@ -27,7 +27,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    SELECT (reclada_object.list(format(
+    SELECT (api.reclada_object_list(format(
         '{"class": "jsonschema", "attrs": {"forClass": %s}}',
         class
     )::jsonb)) -> 0 INTO schema;
@@ -53,8 +53,8 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
-DROP FUNCTION IF EXISTS reclada_object.create_subclass(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.create_subclass(data jsonb)
+DROP FUNCTION IF EXISTS api.reclada_object_create_subclass(jsonb);
+CREATE OR REPLACE FUNCTION api.reclada_object_create_subclass(data jsonb)
 RETURNS VOID AS $$
 DECLARE
     class_schema    jsonb;
@@ -79,7 +79,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    SELECT (reclada_object.list(format(
+    SELECT (api.reclada_object_list(format(
         '{"class": "jsonschema", "attrs": {"forClass": %s}}',
         class
     )::jsonb)) -> 0 INTO class_schema;
@@ -90,7 +90,7 @@ BEGIN
     
     class_schema := class_schema -> 'attrs' -> 'schema';
 
-    PERFORM reclada_object.create(format('{
+    PERFORM api.reclada_object_create(format('{
         "class": "jsonschema",
         "attrs": {
             "forClass": %s,
@@ -109,8 +109,8 @@ END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 
-DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb)
+DROP FUNCTION IF EXISTS api.reclada_object_list(jsonb);
+CREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
     class               jsonb;
@@ -177,8 +177,8 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 
-DROP FUNCTION IF EXISTS reclada_object.update(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.update(data jsonb)
+DROP FUNCTION IF EXISTS api.reclada_object_update(jsonb);
+CREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)
 RETURNS VOID AS $$
 DECLARE
     class       jsonb;
@@ -207,7 +207,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    SELECT (reclada_object.list(format(
+    SELECT (api.reclada_object_list(format(
         '{"class": "jsonschema", "attrs": {"forClass": %s}}',
         class
     )::jsonb)) -> 0 INTO schema;
@@ -228,7 +228,7 @@ BEGIN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
-    SELECT reclada_object.list(format(
+    SELECT api.reclada_object_list(format(
         '{"class": %s, "attrs": {}, "id": "%s"}',
         class,
         objid
@@ -246,8 +246,8 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
-DROP FUNCTION IF EXISTS reclada_object.delete(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.delete(data jsonb)
+DROP FUNCTION IF EXISTS api.reclada_object_delete(jsonb);
+CREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb)
 RETURNS VOID AS $$
 DECLARE
     class       jsonb;
@@ -279,7 +279,7 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
 
-    SELECT reclada_object.list(format(
+    SELECT api.reclada_object_list(format(
         '{"class": %s, "attrs": {}, "id": "%s"}',
         class,
         objid

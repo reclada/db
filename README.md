@@ -21,9 +21,10 @@
 ### Auth usage:
 
 To call stored functions use PostgREST API. 
+All functions are inside `api` schema, and it is accessed by default.
 
-1. Get auth url using `reclada_user.get_login_url('{}')`
+1. Get auth url using `auth_get_login_url('{}')`
 2. Open this url
 3. Catch redirect back and parse `code` from URL
-4. Exchange `code` to `access_token` using `reclada_user.get_token('{"code": "49ed87e0..."}');`
+4. Exchange `code` to `access_token` using `auth_get_token('{"code": "49ed87e0..."}');`
 5. Add `access_token` to all other requests

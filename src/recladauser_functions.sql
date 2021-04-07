@@ -22,7 +22,6 @@ END;
 $$ LANGUAGE PLPGSQL STABLE;
 
 
----------------------------------------
 CREATE OR REPLACE FUNCTION reclada_user.get_jwk(url VARCHAR)
 RETURNS JSONB as $$
     import requests, json
