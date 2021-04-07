@@ -36,7 +36,7 @@ SELECT reclada_object.create('{
     }
 }'::jsonb);
 
-SELECT api.reclada_object_create_subclass('{
+SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
         "newClass": "tag",
@@ -46,7 +46,7 @@ SELECT api.reclada_object_create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-SELECT api.reclada_object_create_subclass('{
+SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
         "newClass": "DataSource",
@@ -57,7 +57,7 @@ SELECT api.reclada_object_create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-SELECT api.reclada_object_create_subclass('{
+SELECT reclada_object.create_subclass('{
     "class": "DataSource",
     "attrs": {
         "newClass": "File",
@@ -68,7 +68,7 @@ SELECT api.reclada_object_create_subclass('{
         "required": ["checksum", "mimeType"]
     }
 }'::jsonb);
-SELECT api.reclada_object_create_subclass('{
+SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
         "newClass": "DataSet",
