@@ -3,6 +3,7 @@ CREATE TABLE reclada.object(
 );
 CREATE schema reclada_user;
 CREATE schema reclada_revision;
+CREATE schema reclada_object;
 CREATE SEQUENCE reclada_revisions;
 
 
