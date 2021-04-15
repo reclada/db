@@ -11,7 +11,7 @@ RUN apt-get install -y git make && \
     rm -rf postgres-json-schema
 
 RUN pip3 install -U pip wheel && \
-    pip3 install requests pyjwt[crypto]
+    pip3 install requests pyjwt[crypto] boto3
 
 WORKDIR /src
 COPY . /src
