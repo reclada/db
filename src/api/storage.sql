@@ -1,33 +1,19 @@
-CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data JSONB)
-RETURNS JSONB AS $$
-    import json
+DROP FUNCTION IF EXISTS api.storage_generate_presigned_post(jsonb);
+CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
+RETURNS jsonb AS $$
+DECLARE
+    attrs      jsonb;
+    user_info  jsonb;
+    result     jsonb;
+BEGIN
+    SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
+    data := data - 'access_token';
 
-    import boto3
+    IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned post', '{}'))) THEN
+        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';
+    END IF;
 
-    json_data = json.loads(data)
-
-    s3_client = boto3.client(
-        service_name="s3",
-        endpoint_url="",
-        region_name="",
-        aws_access_key_id="",
-        aws_secret_access_key="",
-    )
-
-    response = plpy.execute("select reclada_storage.s3_generate_presigned_post", 1)
-
-    response = s3_client.generate_presigned_post(
-        Bucket=json_data["bucket_name"],
-        Key=json_data["object_name"],
-        Fields={
-            "Content-Type": json_data["file_type"],
-        },
-        Conditions=[
-            {"Content-Type": json_data["file_type"]},
-            ["content-length-range", 1, json_data["size"]],
-        ],
-        ExpiresIn=3600,
-    )
-
-    return response
-$$ LANGUAGE 'plpython3u';
+    SELECT reclada_storage.s3_generate_presigned_post(data) INTO result;
+    RETURN result;
+END;
+$$ LANGUAGE PLPGSQL VOLATILE;
