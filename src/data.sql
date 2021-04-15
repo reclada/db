@@ -82,3 +82,17 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attrs": {
+        "newClass": "S3Config",
+        "properties": {
+            "endpointURL": {"type": "string"},
+            "regionName": {"type": "string"},
+            "accessKeyId": {"type": "string"},
+            "secretAccessKey": {"type": "string"},
+            "bucketName": {"type": "string"}
+            },
+        "required": ["accessKeyId", "secretAccessKey", "bucketName"]
+    }
+}'::jsonb);
