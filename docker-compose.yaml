@@ -35,7 +35,7 @@ services:
     environment:
       - PGRST_DB_URI=postgres://postgres:password@postgres/
       - PGRST_DB_ANON_ROLE=postgres
-      - PGRST_DB_SCHEMA=api
+      - PGRST_DB_SCHEMA=api,
 
   minio:
     image: minio/minio:RELEASE.2021-04-06T23-11-00Z

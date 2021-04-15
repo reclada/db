@@ -1,6 +1,6 @@
 DROP FUNCTION IF EXISTS reclada_object.create(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.create(data jsonb)
-RETURNS VOID AS $$
+RETURNS jsonb AS $$
 DECLARE
     class      jsonb;
     attrs      jsonb;
@@ -44,6 +44,7 @@ BEGIN
         objid, revid
     )::jsonb;
     INSERT INTO reclada.object VALUES(data);
+    RETURN data;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
