@@ -2,9 +2,9 @@ DROP FUNCTION IF EXISTS api.storage_generate_presigned_post(jsonb);
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    attrs      jsonb;
-    user_info  jsonb;
-    result     jsonb;
+    credentials  jsonb;
+    user_info    jsonb;
+    result       jsonb;
 BEGIN
     SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
     data := data - 'access_token';
@@ -13,7 +13,9 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';
     END IF;
 
-    SELECT reclada_storage.s3_generate_presigned_post(data) INTO result;
+    SELECT reclada_object.list('{"class": "S3Config", "attrs": {}}')::jsonb -> 0 INTO credentials;
+
+    SELECT reclada_storage.s3_generate_presigned_post(data, credentials) INTO result;
     RETURN result;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
