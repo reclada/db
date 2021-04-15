@@ -1,10 +1,11 @@
 DROP FUNCTION IF EXISTS api.reclada_object_create(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb)
-RETURNS VOID AS $$
+RETURNS jsonb AS $$
 DECLARE
     class      jsonb;
     attrs      jsonb;
     user_info  jsonb;
+    result     jsonb;
 BEGIN
     class := data->'class';
 
@@ -13,6 +14,7 @@ BEGIN
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
+    data := data - 'access_token';
 
     IF(NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
@@ -23,7 +25,8 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    SELECT reclada_object.create(data);
+    SELECT reclada_object.create(data) INTO result;
+    RETURN result;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -37,6 +40,7 @@ DECLARE
     result              jsonb;
 BEGIN
     SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
+    data := data - 'access_token';
 
     IF(NOT(reclada_user.is_allowed(user_info, 'list', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;
@@ -67,6 +71,7 @@ BEGIN
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
+    data := data - 'access_token';
 
     IF(NOT(reclada_user.is_allowed(user_info, 'update', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'update', class;
@@ -136,6 +141,7 @@ BEGIN
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
+    data := data - 'access_token';
 
     IF(NOT(reclada_user.is_allowed(user_info, 'delete', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;
