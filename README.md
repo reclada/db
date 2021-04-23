@@ -32,6 +32,7 @@ All functions are inside `api` schema, and it is accessed by default.
 
 
 ### Storage usage:
+#### File upload:
 
 1. Login to `http://minio:9000/minio/login/` using `minio/password` as credentials
 2. Create bucket with name `minio-bucket`
@@ -58,4 +59,15 @@ All functions are inside `api` schema, and it is accessed by default.
      "file_size": 999999
    }');
    ```
+   A new reclada object of the File class will also be created.
 5. Upload a file using generated URL.
+
+#### File download:
+
+Generate presigned URL using PostgREST API:
+   ```
+   storage_generate_presigned_get('{
+     "access_token": "eyJhbGciOiJSUz...",
+     "object_id": "0f82c167..."
+   }');
+   ```
