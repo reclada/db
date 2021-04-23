@@ -1,4 +1,4 @@
-DROP FUNCTION IF EXISTS reclada_storage.s3_generate_presigned_post(jsonb,jsonb);
+DROP FUNCTION IF EXISTS reclada_storage.s3_generate_presigned_post(jsonb, jsonb);
 CREATE OR REPLACE FUNCTION reclada_storage.s3_generate_presigned_post(data JSONB, credentials JSONB)
 RETURNS JSONB AS $$
     import json
@@ -18,7 +18,7 @@ RETURNS JSONB AS $$
 
     response = s3_client.generate_presigned_post(
         Bucket=json_credentials["bucketName"],
-        Key=json_data["object_name"],
+        Key=json_data["object_path"],
         Fields={
             "Content-Type": json_data["file_type"],
         },
@@ -32,7 +32,7 @@ RETURNS JSONB AS $$
     return json.dumps(response)
 $$ LANGUAGE 'plpython3u';
 
-DROP FUNCTION IF EXISTS reclada_storage.s3_generate_presigned_get(jsonb,jsonb);
+DROP FUNCTION IF EXISTS reclada_storage.s3_generate_presigned_get(jsonb, jsonb);
 CREATE OR REPLACE FUNCTION reclada_storage.s3_generate_presigned_get(credentials JSONB, object_data JSONB)
 RETURNS JSONB AS $$
     import json

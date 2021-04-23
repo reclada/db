@@ -2,9 +2,17 @@ DROP FUNCTION IF EXISTS api.storage_generate_presigned_post(jsonb);
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
+    bucket_name  varchar;
     credentials  jsonb;
-    user_info    jsonb;
+    file_type    varchar;
+    object       jsonb;
+    object_id    uuid;
+    object_name  varchar;
+    object_path  varchar;
     result       jsonb;
+    user_info    jsonb;
+    uri          varchar;
+    url          varchar;
 BEGIN
     SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
     data := data - 'access_token';
@@ -15,7 +23,29 @@ BEGIN
 
     SELECT reclada_object.list('{"class": "S3Config", "attrs": {}}')::jsonb -> 0 INTO credentials;
 
-    SELECT reclada_storage.s3_generate_presigned_post(data, credentials) INTO result;
+    object_name := data->>'object_name';
+    file_type := data->>'file_type';
+    bucket_name := credentials->'attrs'->>'bucketName';
+    SELECT uuid_generate_v4() INTO object_id;
+    object_path := object_id;
+    uri := 's3://' || bucket_name || '/' || object_path;
+
+    -- TODO: remove checksum from required attrs for File class?
+    SELECT reclada_object.create(format(
+        '{"class": "File", "attrs": {"name": "%s", "mimeType": "%s", "uri": "%s", "checksum": "temp_checksum"}}',
+        object_name,
+        file_type,
+        uri
+    )::jsonb) INTO object;
+
+    data := data || format('{"object_path": "%s"}', object_path)::jsonb;
+    SELECT reclada_storage.s3_generate_presigned_post(data, credentials)::jsonb INTO url;
+
+    result = format(
+        '{"object": %s, "upload_url": %s}',
+        object,
+        url
+    )::jsonb;
     RETURN result;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -25,10 +55,10 @@ CREATE OR REPLACE FUNCTION api.storage_generate_presigned_get(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
     credentials  jsonb;
-    user_info    jsonb;
-    result       jsonb;
-    object_id    uuid;
     object_data  jsonb;
+    object_id    uuid;
+    result       jsonb;
+    user_info    jsonb;
 BEGIN
     SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
     data := data - 'access_token';
