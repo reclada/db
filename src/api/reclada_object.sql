@@ -82,7 +82,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    SELECT (api.reclada_object_list(format(
+    SELECT (reclada_object.list(format(
         '{"class": "jsonschema", "attrs": {"forClass": %s}}',
         class
     )::jsonb)) -> 0 INTO schema;
@@ -103,7 +103,7 @@ BEGIN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
-    SELECT api.reclada_object_list(format(
+    SELECT reclada_object.listt(format(
         '{"class": %s, "attrs": {}, "id": "%s"}',
         class,
         objid
