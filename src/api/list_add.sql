@@ -10,6 +10,7 @@ DECLARE
 	obj		 	   jsonb;
 	new_obj		   jsonb;
 	field_value    jsonb;
+	access_token   jsonb;
 
 	BEGIN
 		class := data->'class';
@@ -23,16 +24,17 @@ DECLARE
         	RAISE EXCEPTION 'The is no id';
     	END IF;
 	
-		SELECT reclada_object.list(format(
-			'{"class": %s, "attrs": {}, "id": "%s"}',
+		access_token := data->'access_token';
+		SELECT api.reclada_object_list(format(
+			'{"class": %s, "attrs": {}, "id": "%s", "access_token": %s}',
         	class,
-        	obj_id
+        	obj_id,
+        	access_token
     		)::jsonb) -> 0 INTO obj;
     	
     	IF (obj IS NULL) THEN
         	RAISE EXCEPTION 'The is no object with such id';
     	END IF;
-    	
     	
     	json_path := format('{attrs, %s}', data->>'field');
     
@@ -43,10 +45,10 @@ DECLARE
     	
     	field_value := obj#>json_path;
     	IF (field_value IS NULL) THEN
-        	SELECT jsonb_set(obj, json_path, value_to_add) || format('{"access_token": "%s"}', data->>'access_token')::jsonb
+        	SELECT jsonb_set(obj, json_path, value_to_add) || format('{"access_token": %s}', access_token)::jsonb
 			INTO new_obj;
 		ELSE 
-			SELECT jsonb_set(obj, json_path, field_value || value_to_add) || format('{"access_token": "%s"}', data->>'access_token')::jsonb
+			SELECT jsonb_set(obj, json_path, field_value || value_to_add) || format('{"access_token": %s}', access_token)::jsonb
 			INTO new_obj;
     	END IF;
 		
