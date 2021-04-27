@@ -56,7 +56,10 @@ All functions are inside `api` schema, and it is accessed by default.
      "access_token": "eyJhbGciOiJSUz...",
      "object_name": "file.txt",
      "file_type": "text/plain",
-     "file_size": 999999
+     "file_size": 999999,
+     "access_key_id": "minio",
+     "secret_access_key": "password",
+     "bucket_name": "minio-bucket"
    }');
    ```
    A new reclada object of the File class will also be created.
