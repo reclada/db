@@ -1,8 +1,16 @@
-DROP FUNCTION IF EXISTS api.list_add(jsonb);
+/*
+ * Function api.list_add adds one element or several elements to the list.
+ * Input requires parameter is jsonb with:
+ * class - the class of the object
+ * id - id of the object 
+ * field - the name of the field to add the value to
+ * value - one scalar value or array of values
+ * access_token - jwt token to authorize
+*/
 
 CREATE OR REPLACE FUNCTION api.list_add(data jsonb)
-RETURNS void AS $$
-DECLARE  
+RETURNS void as $$
+DECLARE
     class          jsonb;
     obj_id         uuid;
     values_to_add  jsonb;
@@ -12,9 +20,9 @@ DECLARE
     field_value    jsonb;
     access_token   jsonb;
 
-BEGIN
+begin
     class := data->'class';
-    IF (class IS NULL) THEN
+    if (class is null) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
        END IF;
 
