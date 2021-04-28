@@ -22,7 +22,7 @@ DECLARE
 	
 		obj_id := (data->>'id')::uuid;
 		IF(obj_id IS NULL) THEN
-        	RAISE EXCEPTION 'The is no id';
+			RAISE EXCEPTION 'The is no id';
     	END IF;
 	
     	access_token := data->'access_token';
