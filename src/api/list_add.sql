@@ -1,6 +1,6 @@
 /*
  * Function api.list_add adds one element or several elements to the list.
- * Input requires parameter is jsonb with:
+ * Input required parameter is jsonb with:
  * class - the class of the object
  * id - id of the object 
  * field - the name of the field to add the value to
@@ -9,7 +9,7 @@
 */
 
 CREATE OR REPLACE FUNCTION api.list_add(data jsonb)
-RETURNS void as $$
+RETURNS void AS $$
 DECLARE
     class          jsonb;
     obj_id         uuid;
@@ -22,12 +22,12 @@ DECLARE
 
 begin
     class := data->'class';
-    if (class is null) THEN
+    IF (class is null) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
        END IF;
 
     obj_id := (data->>'id')::uuid;
-    IF(obj_id IS NULL) THEN
+    IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'There is no id';
     END IF;
 

@@ -1,6 +1,6 @@
 /*
- * Function api.list_add drop one element or several elements from the list.
- * Input requires parameter is jsonb with:
+ * Function api.list_drop drops one element or several elements from the list.
+ * Input required parameter is jsonb with:
  * class - the class of the object
  * id - id of the object
  * field - the name of the field to drop the value from
@@ -28,7 +28,7 @@ BEGIN
 	END IF;
 	
 	obj_id := (data->>'id')::uuid;
-	IF(obj_id IS NULL) THEN
+	IF (obj_id IS NULL) THEN
 		RAISE EXCEPTION 'The is no id';
 	END IF;
 	
