@@ -121,7 +121,7 @@ DECLARE
     attrs               jsonb;
     query_conditions    text;
     res                 jsonb;
-    order_by_jsonb      jsonb;
+    orderByJsonb        jsonb;
     order_by            text;
     limit_              text;
     offset_             text;
@@ -137,19 +137,19 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    order_by_jsonb := data->'order_by';
-    IF ((order_by_jsonb IS NULL) OR
-        (order_by_jsonb = 'null'::jsonb) OR
-        (order_by_jsonb = '[]'::jsonb)) THEN
-        order_by_jsonb := '[{"field": "id", "order": "ASC"}]'::jsonb;
+    orderByJsonb := data->'order_by';
+    IF ((orderByJsonb IS NULL) OR
+        (orderByJsonb = 'null'::jsonb) OR
+        (orderByJsonb = '[]'::jsonb)) THEN
+        orderByJsonb := '[{"field": "id", "order": "ASC"}]'::jsonb;
     END IF;
-    IF (jsonb_typeof(order_by_jsonb) != 'array') THEN
-    		order_by_jsonb := format('[%s]', order_by_jsonb);
+    IF (jsonb_typeof(orderByJsonb) != 'array') THEN
+    		orderByJsonb := format('[%s]', orderByJsonb);
     END IF;
     SELECT string_agg(
         format(E'obj.data->\'%s\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
         ' , ')
-    FROM jsonb_array_elements(order_by_jsonb) T
+    FROM jsonb_array_elements(orderByJsonb) T
     INTO order_by;
 
     limit_ := data->>'limit';
