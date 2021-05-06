@@ -12,12 +12,12 @@ DECLARE
 BEGIN
     class := data->'class';
 
-    IF(class IS NULL) THEN
+    IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
     attrs := data->'attrs';
-    IF(attrs IS NULL) THEN
+    IF (attrs IS NULL) THEN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
@@ -26,11 +26,11 @@ BEGIN
         class
     )::jsonb)) -> 0 INTO schema;
 
-    IF(schema IS NULL) THEN
+    IF (schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class;
     END IF;
 
-    IF(NOT(validate_json_schema(schema->'attrs'->'schema', attrs))) THEN
+    IF (NOT(validate_json_schema(schema->'attrs'->'schema', attrs))) THEN
         RAISE EXCEPTION 'JSON invalid: %', attrs;
     END IF;
 
@@ -58,12 +58,12 @@ DECLARE
 BEGIN
     class := data->'class';
 
-    IF(class IS NULL) THEN
+    IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
     attrs := data->'attrs';
-    IF(attrs IS NULL) THEN
+    IF (attrs IS NULL) THEN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
@@ -72,7 +72,7 @@ BEGIN
         class
     )::jsonb)) -> 0 INTO class_schema;
 
-    IF(class_schema IS NULL) THEN
+    IF (class_schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class;
     END IF;
     
@@ -96,6 +96,21 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
+reclada_object.list(jsonb)
+
+/*
+ * Function reclada_object.list returns the list of objects with specified fields.
+ * Required parameters:
+ *  class - the class of objects
+ *  attrs - the attributes of objects (can be empty)
+ * Optional parameters:
+ *  id - identifier of the objects. All ids are taken by default.
+ *  revision - object's revision. returns object with max revision by default.
+ *  order_by - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
+ *      field - required value with name of property to order by
+ *      order - optional value of the order; default is "ASC"
+ * Sorted by id in ascending order by default.
+*/
 
 DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb)
@@ -105,17 +120,36 @@ DECLARE
     attrs               jsonb;
     query_conditions    text;
     res                 jsonb;
+    order_by_jsonb      jsonb;
+    order_by            text;
 BEGIN
     class := data->'class';
 
-    IF(class IS NULL) THEN
+    IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
     attrs := data->'attrs';
-    IF(attrs IS NULL) THEN
+    IF (attrs IS NULL) THEN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
+
+    order_by_jsonb := data->'order_by';
+    IF ((order_by_jsonb IS NULL) OR
+        (order_by_jsonb = 'null'::jsonb) OR
+        (order_by_jsonb = '[]'::jsonb)) THEN
+        order_by_jsonb := '[{"field": "id", "order": "ASC"}]'::jsonb;
+    END IF;
+
+    IF (jsonb_typeof(order_by_jsonb) != 'array') THEN
+    		order_by_jsonb := format('[%s]', order_by_jsonb);
+    END IF;
+
+    SELECT string_agg(
+        format(E'obj.data->\'%s\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
+        ' , ')
+    FROM jsonb_array_elements(order_by_jsonb) T
+    INTO order_by;
 
     SELECT
         string_agg(
@@ -142,16 +176,15 @@ BEGIN
                 format(E'\'%s\'::jsonb', value) as value
             FROM jsonb_each(attrs)
         ) conds
-        INTO query_conditions;
+    INTO query_conditions;
 
     /* RAISE NOTICE 'conds: %', query_conditions; */
-    EXECUTE E'SELECT to_jsonb(array_agg(obj.data))
+    EXECUTE E'SELECT to_jsonb(array_agg(obj.data ORDER BY ' || order_by || '))
         FROM reclada.object obj
-        WHERE
-    ' || query_conditions
-        INTO res;
+        WHERE' || query_conditions
+    INTO res;
 
     RETURN res;
+
 END;
 $$ LANGUAGE PLPGSQL STABLE;
-
