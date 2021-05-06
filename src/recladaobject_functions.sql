@@ -96,7 +96,6 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
-reclada_object.list(jsonb)
 
 /*
  * Function reclada_object.list returns the list of objects with specified fields.
@@ -106,10 +105,12 @@ reclada_object.list(jsonb)
  * Optional parameters:
  *  id - identifier of the objects. All ids are taken by default.
  *  revision - object's revision. returns object with max revision by default.
- *  order_by - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
+ *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
  *      field - required value with name of property to order by
- *      order - optional value of the order; default is "ASC"
- * Sorted by id in ascending order by default.
+ *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
+ *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
+ *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
+ *
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
@@ -122,6 +123,8 @@ DECLARE
     res                 jsonb;
     order_by_jsonb      jsonb;
     order_by            text;
+    limit_              text;
+    offset_             text;
 BEGIN
     class := data->'class';
 
@@ -134,22 +137,36 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    order_by_jsonb := data->'order_by';
+    order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
         (order_by_jsonb = 'null'::jsonb) OR
         (order_by_jsonb = '[]'::jsonb)) THEN
         order_by_jsonb := '[{"field": "id", "order": "ASC"}]'::jsonb;
     END IF;
-
     IF (jsonb_typeof(order_by_jsonb) != 'array') THEN
     		order_by_jsonb := format('[%s]', order_by_jsonb);
     END IF;
-
     SELECT string_agg(
         format(E'obj.data->\'%s\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
         ' , ')
     FROM jsonb_array_elements(order_by_jsonb) T
     INTO order_by;
+
+    limit_ := data->>'limit';
+    IF (limit_ IS NULL) THEN
+        limit_ := 'ALL';
+    END IF;
+    IF ((limit_ ~ '(\D+)') AND (limit_ != 'ALL')) THEN
+    		RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
+    END IF;
+
+    offset_ := data->>'offset';
+    IF (offset_ IS NULL) THEN
+        offset_ := 0;
+    END IF;
+    IF (offset_ ~ '(\D+)') THEN
+    		RAISE EXCEPTION 'The offset must be an integer number';
+    END IF;
 
     SELECT
         string_agg(
@@ -179,12 +196,15 @@ BEGIN
     INTO query_conditions;
 
     /* RAISE NOTICE 'conds: %', query_conditions; */
-    EXECUTE E'SELECT to_jsonb(array_agg(obj.data ORDER BY ' || order_by || '))
+   EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+   FROM (
+        SELECT obj.data
         FROM reclada.object obj
-        WHERE' || query_conditions
-    INTO res;
-
-    RETURN res;
+        WHERE ' || query_conditions ||
+        ' ORDER BY ' || order_by ||
+        ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+   INTO res;
+   RETURN res;
 
 END;
 $$ LANGUAGE PLPGSQL STABLE;
