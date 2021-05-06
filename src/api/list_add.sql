@@ -20,11 +20,11 @@ DECLARE
     field_value    jsonb;
     access_token   jsonb;
 
-begin
+BEGIN
     class := data->'class';
-    IF (class is null) THEN
+    IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
-       END IF;
+    END IF;
 
     obj_id := (data->>'id')::uuid;
     IF (obj_id IS NULL) THEN
