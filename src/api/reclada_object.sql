@@ -106,10 +106,11 @@ BEGIN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
-    SELECT reclada_object.list(format(
-        '{"class": %s, "attrs": {}, "id": "%s"}',
+    SELECT api.reclada_object_list(format(
+        '{"class": %s, "attrs": {}, "id": "%s", "access_token": "%s"}',
         class,
-        objid
+        objid,
+        access_token
     )::jsonb) -> 0 INTO oldobj;
 
     IF(oldobj IS NULL) THEN
@@ -174,5 +175,6 @@ BEGIN
         objid, revid
     )::jsonb;
     INSERT INTO reclada.object VALUES(data);
+
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
