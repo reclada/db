@@ -13,12 +13,12 @@ CREATE OR REPLACE FUNCTION api.list_drop(data jsonb)
 RETURNS void AS $$
 DECLARE  
     class           jsonb;
-    obj_id 		    uuid;
+    obj_id          uuid;
     values_to_drop  jsonb;
-    new_value 	    jsonb;
+    new_value       jsonb;
     json_path       text[];
-    obj		 	    jsonb;
-    new_obj		    jsonb;
+    obj             jsonb;
+    new_obj         jsonb;
     field_value     jsonb;
     access_token    text;
 
