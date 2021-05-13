@@ -71,4 +71,3 @@ BEGIN
     PERFORM api.reclada_object_update(new_obj);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
-

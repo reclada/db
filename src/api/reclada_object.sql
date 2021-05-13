@@ -176,4 +176,3 @@ BEGIN
     INSERT INTO reclada.object VALUES(data);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
-
