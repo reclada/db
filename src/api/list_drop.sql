@@ -8,18 +8,19 @@
  * access_token - jwt token to authorize
 */
 
+DROP FUNCTION IF EXISTS api.list_drop(jsonb);
 CREATE OR REPLACE FUNCTION api.list_drop(data jsonb)
 RETURNS void AS $$
 DECLARE  
-    class          jsonb;
-    obj_id 		   uuid;
-    values_to_drop jsonb;
-    new_value 	   jsonb;
-    json_path      text[];
-    obj		 	   jsonb;
-    new_obj		   jsonb;
-    field_value    jsonb;
-    access_token   jsonb;
+    class           jsonb;
+    obj_id 		    uuid;
+    values_to_drop  jsonb;
+    new_value 	    jsonb;
+    json_path       text[];
+    obj		 	    jsonb;
+    new_obj		    jsonb;
+    field_value     jsonb;
+    access_token    text;
 
 BEGIN
 	class := data->'class';
@@ -32,9 +33,9 @@ BEGIN
 		RAISE EXCEPTION 'The is no id';
 	END IF;
 	
-	access_token := data->'access_token';
+	access_token := data->>'access_token';
 	SELECT api.reclada_object_list(format(
-		'{"class": %s, "attrs": {}, "id": "%s", "access_token": %s}',
+		'{"class": %s, "attrs": {}, "id": "%s", "access_token": "%s"}',
 		class,
 		obj_id,
 		access_token
@@ -71,7 +72,7 @@ BEGIN
 			SELECT jsonb_array_elements(values_to_drop))
 	INTO new_value;
 		
-	SELECT jsonb_set(obj, json_path, coalesce(new_value, '[]'::jsonb)) || format('{"access_token": %s}', access_token)::jsonb
+	SELECT jsonb_set(obj, json_path, coalesce(new_value, '[]'::jsonb)) || format('{"access_token": "%s"}', access_token)::jsonb
 	INTO new_obj;
 	
 	PERFORM api.reclada_object_update(new_obj);

@@ -55,14 +55,15 @@ DROP FUNCTION IF EXISTS api.reclada_object_update(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)
 RETURNS VOID AS $$
 DECLARE
-    class       jsonb;
-    attrs       jsonb;
-    schema      jsonb;
-    user_info   jsonb;
-    branch      uuid;
-    revid       integer;
-    objid       uuid;
-    oldobj      jsonb;
+    class         jsonb;
+    attrs         jsonb;
+    schema        jsonb;
+    user_info     jsonb;
+    branch        uuid;
+    revid         integer;
+    objid         uuid;
+    oldobj        jsonb;
+    access_token  text;
 BEGIN
     class := data->'class';
 
@@ -70,7 +71,8 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    SELECT reclada_user.auth_by_token(data->>'access_token') INTO user_info;
+    access_token := data->>'access_token';
+    SELECT reclada_user.auth_by_token(access_token) INTO user_info;
     data := data - 'access_token';
 
     IF(NOT(reclada_user.is_allowed(user_info, 'update', class))) THEN
@@ -82,9 +84,10 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    SELECT (reclada_object.list(format(
-        '{"class": "jsonschema", "attrs": {"forClass": %s}}',
-        class
+    SELECT (api.reclada_object_list(format(
+        '{"class": "jsonschema", "attrs": {"forClass": %s}, "access_token": "%s"}',
+        class,
+        access_token
     )::jsonb)) -> 0 INTO schema;
 
     IF(schema IS NULL) THEN
@@ -103,7 +106,7 @@ BEGIN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
-    SELECT reclada_object.listt(format(
+    SELECT reclada_object.list(format(
         '{"class": %s, "attrs": {}, "id": "%s"}',
         class,
         objid
@@ -115,7 +118,8 @@ BEGIN
 
     data := oldobj || data || format(
         '{"id": "%s", "revision": %s, "isDeleted": false}',
-        objid, revid
+        objid,
+        revid
     )::jsonb;
     INSERT INTO reclada.object VALUES(data);
 END;
