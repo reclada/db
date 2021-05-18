@@ -129,12 +129,12 @@ BEGIN
     class := data->'class';
 
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class not specified';
     END IF;
 
     attrs := data->'attrs';
     IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'reclada object must have attrs';
+        RAISE EXCEPTION 'The reclada object must have attrs';
     END IF;
 
     order_by_jsonb := data->'orderBy';
