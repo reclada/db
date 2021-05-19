@@ -190,7 +190,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 
 /*
- * Function api.list_add adds one element or several elements to the list.
+ * Function api.reclada_object_list_add adds one element or several elements to the list.
  * Input required parameter is jsonb with:
  * class - the class of the object
  * id - id of the object
@@ -199,8 +199,8 @@ $$ LANGUAGE PLPGSQL VOLATILE;
  * accessToken - jwt token to authorize
 */
 
-DROP FUNCTION IF EXISTS api.list_add(jsonb);
-CREATE OR REPLACE FUNCTION api.list_add(data jsonb)
+DROP FUNCTION IF EXISTS api.reclada_object_list_add(jsonb);
+CREATE OR REPLACE FUNCTION api.reclada_object_list_add(data jsonb)
 RETURNS void AS $$
 DECLARE
     class          jsonb;
@@ -266,7 +266,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 
 /*
- * Function api.list_drop drops one element or several elements from the list.
+ * Function api.reclada_object_list_drop drops one element or several elements from the list.
  * Input required parameter is jsonb with:
  * class - the class of the object
  * id - id of the object
@@ -275,8 +275,8 @@ $$ LANGUAGE PLPGSQL VOLATILE;
  * accessToken - jwt token to authorize
 */
 
-DROP FUNCTION IF EXISTS api.list_drop(jsonb);
-CREATE OR REPLACE FUNCTION api.list_drop(data jsonb)
+DROP FUNCTION IF EXISTS api.reclada_object_list_drop(jsonb);
+CREATE OR REPLACE FUNCTION api.reclada_object_list_drop(data jsonb)
 RETURNS void AS $$
 DECLARE
     class           jsonb;
