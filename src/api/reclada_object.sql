@@ -28,6 +28,7 @@ BEGIN
 
     SELECT reclada_object.create(data) INTO result;
     RETURN result;
+
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -50,6 +51,7 @@ BEGIN
 
     SELECT reclada_object.list(data) INTO result;
     RETURN result;
+
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 
@@ -127,6 +129,7 @@ BEGIN
         revid
         )::jsonb;
     INSERT INTO reclada.object VALUES(data);
+
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -349,12 +352,13 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 
 /*
- * Function api.reclada_object_list_related returns the list of elements from the field of the specified object.
+ * Function api.reclada_object_list_related returns the list of objects from the field of the specified object.
  * Required parameters:
  *  class - the class of the object
  *  id - identifier of the object
- * field - the name of the field
- * accessToken - jwt token to authorize
+ *  field - the name of the field containing the related object references
+ *  relatedClass - the class of the related objects
+ *  accessToken - jwt token to authorize
  *
 */
 
@@ -367,6 +371,8 @@ DECLARE
     obj_id         uuid;
     obj            jsonb;
     res            jsonb;
+    list_of_ids    jsonb;
+    related_class  jsonb;
     access_token   text;
 
 BEGIN
@@ -377,7 +383,7 @@ BEGIN
 
     obj_id := (data->>'id')::uuid;
     IF (obj_id IS NULL) THEN
-        RAISE EXCEPTION 'There is no object id';
+        RAISE EXCEPTION 'The object id is not specified';
     END IF;
 
     access_token := data->>'accessToken';
@@ -394,13 +400,31 @@ BEGIN
 
     field := data->'field';
     IF (field IS NULL) THEN
-        RAISE EXCEPTION 'There is no field';
+        RAISE EXCEPTION 'The object field is not specified';
     END IF;
 
-    res := obj#>(format('{attrs, %s}', field)::text[]);
-    IF (res IS NULL) THEN
+    list_of_ids := obj#>(format('{attrs, %s}', field)::text[]);
+    IF (list_of_ids IS NULL) THEN
         RAISE EXCEPTION 'The object does not have this field';
     END IF;
+
+    related_class := data->'relatedClass';
+    IF (related_class IS NULL) THEN
+        RAISE EXCEPTION 'The related class is not specified';
+    END IF;
+
+    SELECT jsonb_agg(T.related_obj)
+    FROM (
+        SELECT (api.reclada_object_list(format(
+            '{"class": %s, "attrs": {}, "id": %s, "accessToken": "%s"}',
+            related_class,
+            related_ids,
+            access_token
+            )::jsonb)) -> 0 AS related_obj
+        FROM
+            jsonb_array_elements(list_of_ids) related_ids ) T
+    INTO res;
+
     RETURN res;
 
 END;
