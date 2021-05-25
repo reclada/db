@@ -28,7 +28,7 @@ All functions are inside `api` schema, and it is accessed by default.
 3. Catch redirect back and parse `code` from URL
 4. Exchange `code` to `access_token` using `auth_get_token('{"code": "49ed87e0..."}');`
 5. Add `access_token` to all other requests
-6. `refresh_token` also issued with `access_token`. Use `auth_get_token('{"refreshToken": "eyJhbGciOiJI..."}');` to get a new `access_token`.
+6. `refresh_token` also issued with `access_token`. Use `auth_get_token('{"refresh_token": "eyJhbGciOiJI..."}');` to get a new `access_token`.
 
 
 ### Storage usage:
