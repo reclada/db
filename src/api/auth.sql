@@ -24,7 +24,7 @@ RETURNS JSONB AS $$
 
     json_data = json.loads(data)
     code = json_data.get("code")
-    refresh_token = json_data.get("refreshToken")
+    refresh_token = json_data.get("refresh_token")
 
     request_data = {}
     if code:
