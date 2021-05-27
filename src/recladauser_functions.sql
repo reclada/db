@@ -21,7 +21,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 
-
+/*
 CREATE OR REPLACE FUNCTION reclada_user.get_jwk(url VARCHAR)
 RETURNS JSONB as $$
     import requests, json
@@ -29,7 +29,7 @@ RETURNS JSONB as $$
     response.raise_for_status()
     return json.dumps(response.json()["keys"])
 $$ LANGUAGE 'plpython3u';
-
+*/
 
 CREATE OR REPLACE FUNCTION reclada_user.setup_keycloak(data JSONB)
 RETURNS void AS $$
@@ -72,7 +72,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
-
+/* -- 
 CREATE OR REPLACE FUNCTION reclada_user.parse_token(access_token VARCHAR, jwk JSONB)
 RETURNS JSONB AS $$
     import jwt, json
@@ -86,3 +86,4 @@ RETURNS JSONB AS $$
     )
     return json.dumps(res)
 $$ LANGUAGE 'plpython3u';
+*/

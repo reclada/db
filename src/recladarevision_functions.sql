@@ -11,7 +11,7 @@ RETURNS integer AS $$
                 "branch": "%s"
             }
         }',
-        nextval('reclada_revisions'),
+        nextval('reclada.reclada_revisions'),
         userid,
         now(),
         branch

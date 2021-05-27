@@ -17,7 +17,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
-
+/* -- TODO Port to PLpgSQL
 CREATE OR REPLACE FUNCTION api.auth_get_token(data JSONB)
 RETURNS JSONB AS $$
     import requests, json
@@ -47,3 +47,4 @@ RETURNS JSONB AS $$
     response.raise_for_status()
     return response.text
 $$ LANGUAGE 'plpython3u';
+*/

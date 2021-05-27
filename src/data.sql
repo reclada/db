@@ -17,7 +17,7 @@ INSERT INTO reclada.object VALUES(format(
     }', uuid_generate_v4(), reclada_revision.create('', NULL)
     )::jsonb
 );
-SELECT reclada_object.create('{
+PERFORM reclada_object.create('{
     "class": "jsonschema",
     "attrs": {
         "forClass": "RecladaObject",
@@ -36,7 +36,7 @@ SELECT reclada_object.create('{
     }
 }'::jsonb);
 
-SELECT reclada_object.create_subclass('{
+PERFORM reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
         "newClass": "tag",
@@ -46,7 +46,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-SELECT reclada_object.create_subclass('{
+PERFORM reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
         "newClass": "DataSource",
@@ -57,7 +57,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-SELECT reclada_object.create_subclass('{
+PERFORM reclada_object.create_subclass('{
     "class": "DataSource",
     "attrs": {
         "newClass": "File",
@@ -68,7 +68,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["checksum", "mimeType"]
     }
 }'::jsonb);
-SELECT reclada_object.create_subclass('{
+PERFORM reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
         "newClass": "DataSet",
@@ -82,7 +82,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-SELECT reclada_object.create_subclass('{
+PERFORM reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
         "newClass": "S3Config",

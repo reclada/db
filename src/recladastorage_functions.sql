@@ -1,6 +1,11 @@
+
 DROP FUNCTION IF EXISTS reclada_storage.s3_generate_presigned_post(jsonb, jsonb);
 CREATE OR REPLACE FUNCTION reclada_storage.s3_generate_presigned_post(data JSONB, credentials JSONB)
 RETURNS JSONB AS $$
+begin
+	return '{}'::jsonb;
+end
+/* -- TODO Port to PLpgSQL
     import json
 
     import boto3
@@ -30,11 +35,17 @@ RETURNS JSONB AS $$
     )
 
     return json.dumps(response)
-$$ LANGUAGE 'plpython3u';
+*/    
+$$ LANGUAGE 'plpgsql';
+
 
 DROP FUNCTION IF EXISTS reclada_storage.s3_generate_presigned_get(jsonb, jsonb);
 CREATE OR REPLACE FUNCTION reclada_storage.s3_generate_presigned_get(credentials JSONB, object_data JSONB)
 RETURNS JSONB AS $$
+begin
+	return '{}'::jsonb;
+end
+/* -- TODO Port to PLpgSQL
     import json
     from urllib.parse import urlparse
 
@@ -65,4 +76,5 @@ RETURNS JSONB AS $$
     )
 
     return json.dumps({"url": url})
-$$ LANGUAGE 'plpython3u';
+*/
+$$ LANGUAGE 'plpgsql';
