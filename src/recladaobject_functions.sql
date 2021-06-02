@@ -91,7 +91,7 @@ BEGIN
     }',
     attrs -> 'newClass',
     (class_schema -> 'properties') || (attrs -> 'properties'),
-    (class_schema -> 'required') || (attrs -> 'required')
+    (SELECT jsonb_agg(el) FROM (SELECT DISTINCT pg_catalog.jsonb_array_elements((class_schema -> 'required') || (attrs -> 'required')) el) arr)
     )::jsonb);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
