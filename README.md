@@ -11,10 +11,10 @@
 10. Configure usage of keycloak in db. Connect to postgresql and call function:
     ```
     select reclada_user.setup_keycloak('{
-        "base_url": "http://keycloak:8080", 
+        "baseUrl": "http://keycloak:8080", 
         "realm": "reclada-users",
-        "client_id": "reclada-client",
-        "redirect_url": "http://reclada.test"
+        "clientId": "reclada-client",
+        "redirectUrl": "http://reclada.test"
     }');
     ```
 
@@ -39,7 +39,7 @@ All functions are inside `api` schema, and it is accessed by default.
 3. Save your storage credentials using PostgREST API:
    ```
    reclada_object_create('{
-     "access_token": "eyJhbGciOiJSUz...",
+     "accessToken": "eyJhbGciOiJSUz...",
      "class": "S3Config",
      "attrs": {
        "endpointURL": "http://minio:9000",
@@ -53,13 +53,13 @@ All functions are inside `api` schema, and it is accessed by default.
 4. Generate presigned URL using PostgREST API:
    ```
    storage_generate_presigned_post('{
-     "access_token": "eyJhbGciOiJSUz...",
-     "object_name": "file.txt",
-     "file_type": "text/plain",
-     "file_size": 999999,
-     "access_key_id": "minio",
-     "secret_access_key": "password",
-     "bucket_name": "minio-bucket"
+     "accessToken": "eyJhbGciOiJSUz...",
+     "objectName": "file.txt",
+     "fileType": "text/plain",
+     "fileSize": 999999,
+     "accessKeyId": "minio",
+     "secretAccessKey": "password",
+     "bucketName": "minio-bucket"
    }');
    ```
    A new reclada object of the File class will also be created.
@@ -70,7 +70,7 @@ All functions are inside `api` schema, and it is accessed by default.
 Generate presigned URL using PostgREST API:
    ```
    storage_generate_presigned_get('{
-     "access_token": "eyJhbGciOiJSUz...",
-     "object_id": "0f82c167..."
+     "accessToken": "eyJhbGciOiJSUz...",
+     "objectId": "0f82c167..."
    }');
    ```
