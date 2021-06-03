@@ -18,13 +18,13 @@ RETURNS JSONB AS $$
 
     response = s3_client.generate_presigned_post(
         Bucket=json_credentials["bucketName"],
-        Key=json_data["object_path"],
+        Key=json_data["objectPath"],
         Fields={
-            "Content-Type": json_data["file_type"],
+            "Content-Type": json_data["fileType"],
         },
         Conditions=[
-            {"Content-Type": json_data["file_type"]},
-            ["content-length-range", 1, json_data["file_size"]],
+            {"Content-Type": json_data["fileType"]},
+            ["content-length-range", 1, json_data["fileSize"]],
         ],
         ExpiresIn=3600,
     )
