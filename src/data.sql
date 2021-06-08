@@ -49,42 +49,6 @@ SELECT reclada_object.create_subclass('{
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
-        "newClass": "DataSource",
-        "properties": {
-            "name": {"type": "string"},
-            "uri": {"type": "string"}
-        },
-        "required": ["name"]
-    }
-}'::jsonb);
-SELECT reclada_object.create_subclass('{
-    "class": "DataSource",
-    "attrs": {
-        "newClass": "File",
-        "properties": {
-            "checksum": {"type": "string"},
-            "mimeType": {"type": "string"}
-        },
-        "required": ["checksum", "mimeType"]
-    }
-}'::jsonb);
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attrs": {
-        "newClass": "DataSet",
-        "properties": {
-            "name": {"type": "string"},
-            "dataSources": {
-                "type": "array",
-                "items": {"type": "string"}
-            }
-        },
-        "required": ["name"]
-    }
-}'::jsonb);
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attrs": {
         "newClass": "S3Config",
         "properties": {
             "endpointURL": {"type": "string"},
