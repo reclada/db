@@ -62,12 +62,7 @@ RETURNS VOID AS $$
 DECLARE
     class         jsonb;
     attrs         jsonb;
-    schema        jsonb;
     user_info     jsonb;
-    branch        uuid;
-    revid         integer;
-    objid         uuid;
-    oldobj        jsonb;
     access_token  text;
 
 BEGIN
@@ -90,46 +85,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    SELECT (api.reclada_object_list(format(
-        '{"class": "jsonschema", "attrs": {"forClass": %s}, "accessToken": "%s"}',
-        class,
-        access_token
-        )::jsonb)) -> 0 INTO schema;
-
-    IF (schema IS NULL) THEN
-        RAISE EXCEPTION 'No json schema available for %', class;
-    END IF;
-
-    IF (NOT(validate_json_schema(schema->'attrs'->'schema', attrs))) THEN
-        RAISE EXCEPTION 'JSON invalid: %', attrs;
-    END IF;
-
-    branch := data->'branch';
-
-    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
-    objid := data->>'id';
-    IF (objid IS NULL) THEN
-        RAISE EXCEPTION 'Could not update object with no id';
-    END IF;
-
-    SELECT api.reclada_object_list(format(
-        '{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
-        class,
-        objid,
-        access_token
-        )::jsonb) -> 0 INTO oldobj;
-
-    IF (oldobj IS NULL) THEN
-        RAISE EXCEPTION 'Could not update object, no such id';
-    END IF;
-
-    data := oldobj || data || format(
-        '{"id": "%s", "revision": %s, "isDeleted": false}',
-        objid,
-        revid
-        )::jsonb;
-    INSERT INTO reclada.object VALUES(data);
-
+    PERFORM reclada_object.update(data);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -142,10 +98,6 @@ DECLARE
     attrs         jsonb;
     schema        jsonb;
     user_info     jsonb;
-    branch        uuid;
-    revid         integer;
-    objid         uuid;
-    oldobj        jsonb;
     access_token  text;
 
 BEGIN
@@ -163,31 +115,7 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;
     END IF;
 
-    branch := data->'branch';
-
-    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
-    objid := data->>'id';
-    IF (objid IS NULL) THEN
-        RAISE EXCEPTION 'Could not delete object with no id';
-    END IF;
-
-    SELECT api.reclada_object_list(format(
-        '{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
-        class,
-        objid,
-        access_token
-        )::jsonb) -> 0 INTO oldobj;
-
-    IF (oldobj IS NULL) THEN
-        RAISE EXCEPTION 'Could not delete object, no such id';
-    END IF;
-
-    data := oldobj || data || format(
-        '{"id": "%s", "revision": %s, "isDeleted": true}',
-        objid, revid
-        )::jsonb;
-    INSERT INTO reclada.object VALUES(data);
-
+    PERFORM reclada_object.delete(data);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 

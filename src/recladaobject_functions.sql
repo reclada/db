@@ -44,6 +44,7 @@ BEGIN
         objid, revid
     )::jsonb;
     INSERT INTO reclada.object VALUES(data);
+    PERFORM reclada_notification.send_object_notification('create', data);
     RETURN data;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -101,8 +102,8 @@ $$ LANGUAGE PLPGSQL VOLATILE;
  * Function reclada_object.list returns the list of objects with specified fields.
  * Required parameters:
  *  class - the class of objects
- *  attrs - the attributes of objects (can be empty)
  * Optional parameters:
+ *  attrs - the attributes of objects (can be empty)
  *  id - identifier of the objects. All ids are taken by default.
  *  revision - object's revision. returns object with max revision by default.
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
@@ -132,10 +133,7 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class not specified';
     END IF;
 
-    attrs := data->'attrs';
-    IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object must have attrs';
-    END IF;
+    attrs := data->'attrs' || '{}'::jsonb;
 
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
@@ -208,3 +206,133 @@ BEGIN
 
 END;
 $$ LANGUAGE PLPGSQL STABLE;
+
+/*
+ * Function reclada_object.update creates new revision of an object .
+ * Required parameters:
+ *  class - the class of objects
+ *  attrs - the attributes of objects (can be empty)
+ * Optional parameters:
+ *  id - identifier of the objects. All ids are taken by default.
+ *  revision - object's revision. returns object with max revision by default.
+ *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
+ *      field - required value with name of property to order by
+ *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
+ *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
+ *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
+ *
+*/
+DROP FUNCTION IF EXISTS reclada_object.update(jsonb);
+CREATE OR REPLACE FUNCTION reclada_object.update(data jsonb)
+RETURNS jsonb 
+LANGUAGE PLPGSQL VOLATILE
+AS $body$
+DECLARE
+    class         jsonb;
+    attrs         jsonb;
+    schema        jsonb;
+    user_info     jsonb;
+    branch        uuid;
+    revid         integer;
+    objid         uuid;
+    oldobj        jsonb;
+BEGIN
+    class := data->'class';
+
+    IF (class IS NULL) THEN
+        RAISE EXCEPTION 'reclada object class not specified';
+    END IF;
+
+    attrs := data->'attrs';
+    IF (attrs IS NULL) THEN
+        RAISE EXCEPTION 'reclada object must have attrs';
+    END IF;
+
+    SELECT (reclada_object.list(format(
+        '{"class": "jsonschema", "attrs": {"forClass": %s}}',
+        class
+        )::jsonb)) -> 0 INTO schema;
+
+    IF (schema IS NULL) THEN
+        RAISE EXCEPTION 'No json schema available for %', class;
+    END IF;
+
+    IF (NOT(validate_json_schema(schema->'attrs'->'schema', attrs))) THEN
+        RAISE EXCEPTION 'JSON invalid: %', attrs;
+    END IF;
+
+    branch := data->'branch';
+
+    objid := data->>'id';
+    IF (objid IS NULL) THEN
+        RAISE EXCEPTION 'Could not update object with no id';
+    END IF;
+
+    SELECT api.reclada_object_list(format(
+        '{"class": %s, "id": "%s"}',
+        class,
+        objid
+        )::jsonb) -> 0 INTO oldobj;
+
+    IF (oldobj IS NULL) THEN
+        RAISE EXCEPTION 'Could not update object, no such id';
+    END IF;
+
+    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
+    data := data || format(
+        '{"revision": %s, "isDeleted": false}',
+        revid
+    )::jsonb; --TODO replace isDeleted with status attr
+    --TODO compare old and data to avoid unnecessery inserts 
+    INSERT INTO reclada.object VALUES(data);
+    PERFORM reclada_notification.send_object_notification('update', data);
+    RETURN data; 
+END;
+$body$;
+
+DROP FUNCTION IF EXISTS reclada_object.delete(jsonb);
+CREATE OR REPLACE FUNCTION reclada_object.delete(data jsonb)
+RETURNS jsonb 
+LANGUAGE PLPGSQL VOLATILE 
+AS $$
+DECLARE
+    class         jsonb;
+    user_info     jsonb;
+    branch        uuid;
+    revid         integer;
+    objid         uuid;
+    oldobj        jsonb;
+BEGIN
+    class := data->'class';
+
+    IF (class IS NULL) THEN
+        RAISE EXCEPTION 'reclada object class not specified';
+    END IF;
+
+    branch := data->'branch';
+
+    objid := data->>'id';
+    IF (objid IS NULL) THEN
+        RAISE EXCEPTION 'Could not delete object with no id';
+    END IF;
+
+    SELECT reclada_object.list(format(
+        '{"class": %s, "id": "%s"}',
+        class,
+        objid
+        )::jsonb) -> 0 INTO oldobj;
+
+    IF (oldobj IS NULL) THEN
+        RAISE EXCEPTION 'Could not delete object, no such id';
+    END IF;
+
+    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
+    data := data || format(
+            '{"revision": %s, "isDeleted": true}',
+            revid
+        )::jsonb;
+    INSERT INTO reclada.object VALUES(data);
+    PERFORM reclada_notification.send_object_notification('delete', data);   
+    RETURN data;
+END;
+$$;
