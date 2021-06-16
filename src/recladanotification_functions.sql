@@ -1,8 +1,7 @@
 DROP FUNCTION IF EXISTS reclada_notification.send(varchar, jsonb);
 CREATE OR REPLACE FUNCTION reclada_notification.send(channel varchar, payload jsonb DEFAULT NULL)
-STABLE
-RETURNS Void
-LANGUAGE PLpgSQL AS 
+RETURNS void
+LANGUAGE PLpgSQL STABLE AS 
 $body$
 BEGIN
     PERFORM pg_notify(lower(channel), payload::text); 
@@ -11,9 +10,8 @@ $body$;
 
 DROP FUNCTION IF EXISTS reclada_notification.listen(varchar);
 CREATE OR REPLACE FUNCTION reclada_notification.listen(channel varchar)
-STABLE
-RETURNS Void
-LANGUAGE PLpgSQL AS 
+RETURNS void
+LANGUAGE PLpgSQL STABLE AS 
 $body$
 BEGIN
     EXECUTE 'LISTEN ' || lower(channel);
@@ -22,9 +20,8 @@ $body$;
 
 DROP FUNCTION IF EXISTS reclada_notification.send_object_notification(varchar, jsonb);
 CREATE OR REPLACE FUNCTION reclada_notification.send_object_notification(event varchar, object_data jsonb)
-RETURNS Void
-STABLE
-LANGUAGE PLpgSQL AS
+RETURNS void
+LANGUAGE PLpgSQL STABLE AS
 $body$
 DECLARE 
     message         jsonb;
