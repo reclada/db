@@ -139,7 +139,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb)
-RETURNS text AS $$
+RETURNS jsonb AS $$
 DECLARE
     class               jsonb;
     attrs               jsonb;
