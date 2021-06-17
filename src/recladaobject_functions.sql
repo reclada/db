@@ -347,18 +347,10 @@ DROP FUNCTION IF EXISTS get_condition_array(jsonb, text);
 CREATE OR REPLACE FUNCTION get_condition_array(data jsonb, key_path text)
 RETURNS text AS $$
     SELECT
-        CASE
-            WHEN data->>'operator' = 'inList' THEN
-                CONCAT(
-                    cast_jsonb_to_postgres(key_path, jsonb_typeof(data->'object'->0)), --!? привожу key к типу, как первый элемент в массиве value
-                    ' = ',
-                    format(E'ANY(%s)', jsonb_to_text(data->'object')))
-            ELSE
-                CONCAT(
-                    cast_jsonb_to_postgres(key_path, jsonb_typeof(data->'object'), jsonb_typeof(data->'object'->0)), ---!? когда key -- array: привожу элементы массива key к типу, как первый элемент в массиве value
-                    ' ', data->>'operator', ' ',
-                    jsonb_to_text(data->'object'))
-        END
+    CONCAT(
+        key_path,
+        ' ', data->>'operator', ' ',
+        format(E'\'%s\'::jsonb', data->'object'#>>'{}'))
 $$ LANGUAGE SQL IMMUTABLE;
 
 
