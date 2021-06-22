@@ -1,6 +1,6 @@
 /*
  * Function reclada_object.create creates one or bunch of objects with specified fields.
- * A jsonb object with the following parameters is required to create one object. An array of jsonb objects with the following parameters is required to create a bunch of objects.
+ * A jsonb with user_info and jsonb with the following parameters are required.
  * Required parameters:
  *  class - the class of objects
  *  attrs - the attributes of objects
@@ -10,7 +10,7 @@
  */
 
 DROP FUNCTION IF EXISTS reclada_object.create(jsonb, jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.create(data_jsonb jsonb, user_info jsonb)
+CREATE OR REPLACE FUNCTION reclada_object.create(data_jsonb jsonb, user_info jsonb default '{}'::jsonb)
 RETURNS jsonb AS $$
 DECLARE
     class      jsonb;
@@ -31,7 +31,7 @@ BEGIN
         SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
     END IF;
 
-    FOREACH data IN ARRAY (select ARRAY(SELECT jsonb_array_elements_text(data_jsonb))) LOOP
+    FOREACH data IN ARRAY (SELECT ARRAY(SELECT jsonb_array_elements_text(data_jsonb))) LOOP
 
         class := data->'class';
 
@@ -242,7 +242,8 @@ END;
 $$ LANGUAGE PLPGSQL STABLE;
 
 /*
- * Function reclada_object.update creates new revision of an object .
+ * Function reclada_object.update creates new revision of an object.
+ * A jsonb with user_info and jsonb with the following parameters are required.
  * Required parameters:
  *  class - the class of objects
  *  attrs - the attributes of objects (can be empty)
@@ -256,8 +257,9 @@ $$ LANGUAGE PLPGSQL STABLE;
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  *
 */
-DROP FUNCTION IF EXISTS reclada_object.update(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.update(data jsonb)
+
+DROP FUNCTION IF EXISTS reclada_object.update(jsonb, jsonb);
+CREATE OR REPLACE FUNCTION reclada_object.update(data jsonb, user_info jsonb default '{}'::jsonb)
 RETURNS jsonb 
 LANGUAGE PLPGSQL VOLATILE
 AS $body$
@@ -270,6 +272,7 @@ DECLARE
     revid         integer;
     objid         uuid;
     oldobj        jsonb;
+
 BEGIN
     class := data->'class';
 
@@ -302,7 +305,7 @@ BEGIN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
-    SELECT api.reclada_object_list(format(
+    SELECT reclada_object.list(format(
         '{"class": %s, "id": "%s"}',
         class,
         objid
@@ -316,16 +319,17 @@ BEGIN
     data := data || format(
         '{"revision": %s, "isDeleted": false}',
         revid
-    )::jsonb; --TODO replace isDeleted with status attr
+        )::jsonb; --TODO replace isDeleted with status attr
     --TODO compare old and data to avoid unnecessery inserts 
     INSERT INTO reclada.object VALUES(data);
-    PERFORM reclada_notification.send_object_notification('update', data);
+    /* PERFORM reclada_notification.send_object_notification('update', data); */
     RETURN data; 
 END;
 $body$;
 
-DROP FUNCTION IF EXISTS reclada_object.delete(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.delete(data jsonb)
+
+DROP FUNCTION IF EXISTS reclada_object.delete(jsonb, jsonb);
+CREATE OR REPLACE FUNCTION reclada_object.delete(data jsonb, user_info jsonb default '{}'::jsonb)
 RETURNS jsonb 
 LANGUAGE PLPGSQL VOLATILE 
 AS $$

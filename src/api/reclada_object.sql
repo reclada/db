@@ -26,7 +26,7 @@ BEGIN
         data_jsonb := format('[%s]', data_jsonb)::jsonb;
     END IF;
 
-    FOREACH data IN ARRAY (select ARRAY(SELECT jsonb_array_elements_text(data_jsonb))) LOOP
+    FOREACH data IN ARRAY (SELECT ARRAY(SELECT jsonb_array_elements_text(data_jsonb))) LOOP
 
         class := data->'class';
         IF (class IS NULL) THEN
@@ -105,7 +105,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    PERFORM reclada_object.update(data);
+    PERFORM reclada_object.update(data, user_info);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -135,7 +135,7 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;
     END IF;
 
-    PERFORM reclada_object.delete(data);
+    PERFORM reclada_object.delete(data, user_info);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
