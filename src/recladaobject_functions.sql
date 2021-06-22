@@ -370,7 +370,7 @@ BEGIN
             revid
         )::jsonb;
     INSERT INTO reclada.object VALUES(data);
-    PERFORM reclada_notification.send_object_notification('delete', data);   
+    /* PERFORM reclada_notification.send_object_notification('delete', data); */
     RETURN data;
 END;
 $$;
