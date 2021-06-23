@@ -24,7 +24,6 @@ BEGIN
         INTO dataset;
 
         dataset := jsonb_set(dataset, '{attrs, dataSources}', dataset->'attrs'->'dataSources' || format('["%s"]', objid)::jsonb);
-        --dataset := dataset - 'revision';
 
         PERFORM reclada_object.update(dataset);
 
@@ -36,8 +35,8 @@ BEGIN
                 "attrs": {
                     "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
                     "status": "new",
-                    "type": "null",
-                    "command": "null",
+                    "type": "shell",
+                    "command": "python -m repos.badgerdoc_badgerdoc.table_extractor.run run",
                     "inputParameters": [{"uri": "%s"}]
                     }
                 }]', uri)::jsonb);
