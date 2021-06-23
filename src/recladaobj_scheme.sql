@@ -1,6 +1,9 @@
 CREATE TABLE reclada.object(
     data    jsonb   NOT NULL
 );
+CREATE TABLE reclada.staging(
+    data    jsonb   NOT NULL
+);
 CREATE SCHEMA reclada_user;
 CREATE SCHEMA reclada_revision;
 CREATE SCHEMA reclada_object;
