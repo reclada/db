@@ -76,7 +76,7 @@ BEGIN
     END LOOP;
 
     INSERT INTO reclada.object  SELECT * FROM unnest(res);
-    /* PERFORM reclada_notification.send_object_notification('create', data_jsonb); */
+    PERFORM reclada_notification.send_object_notification('create', array_to_json(res)::jsonb);
     RETURN array_to_json(res)::jsonb;
 
 END;
@@ -322,7 +322,7 @@ BEGIN
         )::jsonb; --TODO replace isDeleted with status attr
     --TODO compare old and data to avoid unnecessery inserts 
     INSERT INTO reclada.object VALUES(data);
-    /* PERFORM reclada_notification.send_object_notification('update', data); */
+    PERFORM reclada_notification.send_object_notification('update', data);
     RETURN data; 
 END;
 $body$;
@@ -370,7 +370,7 @@ BEGIN
             revid
         )::jsonb;
     INSERT INTO reclada.object VALUES(data);
-    /* PERFORM reclada_notification.send_object_notification('delete', data); */
+    PERFORM reclada_notification.send_object_notification('delete', data);
     RETURN data;
 END;
 $$;
