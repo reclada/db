@@ -97,11 +97,46 @@ SELECT reclada_object.create_subclass('{
     }
 }'::jsonb);
 /* Just for demo 23.06.21*/
-SELECT reclada_object.create('[{
+SELECT reclada_object.create('{
     "class": "DataSet",
     "attrs": {
         "name": "defaultDataSet",
         "dataSources": []
         }
-}]'::jsonb,
-'{}'::jsonb);
+}'::jsonb);
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attrs": {
+        "newClass": "S3Config",
+        "properties": {
+            "endpointURL": {"type": "string"},
+            "regionName": {"type": "string"},
+            "accessKeyId": {"type": "string"},
+            "secretAccessKey": {"type": "string"},
+            "bucketName": {"type": "string"}
+            },
+        "required": ["accessKeyId", "secretAccessKey", "bucketName"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attrs": {
+        "newClass": "Message",
+        "properties": {
+            "channelName": {"type": "string"},
+            "class": {"type": "string"},
+            "event": {
+                "type": "string",
+                "enum": [
+                    "create",
+                    "update",
+                    "list",
+                    "delete"
+                ]
+            },
+            "attrs": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["class", "channelName", "event"]
+    }
+}'::jsonb);

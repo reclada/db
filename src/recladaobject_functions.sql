@@ -145,7 +145,31 @@ $$ LANGUAGE PLPGSQL VOLATILE;
  *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
  *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
- *
+ * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
+ * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
+ * Examples:
+ *   1. Input:
+ *   {"class": "class_name",
+ *   "id": "id_1",
+ *   "revision": {"operator": "!=", "object": 123},
+ *   "isDeleted": false,
+ *   "attrs":
+ *   {
+ *       "name": {"operator": "LIKE", "object": "%test%"}
+ *   },
+ *   "accessToken":".."'::jsonb
+ *   2. Input:
+ *   {"class": "class_name",
+ *   "revision": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}],
+ *   "id": {"operator": "inList", "object": ["id_1", "id_2", "id_3"]},
+ *   "attrs":
+ *   {
+ *       "tags":{"operator": "@>", "object": ["value1", "value2"]},
+ *   },
+ *   "orderBy": [{"field": "revision", "order": "DESC"}],
+ *   "limit": 5,
+ *   "offset": 2,
+ *   "accessToken":"..."}::jsonb
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
@@ -160,6 +184,7 @@ DECLARE
     order_by            text;
     limit_              text;
     offset_             text;
+
 BEGIN
     class := data->'class';
 
@@ -203,31 +228,58 @@ BEGIN
     SELECT
         string_agg(
             format(
-                E'(%s = %s)',
-                key,
-                value
+                E'(%s)',
+                condition
             ),
             ' AND '
         )
         FROM (
-            SELECT E'data -> \'id\'' AS key, (format(E'\'%s\'', data->'id')::text) AS value WHERE data->'id' IS NOT NULL
+            SELECT
+                get_query_condition(class, E'data->\'class\'') AS condition
             UNION SELECT
-                E'data -> \'class\'' AS key,
-                format(E'\'%s\'', class :: text) AS value
-            UNION SELECT E'data -> \'revision\'' AS key, 
+                CASE WHEN jsonb_typeof(data->'id') = 'array' THEN
+                    (SELECT string_agg(
+                        format(
+                            E'(%s)',
+                            get_query_condition(cond, E'data->\'id\'')
+                        ),
+                        ' AND '
+                    )
+                    FROM jsonb_array_elements(data->'id') AS cond)
+                ELSE get_query_condition(data->'id', E'data->\'id\'') END AS condition
+            WHERE data->'id' IS NOT NULL
+            UNION SELECT
                 CASE WHEN data->'revision' IS NULL THEN
-                    E'(SELECT max((objrev.data -> \'revision\') :: integer) :: text :: jsonb
+                    E'(data->>\'revision\'):: numeric = (SELECT max((objrev.data -> \'revision\')::numeric)
                     FROM reclada.object objrev WHERE
                     objrev.data -> \'id\' = obj.data -> \'id\')'
-                ELSE (data->'revision') :: integer :: text END
+                WHEN jsonb_typeof(data->'revision') = 'array' THEN
+                    (SELECT string_agg(
+                        format(
+                            E'(%s)',
+                            get_query_condition(cond, E'data->\'revision\'')
+                        ),
+                        ' AND '
+                    )
+                    FROM jsonb_array_elements(data->'revision') AS cond)
+                ELSE get_query_condition(data->'revision', E'data->\'revision\'') END AS condition
             UNION SELECT
-                format(E'data->\'attrs\'->%L', key) as key,
-                format(E'\'%s\'::jsonb', value) as value
-            FROM jsonb_each(attrs)
+                CASE WHEN jsonb_typeof(value) = 'array' THEN
+                    (SELECT string_agg(
+                        format(
+                            E'(%s)',
+                            get_query_condition(cond, format(E'data->\'attrs\'->%L', key))
+                        ),
+                        ' AND '
+                    )
+                    FROM jsonb_array_elements(value) AS cond)
+                ELSE get_query_condition(value, format(E'data->\'attrs\'->%L', key)) END AS condition
+           FROM jsonb_each(attrs)
+           WHERE data->'attrs' != ('{}'::jsonb)
         ) conds
     INTO query_conditions;
 
-    /* RAISE NOTICE 'conds: %', query_conditions; */
+   /* RAISE NOTICE 'conds: %', query_conditions; */
    EXECUTE E'SELECT to_jsonb(array_agg(T.data))
    FROM (
         SELECT obj.data
@@ -370,3 +422,157 @@ BEGIN
     RETURN data;
 END;
 $$;
+
+
+/*
+ * Auxiliary function cast_jsonb_to_postgres generates a string to get the jsonb field with a cast to postgres primitive types.
+ * Required parameters:
+ *  key_path - the path to jsonb object field
+ *  type - a primitive json type
+ * Optional parameters:
+ *  type_of_array - the type to which it needed to cast elements of array. It is used just for type = array. By default, type_of_array = text.
+ * Examples:
+ * 1. Input: key_path = data->'revision', type = number
+ *    Output: (data->'revision')::numeric
+ * 2. Input: key_path = data->'attrs'->'tags', type = array, type_of_array = string
+ *    Output: (ARRAY(SELECT jsonb_array_elements_text(data->'attrs'->'tags')::text)
+ * Only valid input is expected.
+*/
+
+DROP FUNCTION IF EXISTS cast_jsonb_to_postgres(text, text, text);
+CREATE OR REPLACE FUNCTION cast_jsonb_to_postgres(key_path text, type text, type_of_array text default 'text')
+RETURNS text AS $$
+SELECT
+        CASE
+            WHEN type = 'string' THEN
+                format(E'(%s#>>\'{}\')::text', key_path)
+            WHEN type = 'number' THEN
+                format(E'(%s)::numeric', key_path)
+            WHEN type = 'boolean' THEN
+                format(E'(%s)::boolean', key_path)
+            WHEN type = 'array' THEN
+                format(
+                    E'ARRAY(SELECT jsonb_array_elements_text(%s)::%s)',
+                    key_path,
+                     CASE
+                        WHEN type_of_array = 'string' THEN 'text'
+                        WHEN type_of_array = 'number' THEN 'numeric'
+                        WHEN type_of_array = 'boolean' THEN 'boolean'
+                     END
+                    )
+        END
+$$ LANGUAGE SQL IMMUTABLE;
+
+
+/*
+ * Auxiliary function jsonb_to_text converts a jsonb field to string.
+ * Required parameters:
+ *  data - the jsonb field
+ * Only valid input is expected.
+*/
+
+DROP FUNCTION IF EXISTS jsonb_to_text(jsonb);
+CREATE OR REPLACE FUNCTION jsonb_to_text(data jsonb)
+RETURNS text AS $$
+    SELECT
+        CASE
+            WHEN jsonb_typeof(data) = 'string' THEN
+                format(E'\'%s\'', data#>>'{}')
+            WHEN jsonb_typeof(data) = 'array' THEN
+                format('ARRAY[%s]',
+                    (SELECT string_agg(
+                        jsonb_to_text(elem),
+                        ', ')
+                    FROM jsonb_array_elements(data) elem))
+            ELSE
+                data#>>'{}'
+        END
+$$ LANGUAGE SQL IMMUTABLE;
+
+
+/*
+ * Auxiliary function get_condition_array generates a query string to get the jsonb field which contains array with a cast to postgres primitive types.
+ * Required parameters:
+ *  data - the jsonb field which contains array
+ *  key_path - the path to jsonb object field
+ * Examples:
+ * 1. Input: data = {"operator": "inList", "object": [60, 64, 65]}::jsonb,
+             key_path = data->'revision'
+ *    Output: ((data->'revision')::numeric = ANY(ARRAY[60, 64, 65]))
+ * 2. Input: data = {"object": ["value1", "value2", "value3"]}::jsonb,
+             key_path = data->'attrs'->'tags'
+ *    Output: ((ARRAY(SELECT jsonb_array_elements_text(data->'attrs'->'tags')::text) = ARRAY['value1', 'value2', 'value3'])
+ * Only valid input is expected.
+*/
+
+DROP FUNCTION IF EXISTS get_condition_array(jsonb, text);
+CREATE OR REPLACE FUNCTION get_condition_array(data jsonb, key_path text)
+RETURNS text AS $$
+    SELECT
+    CONCAT(
+        key_path,
+        ' ', data->>'operator', ' ',
+        format(E'\'%s\'::jsonb', data->'object'#>>'{}'))
+$$ LANGUAGE SQL IMMUTABLE;
+
+
+/*
+ * Auxiliary function get_query_condition generates a query string.
+ * Required parameters:
+ *  data - the jsonb field which contains query information
+ *  key_path - the path to jsonb object field
+ * Examples:
+ * 1. Input: data = [{"operator": ">=", "object": 100}, {"operator": "<", "object": 124}]::jsonb,
+ *            key_path = data->'revision'
+ *    Output: (((data->'revision')::numeric >= 100) AND ((data->'revision')::numeric < 124))
+ * 2. Input: data = {"operator": "LIKE", "object": "%test%"}::jsonb,
+ *            key_path = data->'name'
+ *    Output: ((data->'attrs'->'name'#>>'{}')::text LIKE '%test%')
+*/
+
+DROP FUNCTION IF EXISTS get_query_condition(jsonb, text);
+CREATE OR REPLACE FUNCTION get_query_condition(data jsonb, key_path text)
+RETURNS text AS $$
+DECLARE
+    key          text;
+    operator     text;
+    value        text;
+    res          text;
+
+BEGIN
+    IF (data IS NULL OR data = 'null'::jsonb) THEN
+        RAISE EXCEPTION 'There is no condition';
+    END IF;
+
+    IF (jsonb_typeof(data) = 'object') THEN
+
+        IF (data->'object' IS NULL OR data->'object' = ('null'::jsonb)) THEN
+            RAISE EXCEPTION 'There is no object field';
+        END IF;
+
+        IF (jsonb_typeof(data->'object') = 'object') THEN
+            RAISE EXCEPTION 'The input_jsonb->''object'' can not contain jsonb object';
+        END IF;
+
+        IF (jsonb_typeof(data->'operator') != 'string' AND data->'operator' IS NOT NULL) THEN
+            RAISE EXCEPTION 'The input_jsonb->''operator'' must contain string';
+        END IF;
+
+        IF (jsonb_typeof(data->'object') = 'array') THEN
+            res := get_condition_array(data, key_path);
+        ELSE
+            key := cast_jsonb_to_postgres(key_path, jsonb_typeof(data->'object'));
+            operator :=  data->>'operator';
+            value := jsonb_to_text(data->'object');
+            res := key || ' ' || operator || ' ' || value;
+        END IF;
+    ELSE
+        key := cast_jsonb_to_postgres(key_path, jsonb_typeof(data));
+        operator := '=';
+        value := jsonb_to_text(data);
+        res := key || ' ' || operator || ' ' || value;
+    END IF;
+    RETURN res;
+
+END;
+$$ LANGUAGE PLPGSQL STABLE;
