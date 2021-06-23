@@ -62,6 +62,12 @@ DECLARE
     result              jsonb;
 
 BEGIN
+    class := data->'class';
+
+    IF(class IS NULL) THEN
+        RAISE EXCEPTION 'reclada object class not specified';
+    END IF;
+
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 
@@ -175,6 +181,7 @@ BEGIN
     END IF;
 
     access_token := data->>'accessToken';
+
     SELECT api.reclada_object_list(format(
         '{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
         class,

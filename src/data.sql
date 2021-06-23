@@ -96,3 +96,25 @@ SELECT reclada_object.create_subclass('{
         "required": ["accessKeyId", "secretAccessKey", "bucketName"]
     }
 }'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attrs": {
+        "newClass": "Message",
+        "properties": {
+            "channelName": {"type": "string"},
+            "class": {"type": "string"},
+            "event": {
+                "type": "string",
+                "enum": [
+                    "create",
+                    "update",
+                    "list",
+                    "delete"
+                ]
+            },
+            "attrs": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["class", "channelName", "event"]
+    }
+}'::jsonb);
