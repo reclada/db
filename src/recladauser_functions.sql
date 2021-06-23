@@ -3,9 +3,7 @@ DROP FUNCTION IF EXISTS reclada_user.auth_by_token(uuid);
 /* Just for demo 23.06.21 */
 CREATE OR REPLACE FUNCTION reclada_user.auth_by_token(token VARCHAR)
 RETURNS JSONB AS $$
-BEGIN
-    RETURN '{}'::jsonb;
-END;
+    SELECT '{}'::jsonb
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION reclada_user.auth_by_token(token VARCHAR)
