@@ -44,6 +44,7 @@ BEGIN
         objid, revid
     )::jsonb;
     INSERT INTO reclada.object VALUES(data);
+    PERFORM reclada_notification.send_object_notification('create', data);
     RETURN data;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -132,10 +133,7 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class not specified';
     END IF;
 
-    attrs := data->'attrs';
-    IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object must have attrs';
-    END IF;
+    attrs := data->'attrs' || '{}'::jsonb;
 
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
