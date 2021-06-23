@@ -1,32 +1,52 @@
+/*
+ * Function api.reclada_object_create checks valid data and uses reclada_object.create to create one or bunch of objects with specified fields.
+ * A jsonb object with the following parameters is required to create one object. An array of jsonb objects with the following parameters is required to create a bunch of objects.
+ * Required parameters:
+ *  class - the class of objects
+ *  attrs - the attributes of objects
+ *  accessToken - jwt token to authorize
+ * Optional parameters:
+ *  revision - object's revision. If a revision already exists, no new revision will be created. One revision is used to create a bunch of objects.
+ *  branch - object's branch
+ */
+
 DROP FUNCTION IF EXISTS api.reclada_object_create(jsonb);
-CREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb)
+CREATE OR REPLACE FUNCTION api.reclada_object_create(data_jsonb jsonb)
 RETURNS jsonb AS $$
 DECLARE
     class      jsonb;
     attrs      jsonb;
     user_info  jsonb;
     result     jsonb;
+    data       jsonb;
 
 BEGIN
-    class := data->'class';
 
-    IF (class IS NULL) THEN
-        RAISE EXCEPTION 'reclada object class not specified';
+    IF (jsonb_typeof(data_jsonb) != 'array') THEN
+        data_jsonb := format('[%s]', data_jsonb)::jsonb;
     END IF;
 
-    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
-    data := data - 'accessToken';
+    FOREACH data IN ARRAY (select ARRAY(SELECT jsonb_array_elements_text(data_jsonb))) LOOP
 
-    IF (NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN
-        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
-    END IF;
+        class := data->'class';
+        IF (class IS NULL) THEN
+            RAISE EXCEPTION 'The reclada object class is not specified';
+        END IF;
 
-    attrs := data->'attrs';
-    IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'reclada object must have attrs';
-    END IF;
+        SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
 
-    SELECT reclada_object.create(data) INTO result;
+        IF (NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN
+            RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
+        END IF;
+
+        attrs := data->'attrs';
+        IF (attrs IS NULL) THEN
+            RAISE EXCEPTION 'The reclada object must have attrs';
+        END IF;
+    END LOOP;
+
+    SELECT reclada_object.create(data_jsonb, user_info) INTO result;
+
     RETURN result;
 
 END;
@@ -68,12 +88,7 @@ RETURNS VOID AS $$
 DECLARE
     class         jsonb;
     attrs         jsonb;
-    schema        jsonb;
     user_info     jsonb;
-    branch        uuid;
-    revid         integer;
-    objid         uuid;
-    oldobj        jsonb;
     access_token  text;
 
 BEGIN
@@ -96,46 +111,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
-    SELECT (api.reclada_object_list(format(
-        '{"class": "jsonschema", "attrs": {"forClass": %s}, "accessToken": "%s"}',
-        class,
-        access_token
-        )::jsonb)) -> 0 INTO schema;
-
-    IF (schema IS NULL) THEN
-        RAISE EXCEPTION 'No json schema available for %', class;
-    END IF;
-
-    IF (NOT(validate_json_schema(schema->'attrs'->'schema', attrs))) THEN
-        RAISE EXCEPTION 'JSON invalid: %', attrs;
-    END IF;
-
-    branch := data->'branch';
-
-    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
-    objid := data->>'id';
-    IF (objid IS NULL) THEN
-        RAISE EXCEPTION 'Could not update object with no id';
-    END IF;
-
-    SELECT api.reclada_object_list(format(
-        '{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
-        class,
-        objid,
-        access_token
-        )::jsonb) -> 0 INTO oldobj;
-
-    IF (oldobj IS NULL) THEN
-        RAISE EXCEPTION 'Could not update object, no such id';
-    END IF;
-
-    data := oldobj || data || format(
-        '{"id": "%s", "revision": %s, "isDeleted": false}',
-        objid,
-        revid
-        )::jsonb;
-    INSERT INTO reclada.object VALUES(data);
-
+    PERFORM reclada_object.update(data);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -148,10 +124,6 @@ DECLARE
     attrs         jsonb;
     schema        jsonb;
     user_info     jsonb;
-    branch        uuid;
-    revid         integer;
-    objid         uuid;
-    oldobj        jsonb;
     access_token  text;
 
 BEGIN
@@ -169,31 +141,7 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;
     END IF;
 
-    branch := data->'branch';
-
-    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
-    objid := data->>'id';
-    IF (objid IS NULL) THEN
-        RAISE EXCEPTION 'Could not delete object with no id';
-    END IF;
-
-    SELECT api.reclada_object_list(format(
-        '{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
-        class,
-        objid,
-        access_token
-        )::jsonb) -> 0 INTO oldobj;
-
-    IF (oldobj IS NULL) THEN
-        RAISE EXCEPTION 'Could not delete object, no such id';
-    END IF;
-
-    data := oldobj || data || format(
-        '{"id": "%s", "revision": %s, "isDeleted": true}',
-        objid, revid
-        )::jsonb;
-    INSERT INTO reclada.object VALUES(data);
-
+    PERFORM reclada_object.delete(data);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
