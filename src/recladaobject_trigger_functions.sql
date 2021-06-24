@@ -48,7 +48,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP TRIGGER datasource_insert_trigger ON reclada.object;
+DROP TRIGGER IF EXISTS datasource_insert_trigger ON reclada.object;
 
 CREATE TRIGGER datasource_insert_trigger
   AFTER INSERT
