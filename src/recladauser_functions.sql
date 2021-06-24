@@ -1,4 +1,11 @@
 DROP FUNCTION IF EXISTS reclada_user.auth_by_token(uuid);
+
+/* Just for demo 23.06.21 */
+CREATE OR REPLACE FUNCTION reclada_user.auth_by_token(token VARCHAR)
+RETURNS JSONB AS $$
+    SELECT '{}'::jsonb
+$$ LANGUAGE SQL IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION reclada_user.auth_by_token(token VARCHAR)
 RETURNS JSONB AS $$
 DECLARE
@@ -73,6 +80,8 @@ END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 
+/* Just for demo 23.06.21*/
+/*
 CREATE OR REPLACE FUNCTION reclada_user.parse_token(access_token VARCHAR, jwk JSONB)
 RETURNS JSONB AS $$
     import jwt, json
@@ -86,3 +95,4 @@ RETURNS JSONB AS $$
     )
     return json.dumps(res)
 $$ LANGUAGE 'plpython3u';
+*/
