@@ -34,9 +34,10 @@ BEGIN
                 "class": "Job",
                 "attrs": {
                     "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
-                    "status": "new",
+                    "runner": "2bc7d3bb-a23a-416d-a8ec-c8df9968a900",
+                    "status": "pending",
                     "type": "shell",
-                    "command": "python -m repos.badgerdoc_badgerdoc.table_extractor.run run",
+                    "command": "./run_pipeline.sh",
                     "inputParameters": [{"uri": "%s"}]
                     }
                 }]', uri)::jsonb);
