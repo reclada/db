@@ -34,6 +34,7 @@ BEGIN
                 "class": "Job",
                 "attrs": {
                     "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
+                    "runner": "d0320887-5526-4371-bae4-61bcd5e325e3",
                     "status": "new",
                     "type": "shell",
                     "command": "./run_pipeline.sh",
