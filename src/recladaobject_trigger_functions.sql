@@ -36,7 +36,7 @@ BEGIN
                     "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
                     "status": "new",
                     "type": "shell",
-                    "command": "python -m repos.badgerdoc_badgerdoc.table_extractor.run run",
+                    "command": "./run_pipeline.sh",
                     "inputParameters": [{"uri": "%s"}]
                     }
                 }]', uri)::jsonb);
