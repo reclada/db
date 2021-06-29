@@ -19,14 +19,13 @@ if [ -z $user ]; then
     user=$database;
 fi;
 
-if [ ! -d postgres-json-schema ]; then
-    git clone https://github.com/gavinwahl/postgres-json-schema.git
-	pushd postgres-json-schema
-    sed 's/@extschema@/public/g' postgres-json-schema--0.1.1.sql > patched.sql
-    echo "Installing postgres-json-schema"
-    psql --host=$host --port=$port --dbname=$database --username=$user -f patched.sql
-    popd
-fi;
+rm -R -f postgres-json-schema
+git clone https://github.com/gavinwahl/postgres-json-schema.git
+pushd postgres-json-schema
+sed 's/@extschema@/public/g' postgres-json-schema--0.1.1.sql > patched.sql
+echo "Installing postgres-json-schema"
+psql --host=$host --port=$port --dbname=$database --username=$user -f patched.sql
+popd
 
 echo $user $database
 

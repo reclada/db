@@ -8,6 +8,8 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
+DROP TRIGGER IF EXISTS load_staging ON reclada.staging;
+
 CREATE TRIGGER load_staging
     AFTER INSERT ON reclada.staging
     REFERENCING NEW TABLE AS NEW_TABLE
