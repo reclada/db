@@ -34,7 +34,7 @@ BEGIN
         SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
     END IF;
 
-    FOREACH data IN ARRAY (SELECT ARRAY(SELECT jsonb_array_elements_text(data_jsonb))) LOOP
+    FOR data IN SELECT jsonb_array_elements(data_jsonb) LOOP
 
         class := data->'class';
 

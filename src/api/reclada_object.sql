@@ -19,7 +19,7 @@ DECLARE
     user_info        jsonb;
     result           jsonb;
     data             jsonb;
-    data_to_create   jsonb[];
+    data_to_create   jsonb = '[]'::jsonb;
 
 BEGIN
 
@@ -27,7 +27,7 @@ BEGIN
         data_jsonb := format('[%s]', data_jsonb)::jsonb;
     END IF;
 
-    FOREACH data IN ARRAY (SELECT ARRAY(SELECT jsonb_array_elements_text(data_jsonb))) LOOP
+    FOR data IN SELECT jsonb_array_elements(data_jsonb) LOOP
 
         class := data->'class';
         IF (class IS NULL) THEN
@@ -49,7 +49,7 @@ BEGIN
         data_to_create := data_to_create || data;
     END LOOP;
 
-    SELECT reclada_object.create(array_to_json(data_to_create)::jsonb, user_info) INTO result;
+    SELECT reclada_object.create(data_to_create, user_info) INTO result;
     RETURN result;
 
 END;
