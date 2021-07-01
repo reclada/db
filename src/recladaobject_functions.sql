@@ -238,18 +238,18 @@ BEGIN
         )
         FROM (
             SELECT
-                get_query_condition(class, E'data->\'class\'') AS condition
+                reclada_object.get_query_condition(class, E'data->\'class\'') AS condition
             UNION SELECT
                 CASE WHEN jsonb_typeof(data->'id') = 'array' THEN
                     (SELECT string_agg(
                         format(
                             E'(%s)',
-                            get_query_condition(cond, E'data->\'id\'')
+                            reclada_object.get_query_condition(cond, E'data->\'id\'')
                         ),
                         ' AND '
                     )
                     FROM jsonb_array_elements(data->'id') AS cond)
-                ELSE get_query_condition(data->'id', E'data->\'id\'') END AS condition
+                ELSE reclada_object.get_query_condition(data->'id', E'data->\'id\'') END AS condition
             WHERE data->'id' IS NOT NULL
             UNION SELECT
                 CASE WHEN data->'revision' IS NULL THEN
@@ -260,23 +260,23 @@ BEGIN
                     (SELECT string_agg(
                         format(
                             E'(%s)',
-                            get_query_condition(cond, E'data->\'revision\'')
+                            reclada_object.get_query_condition(cond, E'data->\'revision\'')
                         ),
                         ' AND '
                     )
                     FROM jsonb_array_elements(data->'revision') AS cond)
-                ELSE get_query_condition(data->'revision', E'data->\'revision\'') END AS condition
+                ELSE reclada_object.get_query_condition(data->'revision', E'data->\'revision\'') END AS condition
             UNION SELECT
                 CASE WHEN jsonb_typeof(value) = 'array' THEN
                     (SELECT string_agg(
                         format(
                             E'(%s)',
-                            get_query_condition(cond, format(E'data->\'attrs\'->%L', key))
+                            reclada_object.get_query_condition(cond, format(E'data->\'attrs\'->%L', key))
                         ),
                         ' AND '
                     )
                     FROM jsonb_array_elements(value) AS cond)
-                ELSE get_query_condition(value, format(E'data->\'attrs\'->%L', key)) END AS condition
+                ELSE reclada_object.get_query_condition(value, format(E'data->\'attrs\'->%L', key)) END AS condition
            FROM jsonb_each(attrs)
            WHERE data->'attrs' != ('{}'::jsonb)
         ) conds
@@ -446,8 +446,8 @@ $$;
  * Only valid input is expected.
 */
 
-DROP FUNCTION IF EXISTS cast_jsonb_to_postgres(text, text, text);
-CREATE OR REPLACE FUNCTION cast_jsonb_to_postgres(key_path text, type text, type_of_array text default 'text')
+DROP FUNCTION IF EXISTS reclada_object.cast_jsonb_to_postgres(text, text, text);
+CREATE OR REPLACE FUNCTION reclada_object.cast_jsonb_to_postgres(key_path text, type text, type_of_array text default 'text')
 RETURNS text AS $$
 SELECT
         CASE
@@ -478,8 +478,8 @@ $$ LANGUAGE SQL IMMUTABLE;
  * Only valid input is expected.
 */
 
-DROP FUNCTION IF EXISTS jsonb_to_text(jsonb);
-CREATE OR REPLACE FUNCTION jsonb_to_text(data jsonb)
+DROP FUNCTION IF EXISTS reclada_object.jsonb_to_text(jsonb);
+CREATE OR REPLACE FUNCTION reclada_object.jsonb_to_text(data jsonb)
 RETURNS text AS $$
     SELECT
         CASE
@@ -488,7 +488,7 @@ RETURNS text AS $$
             WHEN jsonb_typeof(data) = 'array' THEN
                 format('ARRAY[%s]',
                     (SELECT string_agg(
-                        jsonb_to_text(elem),
+                        reclada_object.jsonb_to_text(elem),
                         ', ')
                     FROM jsonb_array_elements(data) elem))
             ELSE
@@ -512,8 +512,8 @@ $$ LANGUAGE SQL IMMUTABLE;
  * Only valid input is expected.
 */
 
-DROP FUNCTION IF EXISTS get_condition_array(jsonb, text);
-CREATE OR REPLACE FUNCTION get_condition_array(data jsonb, key_path text)
+DROP FUNCTION IF EXISTS reclada_object.get_condition_array(jsonb, text);
+CREATE OR REPLACE FUNCTION reclada_object.get_condition_array(data jsonb, key_path text)
 RETURNS text AS $$
     SELECT
     CONCAT(
@@ -537,8 +537,8 @@ $$ LANGUAGE SQL IMMUTABLE;
  *    Output: ((data->'attrs'->'name'#>>'{}')::text LIKE '%test%')
 */
 
-DROP FUNCTION IF EXISTS get_query_condition(jsonb, text);
-CREATE OR REPLACE FUNCTION get_query_condition(data jsonb, key_path text)
+DROP FUNCTION IF EXISTS reclada_object.get_query_condition(jsonb, text);
+CREATE OR REPLACE FUNCTION reclada_object.get_query_condition(data jsonb, key_path text)
 RETURNS text AS $$
 DECLARE
     key          text;
@@ -566,17 +566,17 @@ BEGIN
         END IF;
 
         IF (jsonb_typeof(data->'object') = 'array') THEN
-            res := get_condition_array(data, key_path);
+            res := reclada_object.get_condition_array(data, key_path);
         ELSE
-            key := cast_jsonb_to_postgres(key_path, jsonb_typeof(data->'object'));
+            key := reclada_object.cast_jsonb_to_postgres(key_path, jsonb_typeof(data->'object'));
             operator :=  data->>'operator';
-            value := jsonb_to_text(data->'object');
+            value := reclada_object.jsonb_to_text(data->'object');
             res := key || ' ' || operator || ' ' || value;
         END IF;
     ELSE
-        key := cast_jsonb_to_postgres(key_path, jsonb_typeof(data));
+        key := reclada_object.cast_jsonb_to_postgres(key_path, jsonb_typeof(data));
         operator := '=';
-        value := jsonb_to_text(data);
+        value := reclada_object.jsonb_to_text(data);
         res := key || ' ' || operator || ' ' || value;
     END IF;
     RETURN res;
