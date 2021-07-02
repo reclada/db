@@ -89,7 +89,6 @@ DECLARE
     class         jsonb;
     attrs         jsonb;
     user_info     jsonb;
-    access_token  text;
 
 BEGIN
     class := data->'class';
@@ -98,8 +97,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    access_token := data->>'accessToken';
-    SELECT reclada_user.auth_by_token(access_token) INTO user_info;
+    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 
     IF (NOT(reclada_user.is_allowed(user_info, 'update', class))) THEN
@@ -124,7 +122,6 @@ DECLARE
     attrs         jsonb;
     schema        jsonb;
     user_info     jsonb;
-    access_token  text;
 
 BEGIN
     class := data->'class';
@@ -133,7 +130,6 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    access_token := data->>'accessToken';
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 
@@ -322,13 +318,11 @@ CREATE OR REPLACE FUNCTION api.reclada_object_list_related(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
     class          jsonb;
-    field          jsonb;
     obj_id         uuid;
-    obj            jsonb;
-    res            jsonb;
-    list_of_ids    jsonb;
+    field          jsonb;
     related_class  jsonb;
-    access_token   text;
+    user_info      jsonb;
+    result         jsonb;
 
 BEGIN
     class := data->'class';
@@ -341,26 +335,9 @@ BEGIN
         RAISE EXCEPTION 'The object id is not specified';
     END IF;
 
-    access_token := data->>'accessToken';
-    SELECT (api.reclada_object_list(format(
-        '{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
-        class,
-        obj_id,
-        access_token
-        )::jsonb)) -> 0 INTO obj;
-
-    IF (obj IS NULL) THEN
-        RAISE EXCEPTION 'There is no object with such id';
-    END IF;
-
     field := data->'field';
     IF (field IS NULL) THEN
         RAISE EXCEPTION 'The object field is not specified';
-    END IF;
-
-    list_of_ids := obj#>(format('{attrs, %s}', field)::text[]);
-    IF (list_of_ids IS NULL) THEN
-        RAISE EXCEPTION 'The object does not have this field';
     END IF;
 
     related_class := data->'relatedClass';
@@ -368,19 +345,15 @@ BEGIN
         RAISE EXCEPTION 'The related class is not specified';
     END IF;
 
-    SELECT jsonb_agg(T.related_obj)
-    FROM (
-        SELECT (api.reclada_object_list(format(
-            '{"class": %s, "attrs": {}, "id": %s, "accessToken": "%s"}',
-            related_class,
-            related_ids,
-            access_token
-            )::jsonb)) -> 0 AS related_obj
-        FROM
-            jsonb_array_elements(list_of_ids) related_ids ) T
-    INTO res;
+    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
+    data := data - 'accessToken';
 
-    RETURN res;
+    IF (NOT(reclada_user.is_allowed(user_info, 'list_related', class))) THEN
+        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list_related', class;
+    END IF;
+
+    SELECT reclada_object.list_related(data) INTO result;
+    RETURN result;
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
