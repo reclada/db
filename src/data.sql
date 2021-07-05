@@ -96,7 +96,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-/* Just for demo 23.06.21*/
+/* Just for demo */
 SELECT reclada_object.create('{
     "class": "DataSet",
     "attrs": {

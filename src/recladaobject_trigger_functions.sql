@@ -1,4 +1,4 @@
-/* Just for demo 23.06.21*/
+/* Just for demo */
 CREATE OR REPLACE FUNCTION datasource_insert_trigger_fnc()
 RETURNS trigger AS $$
 DECLARE
