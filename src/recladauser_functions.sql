@@ -1,11 +1,11 @@
 DROP FUNCTION IF EXISTS reclada_user.auth_by_token(uuid);
 
-/* Just for demo 23.06.21 */
+/* Just for demo */
 CREATE OR REPLACE FUNCTION reclada_user.auth_by_token(token VARCHAR)
 RETURNS JSONB AS $$
     SELECT '{}'::jsonb
 $$ LANGUAGE SQL IMMUTABLE;
-
+/*
 CREATE OR REPLACE FUNCTION reclada_user.auth_by_token(token VARCHAR)
 RETURNS JSONB AS $$
 DECLARE
@@ -19,6 +19,7 @@ BEGIN
     end if;
 END;
 $$ LANGUAGE PLPGSQL STABLE;
+*/
 
 DROP FUNCTION IF EXISTS reclada_user.is_allowed(uuid, text, jsonb);
 CREATE OR REPLACE FUNCTION reclada_user.is_allowed(jsonb, text, jsonb)
