@@ -37,9 +37,9 @@ BEGIN
                     "status": "new",
                     "type": "K8S",
                     "command": "./run_pipeline.sh",
-                    "inputParameters": [{"uri": "%s"}]
+                    "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
                     }
-                }]', uri)::jsonb);
+                }]', uri, objid)::jsonb);
 
     END IF;
 
@@ -54,4 +54,3 @@ CREATE TRIGGER datasource_insert_trigger
   AFTER INSERT
   ON reclada.object FOR EACH ROW
   EXECUTE PROCEDURE datasource_insert_trigger_fnc();
-
