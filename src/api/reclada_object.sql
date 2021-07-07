@@ -180,6 +180,7 @@ BEGIN
     END IF;
 
     access_token := data->>'accessToken';
+    data := data - 'accessToken';
 
     SELECT api.reclada_object_list(format(
         '{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
@@ -209,10 +210,10 @@ BEGIN
     field_value := obj#>json_path;
 
     IF ((field_value = 'null'::jsonb) OR (field_value IS NULL)) THEN
-        SELECT jsonb_set(obj, json_path, values_to_add) || format('{"accessToken": "%s"}', access_token)::jsonb
+        SELECT jsonb_set(obj, json_path, values_to_add)
         INTO new_obj;
     ELSE
-        SELECT jsonb_set(obj, json_path, field_value || values_to_add) || format('{"accessToken": "%s"}', access_token)::jsonb
+        SELECT jsonb_set(obj, json_path, field_value || values_to_add)
         INTO new_obj;
     END IF;
 
@@ -258,6 +259,8 @@ BEGIN
 	END IF;
 
 	access_token := data->>'accessToken';
+	data := data - 'accessToken';
+
 	SELECT api.reclada_object_list(format(
 		'{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
 		class,
@@ -296,7 +299,7 @@ BEGIN
 			SELECT jsonb_array_elements(values_to_drop))
 	INTO new_value;
 
-	SELECT jsonb_set(obj, json_path, coalesce(new_value, '[]'::jsonb)) || format('{"accessToken": "%s"}', access_token)::jsonb
+	SELECT jsonb_set(obj, json_path, coalesce(new_value, '[]'::jsonb))
 	INTO new_obj;
 
 	PERFORM api.reclada_object_update(new_obj);
