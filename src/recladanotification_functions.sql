@@ -70,25 +70,3 @@ BEGIN
     END LOOP;
 END
 $body$;
-
-insert into reclada.staging
-values (
-    '{"id": "cbae8457-7c85-4d03-9fd4-bb9e3722974e",
-    "attrs":
-    {"task": "c94bff30-15fa-427f-9954-d5c3c151e652",
-    "type": "K8S",
-    "status": "new",
-     "command": "  ",
-    "inputParameters": [
-        {"uri": "  "},
-        {"dataSourceId": "b640d98d-f82a-4f25-ae33-8c0cc0ee1b81"}
-        ]},
-    "class": "Job",
-    "revision": 500,
-    "isDeleted": false}'::jsonb);
-
-select * from reclada.object
-where (data->>'revision')= '500'
-
-select * from reclada.staging
-where (data->>'revision')= '500'
