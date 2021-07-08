@@ -23,42 +23,51 @@ CREATE OR REPLACE FUNCTION reclada_notification.send_object_notification(event v
 RETURNS void
 LANGUAGE PLpgSQL STABLE AS
 $body$
-DECLARE 
+DECLARE
+    data            jsonb;
     message         jsonb;
     msg             jsonb;
     object_class    varchar;
     attrs           jsonb;
     query           text;
-BEGIN 
-    object_class := object_data ->> 'class';
 
-    if event is null or object_class is null then
-        return;
-    end if;
+BEGIN
 
-    message := reclada_object.list(format('{"class": "Message", "attrs": {"event": "%s", "class": "%s"}}', 
-        event, 
-        object_class)::jsonb);
-    if message is not null then
-        message := message -> 0;
-    else
-        -- no template defined for this (object,event). 
-        return;
-    end if;
+    IF (jsonb_typeof(object_data) != 'array') THEN
+        object_data := format('[%s]', object_data)::jsonb;
+    END IF;
 
-    
-    query := format(E'select to_json(x) from jsonb_to_record($1) as x(%s)',
-        (select string_agg(s::text || ' jsonb', ',') from jsonb_array_elements(message -> 'attrs' -> 'attrs') s));
-    execute query into attrs using object_data -> 'attrs';
-    
-    msg := jsonb_build_object(
-        'objectId', object_data -> 'id',
-        'class', object_class,
-        'event', event,
-        'attrs', attrs
-    );
+    FOR data IN SELECT jsonb_array_elements(object_data) LOOP
+        object_class := data ->> 'class';
 
-    perform reclada_notification.send(message #>> '{attrs, channelName}', msg);
+        if event is null or object_class is null then
+            return;
+        end if;
+
+        message := reclada_object.list(format('{"class": "Message", "attrs": {"event": "%s", "class": "%s"}}',
+            event,
+            object_class)::jsonb);
+        if message is not null then
+            message := message -> 0;
+        else
+            -- no template defined for this (object,event).
+            return;
+        end if;
+
+        query := format(E'select to_json(x) from jsonb_to_record($1) as x(%s)',
+            (select string_agg(s::text || ' jsonb', ',') from jsonb_array_elements(message -> 'attrs' -> 'attrs') s));
+        execute query into attrs using data -> 'attrs';
+
+        msg := jsonb_build_object(
+            'objectId', data -> 'id',
+            'class', object_class,
+            'event', event,
+            'attrs', attrs
+        );
+
+        perform reclada_notification.send(message #>> '{attrs, channelName}', msg);
+
+    END LOOP;
 END
 $body$;
 
