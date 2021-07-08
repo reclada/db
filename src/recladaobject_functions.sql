@@ -1,11 +1,13 @@
 /*
  * Function reclada_object.create creates one or bunch of objects with specified fields.
- * A jsonb with user_info and jsonb with the following parameters are required.
+ * A jsonb with user_info and a jsonb or an array of jsonb objects are required.
+ * A jsonb object with the following parameters is required to create one object.
+ * An array of jsonb objects with the following parameters is required to create a bunch of objects.
  * Required parameters:
  *  class - the class of objects
  *  attrs - the attributes of objects
  * Optional parameters:
- *  revision - object's revision. If a revision already exists, no new revision will be created. One revision is used to create a bunch of objects.
+ *  revision - object's revision. If a revision already exists, new revision will not be created. One revision is used to create a bunch of objects.
  *  branch - object's branch
  */
 
@@ -13,13 +15,13 @@ DROP FUNCTION IF EXISTS reclada_object.create(jsonb, jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.create(data_jsonb jsonb, user_info jsonb default '{}'::jsonb)
 RETURNS jsonb AS $$
 DECLARE
+    branch     uuid;
+    revid      integer;
+    data       jsonb;
     class      jsonb;
     attrs      jsonb;
     schema     jsonb;
-    branch     uuid;
-    revid      integer;
     objid      uuid;
-    data       jsonb;
     res        jsonb[];
 
 BEGIN
@@ -86,23 +88,33 @@ END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 
+/*
+ * Function reclada_object.create_subclass creates subclass.
+ * A jsonb object with the following parameters is required.
+ * Required parameters:
+ *  class - the name of class to create
+ *  attrs - the attributes of objects of the class
+ */
+
+
 DROP FUNCTION IF EXISTS reclada_object.create_subclass(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.create_subclass(data jsonb)
 RETURNS VOID AS $$
 DECLARE
-    class_schema    jsonb;
     class           jsonb;
     attrs           jsonb;
-BEGIN
-    class := data->'class';
+    class_schema    jsonb;
 
+BEGIN
+
+    class := data->'class';
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class not specified';
     END IF;
 
     attrs := data->'attrs';
     IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'reclada object must have attrs';
+        RAISE EXCEPTION 'The reclada object must have attrs';
     END IF;
 
     SELECT (reclada_object.list(format(
@@ -113,7 +125,7 @@ BEGIN
     IF (class_schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class;
     END IF;
-    
+
     class_schema := class_schema -> 'attrs' -> 'schema';
 
     PERFORM reclada_object.create(format('{
@@ -131,6 +143,7 @@ BEGIN
     (class_schema -> 'properties') || (attrs -> 'properties'),
     (SELECT jsonb_agg(el) FROM (SELECT DISTINCT pg_catalog.jsonb_array_elements((class_schema -> 'required') || (attrs -> 'required')) el) arr)
     )::jsonb);
+
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -366,7 +379,7 @@ BEGIN
     branch := data->'branch';
     SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
 
-    data := oldobj || format(
+    data := data || format(
         '{"revision": %s, "isDeleted": false}',
         revid
         )::jsonb; --TODO replace isDeleted with status attr
