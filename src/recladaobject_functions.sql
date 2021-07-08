@@ -78,7 +78,7 @@ BEGIN
 
     END LOOP;
 
-    INSERT INTO reclada.object  SELECT * FROM unnest(res);
+    INSERT INTO reclada.object SELECT * FROM unnest(res);
     PERFORM reclada_notification.send_object_notification('create', array_to_json(res)::jsonb);
     RETURN array_to_json(res)::jsonb;
 
@@ -296,48 +296,48 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 
+
 /*
- * Function reclada_object.update creates new revision of an object.
- * A jsonb with user_info and jsonb with the following parameters are required.
+ * Function reclada_object.update updates object with new revision.
+ * A jsonb with the following parameters is required.
  * Required parameters:
- *  class - the class of objects
- *  attrs - the attributes of objects (can be empty)
+ *  class - the class of object
+ *  id - identifier of the object
+ *  attrs - the attributes of object
  * Optional parameters:
- *  id - identifier of the objects. All ids are taken by default.
- *  revision - object's revision. returns object with max revision by default.
- *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
- *      field - required value with name of property to order by
- *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
- *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
- *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
+ *  branch - object's branch
  *
 */
 
 DROP FUNCTION IF EXISTS reclada_object.update(jsonb, jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.update(data jsonb, user_info jsonb default '{}'::jsonb)
-RETURNS jsonb 
+RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $body$
 DECLARE
     class         jsonb;
+    objid         uuid;
     attrs         jsonb;
     schema        jsonb;
-    user_info     jsonb;
+    oldobj        jsonb;
     branch        uuid;
     revid         integer;
-    objid         uuid;
-    oldobj        jsonb;
 
 BEGIN
-    class := data->'class';
 
+    class := data->'class';
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class not specified';
+    END IF;
+
+    objid := data->>'id';
+    IF (objid IS NULL) THEN
+        RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
     attrs := data->'attrs';
     IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'reclada object must have attrs';
+        RAISE EXCEPTION 'The reclada object must have attrs';
     END IF;
 
     SELECT (reclada_object.list(format(
@@ -353,13 +353,6 @@ BEGIN
         RAISE EXCEPTION 'JSON invalid: %', attrs;
     END IF;
 
-    branch := data->'branch';
-
-    objid := data->>'id';
-    IF (objid IS NULL) THEN
-        RAISE EXCEPTION 'Could not update object with no id';
-    END IF;
-
     SELECT reclada_object.list(format(
         '{"class": %s, "id": "%s"}',
         class,
@@ -370,15 +363,19 @@ BEGIN
         RAISE EXCEPTION 'Could not update object, no such id';
     END IF;
 
+    branch := data->'branch';
     SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
-    data := data || format(
+
+    data := oldobj || format(
         '{"revision": %s, "isDeleted": false}',
         revid
         )::jsonb; --TODO replace isDeleted with status attr
-    --TODO compare old and data to avoid unnecessery inserts 
+    --TODO compare old and data to avoid unnecessery inserts
+
     INSERT INTO reclada.object VALUES(data);
     PERFORM reclada_notification.send_object_notification('update', data);
     RETURN data;
+
 END;
 $body$;
 

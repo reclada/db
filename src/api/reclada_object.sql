@@ -139,9 +139,9 @@ $$ LANGUAGE PLPGSQL STABLE;
  * Required parameters:
  *  class - the class of object
  *  id - identifier of the object
+ *  attrs - the attributes of object
  *  accessToken - jwt token to authorize
  * Optional parameters:
- *  attrs - the attributes of object
  *  branch - object's branch
  *
 */
@@ -152,6 +152,7 @@ RETURNS jsonb AS $$
 DECLARE
     class         jsonb;
     objid         uuid;
+    attrs         jsonb;
     user_info     jsonb;
     result        jsonb;
 
@@ -165,6 +166,11 @@ BEGIN
     objid := data->>'id';
     IF (objid IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no id';
+    END IF;
+
+    attrs := data->'attrs';
+    IF (attrs IS NULL) THEN
+        RAISE EXCEPTION 'reclada object must have attrs';
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
