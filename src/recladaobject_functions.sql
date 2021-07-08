@@ -378,7 +378,7 @@ BEGIN
     --TODO compare old and data to avoid unnecessery inserts 
     INSERT INTO reclada.object VALUES(data);
     PERFORM reclada_notification.send_object_notification('update', data);
-    RETURN data; 
+    RETURN data;
 END;
 $body$;
 
@@ -420,7 +420,7 @@ BEGIN
     END IF;
 
     SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
-    data := data || format(
+    data := oldobj || format(
             '{"revision": %s, "isDeleted": true}',
             revid
         )::jsonb;

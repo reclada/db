@@ -1,12 +1,13 @@
 /*
  * Function api.reclada_object_create checks valid data and uses reclada_object.create to create one or bunch of objects with specified fields.
- * A jsonb object with the following parameters is required to create one object. An array of jsonb objects with the following parameters is required to create a bunch of objects.
+ * A jsonb object with the following parameters is required to create one object.
+ * An array of jsonb objects with the following parameters is required to create a bunch of objects.
  * Required parameters:
  *  class - the class of objects
  *  attrs - the attributes of objects
  *  accessToken - jwt token to authorize
  * Optional parameters:
- *  revision - object's revision. If a revision already exists, no new revision will be created. One revision is used to create a bunch of objects.
+ *  revision - object's revision. If a revision already exists, new revision will not be created. One revision is used to create a bunch of objects.
  *  branch - object's branch
  */
 
@@ -14,12 +15,12 @@ DROP FUNCTION IF EXISTS api.reclada_object_create(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_create(data_jsonb jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class            jsonb;
-    attrs            jsonb;
-    user_info        jsonb;
-    result           jsonb;
     data             jsonb;
+    class            jsonb;
+    user_info        jsonb;
+    attrs            jsonb;
     data_to_create   jsonb = '[]'::jsonb;
+    result           jsonb;
 
 BEGIN
 
@@ -56,6 +57,53 @@ END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 
+/*
+ * Function api.reclada_object_list checks valid data and uses reclada_object.list to return the list of objects with specified fields.
+ * A jsonb object with the following parameters is required.
+ * Required parameters:
+ *  class - the class of objects
+ *  accessToken - jwt token to authorize
+ * Optional parameters:
+ *  attrs - the attributes of objects (can be empty)
+ *  id - identifier of the objects. All ids are taken by default.
+ *  revision - object's revision. returns object with max revision by default.
+ *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
+ *      field - required value with name of property to order by
+ *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
+ *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
+ *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
+ * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
+ * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
+ * Examples:
+ *   1. Input:
+ *   {
+ *   "class": "class_name",
+ *   "id": "id_1",
+ *   "revision": {"operator": "!=", "object": 123},
+ *   "isDeleted": false,
+ *   "attrs":
+ *      {
+ *       "name": {"operator": "LIKE", "object": "%test%"}
+ *       },
+ *   "accessToken":".."
+ *   }::jsonb
+ *   2. Input:
+ *   {
+ *   "class": "class_name",
+ *   "revision": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}],
+ *   "id": {"operator": "inList", "object": ["id_1", "id_2", "id_3"]},
+ *   "attrs":
+ *       {
+ *       "tags":{"operator": "@>", "object": ["value1", "value2"]},
+ *       },
+ *   "orderBy": [{"field": "revision", "order": "DESC"}],
+ *   "limit": 5,
+ *   "offset": 2,
+ *   "accessToken":"..."
+ *   }::jsonb
+ *
+*/
+
 DROP FUNCTION IF EXISTS api.reclada_object_list(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)
 RETURNS jsonb AS $$
@@ -65,8 +113,8 @@ DECLARE
     result              jsonb;
 
 BEGIN
-    class := data->'class';
 
+    class := data->'class';
     IF(class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
@@ -85,19 +133,38 @@ END;
 $$ LANGUAGE PLPGSQL STABLE;
 
 
+/*
+ * Function api.reclada_object_update checks valid data and uses reclada_object.update to update object with new revision.
+ * A jsonb with the following parameters is required.
+ * Required parameters:
+ *  class - the class of object
+ *  id - identifier of the object
+ *  accessToken - jwt token to authorize
+ * Optional parameters:
+ *  attrs - the attributes of object
+ *  branch - object's branch
+ *
+*/
+
 DROP FUNCTION IF EXISTS api.reclada_object_update(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)
-RETURNS VOID AS $$
+RETURNS jsonb AS $$
 DECLARE
     class         jsonb;
-    attrs         jsonb;
+    objid         uuid;
     user_info     jsonb;
+    result        jsonb;
 
 BEGIN
-    class := data->'class';
 
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
+    END IF;
+
+    objid := data->>'id';
+    IF (objid IS NULL) THEN
+        RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
@@ -107,30 +174,45 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'update', class;
     END IF;
 
-    attrs := data->'attrs';
-    IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'reclada object must have attrs';
-    END IF;
+    SELECT reclada_object.update(data, user_info) INTO result;
+    RETURN result;
 
-    PERFORM reclada_object.update(data, user_info);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 
+/*
+ * Function api.reclada_object_delete checks valid data and uses reclada_object.delete to update object with field "isDeleted": true.
+ * A jsonb with the following parameters is required.
+ * Required parameters:
+ *  class - the class of object
+ *  id - identifier of the object
+ *  accessToken - jwt token to authorize
+ * Optional parameters:
+ *  attrs - the attributes of object
+ *  branch - object's branch
+ *
+*/
+
 DROP FUNCTION IF EXISTS api.reclada_object_delete(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb)
-RETURNS VOID AS $$
+RETURNS jsonb AS $$
 DECLARE
     class         jsonb;
-    attrs         jsonb;
-    schema        jsonb;
+    objid         uuid;
     user_info     jsonb;
+    result        jsonb;
 
 BEGIN
     class := data->'class';
 
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
+    END IF;
+
+    objid := data->>'id';
+    IF (objid IS NULL) THEN
+        RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
@@ -140,7 +222,9 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;
     END IF;
 
-    PERFORM reclada_object.delete(data, user_info);
+    SELECT reclada_object.delete(data, user_info) INTO result;
+    RETURN result;
+
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
