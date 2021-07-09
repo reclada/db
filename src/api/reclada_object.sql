@@ -25,7 +25,7 @@ DECLARE
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
-        data_jsonb := format('[%s]', data_jsonb)::jsonb;
+        data_jsonb := '[]'::jsonb || data_jsonb;
     END IF;
 
     FOR data IN SELECT jsonb_array_elements(data_jsonb) LOOP

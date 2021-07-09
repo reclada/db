@@ -27,7 +27,7 @@ DECLARE
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
-        data_jsonb := format('[%s]', data_jsonb);
+        data_jsonb := '[]'::jsonb || data_jsonb;
     END IF;
     /*TODO: check if some objects have revision and others do not */
     branch:= data_jsonb->0->'branch';
