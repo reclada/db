@@ -393,26 +393,36 @@ END;
 $body$;
 
 
+/*
+ * Function reclada_object.delete to updates object with field "isDeleted": true.
+ * A jsonb with the following parameters is required.
+ * Required parameters:
+ *  class - the class of object
+ *  id - identifier of the object
+ * Optional parameters:
+ *  attrs - the attributes of object
+ *  branch - object's branch
+ *
+*/
+
 DROP FUNCTION IF EXISTS reclada_object.delete(jsonb, jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.delete(data jsonb, user_info jsonb default '{}'::jsonb)
-RETURNS jsonb 
-LANGUAGE PLPGSQL VOLATILE 
+RETURNS jsonb
+LANGUAGE PLPGSQL VOLATILE
 AS $$
 DECLARE
     class         jsonb;
-    user_info     jsonb;
-    branch        uuid;
-    revid         integer;
     objid         uuid;
     oldobj        jsonb;
-BEGIN
-    class := data->'class';
+    branch        uuid;
+    revid         integer;
 
+BEGIN
+
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
-
-    branch := data->'branch';
 
     objid := data->>'id';
     IF (objid IS NULL) THEN
@@ -429,13 +439,18 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object, no such id';
     END IF;
 
+    branch := data->'branch';
+
     SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
     data := oldobj || format(
             '{"revision": %s, "isDeleted": true}',
             revid
         )::jsonb;
+
     INSERT INTO reclada.object VALUES(data);
+
     PERFORM reclada_notification.send_object_notification('delete', data);
+
     RETURN data;
 END;
 $$;
