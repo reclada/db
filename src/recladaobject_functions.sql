@@ -393,6 +393,18 @@ END;
 $body$;
 
 
+/*
+ * Function reclada_object.delete to updates object with field "isDeleted": true.
+ * A jsonb with the following parameters is required.
+ * Required parameters:
+ *  class - the class of object
+ *  id - identifier of the object
+ * Optional parameters:
+ *  attrs - the attributes of object
+ *  branch - object's branch
+ *
+*/
+
 DROP FUNCTION IF EXISTS reclada_object.delete(jsonb, jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.delete(data jsonb, user_info jsonb default '{}'::jsonb)
 RETURNS jsonb 
