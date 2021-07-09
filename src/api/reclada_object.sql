@@ -399,13 +399,20 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 
 /*
- * Function api.reclada_object_list_related returns the list of objects from the field of the specified object.
+ * Function api.reclada_object_list_related checks valid data and uses reclada_object.list_related to return the list of objects from the field of the specified object.
+ * A jsonb object with the following parameters is required.
  * Required parameters:
  *  class - the class of the object
  *  id - identifier of the object
  *  field - the name of the field containing the related object references
  *  relatedClass - the class of the related objects
  *  accessToken - jwt token to authorize
+ * Optional parameters:
+ *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
+ *      field - required value with name of property to order by
+ *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
+ *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
+ *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  *
 */
 
