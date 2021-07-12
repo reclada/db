@@ -236,29 +236,30 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 
 /*
- * Function api.reclada_object_list_add adds one element or several elements to the list.
- * Input required parameter is jsonb with:
- * class - the class of the object
- * id - id of the object
- * field - the name of the field to add the value to
- * value - one scalar value or array of values
- * accessToken - jwt token to authorize
+ * Function api.reclada_object_list_add checks valid data and uses reclada_object.list_add to add one element or several elements to the object.
+ * A jsonb object with the following parameters is required.
+ * Required parameters:
+ *  class - the class of the object
+ *  id - id of the object
+ *  field - the name of the field to add the value to
+ *  value - one scalar value or array of values
+ *  accessToken - jwt token to authorize
+ *
 */
 
 DROP FUNCTION IF EXISTS api.reclada_object_list_add(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list_add(data jsonb)
-RETURNS void AS $$
+RETURNS jsonb AS $$
 DECLARE
     class          jsonb;
     obj_id         uuid;
-    values_to_add  jsonb;
-    json_path      text[];
-    obj            jsonb;
-    new_obj        jsonb;
+    user_info      jsonb;
     field_value    jsonb;
-    access_token   text;
+    values_to_add  jsonb;
+    result         jsonb;
 
 BEGIN
+
     class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
@@ -269,18 +270,9 @@ BEGIN
         RAISE EXCEPTION 'There is no id';
     END IF;
 
-    access_token := data->>'accessToken';
-    data := data - 'accessToken';
-
-    SELECT api.reclada_object_list(format(
-        '{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
-        class,
-        obj_id,
-        access_token
-        )::jsonb) -> 0 INTO obj;
-
-    IF (obj IS NULL) THEN
-        RAISE EXCEPTION 'There is no object with such id';
+    field_value := data->'field';
+    IF (field_value IS NULL) THEN
+        RAISE EXCEPTION 'There is no field';
     END IF;
 
     values_to_add := data->'value';
@@ -288,56 +280,45 @@ BEGIN
         RAISE EXCEPTION 'The value should not be null';
     END IF;
 
-    IF (jsonb_typeof(values_to_add) != 'array') THEN
-        values_to_add := format('[%s]', values_to_add)::jsonb;
+    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
+    data := data - 'accessToken';
+
+    IF (NOT(reclada_user.is_allowed(user_info, 'list_add', class))) THEN
+        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list_add', class;
     END IF;
 
-    field_value := data->'field';
-    IF (field_value IS NULL) THEN
-        RAISE EXCEPTION 'There is no field';
-    END IF;
-    json_path := format('{attrs, %s}', field_value);
-    field_value := obj#>json_path;
-
-    IF ((field_value = 'null'::jsonb) OR (field_value IS NULL)) THEN
-        SELECT jsonb_set(obj, json_path, values_to_add)
-        INTO new_obj;
-    ELSE
-        SELECT jsonb_set(obj, json_path, field_value || values_to_add)
-        INTO new_obj;
-    END IF;
-
-    PERFORM api.reclada_object_update(new_obj);
+    SELECT reclada_object.list_add(data) INTO result;
+    RETURN result;
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 
 /*
- * Function api.reclada_object_list_drop drops one element or several elements from the list.
- * Input required parameter is jsonb with:
- * class - the class of the object
- * id - id of the object
- * field - the name of the field to drop the value from
- * value - one scalar value or array of values
- * accessToken - jwt token to authorize
+ * Function api.reclada_object_list_drop checks valid data and uses reclada_object.list_drop to drop one element or several elements from the object.
+ * A jsonb object with the following parameters is required.
+ * Required parameters:
+ *  class - the class of the object
+ *  id - id of the object
+ *  field - the name of the field to drop the value from
+ *  value - one scalar value or array of values
+ *  accessToken - jwt token to authorize
+ *
 */
 
 DROP FUNCTION IF EXISTS api.reclada_object_list_drop(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list_drop(data jsonb)
-RETURNS void AS $$
+RETURNS jsonb AS $$
 DECLARE
     class           jsonb;
     obj_id          uuid;
-    values_to_drop  jsonb;
-    new_value       jsonb;
-    json_path       text[];
-    obj             jsonb;
-    new_obj         jsonb;
+    user_info       jsonb;
     field_value     jsonb;
-    access_token    text;
+    values_to_drop  jsonb;
+    result          jsonb;
 
 BEGIN
+
 	class := data->'class';
 	IF (class IS NULL) THEN
 		RAISE EXCEPTION 'The reclada object class is not specified';
@@ -348,18 +329,9 @@ BEGIN
 		RAISE EXCEPTION 'The is no id';
 	END IF;
 
-	access_token := data->>'accessToken';
-	data := data - 'accessToken';
-
-	SELECT api.reclada_object_list(format(
-		'{"class": %s, "attrs": {}, "id": "%s", "accessToken": "%s"}',
-		class,
-		obj_id,
-		access_token
-		)::jsonb) -> 0 INTO obj;
-
-	IF (obj IS NULL) THEN
-		RAISE EXCEPTION 'The is no object with such id';
+	field_value := data->'field';
+	IF (field_value IS NULL OR field_value = 'null'::jsonb) THEN
+		RAISE EXCEPTION 'There is no field';
 	END IF;
 
 	values_to_drop := data->'value';
@@ -367,32 +339,15 @@ BEGIN
 		RAISE EXCEPTION 'The value should not be null';
 	END IF;
 
-	IF (jsonb_typeof(values_to_drop) != 'array') THEN
-		values_to_drop := format('[%s]', values_to_drop)::jsonb;
-	END IF;
+    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
+    data := data - 'accessToken';
 
-	field_value := data->'field';
-	IF (field_value IS NULL OR field_value = 'null'::jsonb) THEN
-		RAISE EXCEPTION 'There is no field';
-	END IF;
-	json_path := format('{attrs, %s}', field_value);
-	field_value := obj#>json_path;
-	IF (field_value IS NULL) THEN
-		RAISE EXCEPTION 'The object does not have this field';
-	END IF;
+    IF (NOT(reclada_user.is_allowed(user_info, 'list_add', class))) THEN
+        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list_add', class;
+    END IF;
 
-	SELECT jsonb_agg(elems)
-	FROM
-		jsonb_array_elements(field_value) elems
-	WHERE
-		elems NOT IN (
-			SELECT jsonb_array_elements(values_to_drop))
-	INTO new_value;
-
-	SELECT jsonb_set(obj, json_path, coalesce(new_value, '[]'::jsonb))
-	INTO new_obj;
-
-	PERFORM api.reclada_object_update(new_obj);
+    SELECT reclada_object.list_drop(data) INTO result;
+    RETURN result;
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
