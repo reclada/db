@@ -424,7 +424,7 @@ BEGIN
 
     class := data->'class';
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class not specified';
     END IF;
 
     objid := data->>'id';
