@@ -2,19 +2,14 @@
 DROP FUNCTION IF EXISTS api.hello_world(jsonb);
 CREATE OR REPLACE FUNCTION api.hello_world(data jsonb)
 RETURNS text AS $$
-BEGIN
-    RETURN 'Hello, world!';
-END;
-$$ LANGUAGE PLPGSQL VOLATILE;
+SELECT 'Hello, world!';
+$$ LANGUAGE SQL IMMUTABLE
 
 DROP FUNCTION IF EXISTS api.hello_world(text);
 CREATE OR REPLACE FUNCTION api.hello_world(data text)
 RETURNS text AS $$
-BEGIN
-    RETURN 'Hello, world!';
-END;
-$$ LANGUAGE PLPGSQL VOLATILE;
-
+SELECT 'Hello, world!';
+$$ LANGUAGE SQL IMMUTABLE
 
 /*
  * Function api.reclada_object_create checks valid data and uses reclada_object.create to create one or bunch of objects with specified fields.
