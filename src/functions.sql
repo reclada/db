@@ -4,6 +4,7 @@
 \i recladaobject_functions.sql
 \i recladaobject_staging_functions.sql
 \i recladaobject_trigger_functions.sql
+\i recladaobject_indexes.sql
 \i recladastorage_functions.sql
 \i recladanotification_functions.sql
 
