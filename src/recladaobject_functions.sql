@@ -49,10 +49,12 @@ BEGIN
             RAISE EXCEPTION 'The reclada object must have attrs';
         END IF;
 
+        /*
         SELECT (reclada_object.list(format(
             '{"class": "jsonschema", "attrs": {"forClass": %s}}',
             class
-        )::jsonb)) -> 0 INTO schema;
+        )::jsonb)) -> 0 INTO schema; */
+        SELECT reclada_object.get_schema(class) INTO schema;
 
         IF (schema IS NULL) THEN
             RAISE EXCEPTION 'No json schema available for %', class;
@@ -145,6 +147,7 @@ BEGIN
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
+
 
 
 /*

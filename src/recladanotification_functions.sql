@@ -27,7 +27,7 @@ DECLARE
     data            jsonb;
     message         jsonb;
     msg             jsonb;
-    object_class    varchar;
+    object_class    jsonb;
     attrs           jsonb;
     query           text;
 
@@ -38,12 +38,13 @@ BEGIN
     END IF;
 
     FOR data IN SELECT jsonb_array_elements(object_data) LOOP
-        object_class := data ->> 'class';
+        object_class := data -> 'class';
 
         if event is null or object_class is null then
             return;
         end if;
 
+        /*
         message := reclada_object.list(format('{"class": "Message", "attrs": {"event": "%s", "class": "%s"}}',
             event,
             object_class)::jsonb);
@@ -52,7 +53,16 @@ BEGIN
         else
             -- no template defined for this (object,event).
             return;
-        end if;
+        end if; */
+        SELECT v.data FROM reclada.v_object v
+        WHERE (v.data->'class' = '"Message"'::jsonb)
+            AND (v.data->'attrs'->>'event' = event)
+            AND (v.data->'attrs'->'class' = object_class)
+        INTO message;
+
+        IF message IS NULL THEN
+            RETURN;
+        END IF;
 
         query := format(E'select to_json(x) from jsonb_to_record($1) as x(%s)',
             (select string_agg(s::text || ' jsonb', ',') from jsonb_array_elements(message -> 'attrs' -> 'attrs') s));
