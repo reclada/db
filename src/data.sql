@@ -13,7 +13,8 @@ INSERT INTO reclada.object VALUES(format(
             }
         },
         "id": "%s",
-        "revision": %s
+        "revision": %s,
+        "isDeleted": false
     }', uuid_generate_v4(), reclada_revision.create('', NULL)
     )::jsonb
 );
