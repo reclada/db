@@ -49,11 +49,6 @@ BEGIN
             RAISE EXCEPTION 'The reclada object must have attrs';
         END IF;
 
-        /*
-        SELECT (reclada_object.list(format(
-            '{"class": "jsonschema", "attrs": {"forClass": %s}}',
-            class
-        )::jsonb)) -> 0 INTO schema; */
         SELECT reclada_object.get_schema(class) INTO schema;
 
         IF (schema IS NULL) THEN
@@ -110,7 +105,7 @@ BEGIN
 
     class := data->'class';
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
     attrs := data->'attrs';
@@ -118,10 +113,7 @@ BEGIN
         RAISE EXCEPTION 'The reclada object must have attrs';
     END IF;
 
-    SELECT (reclada_object.list(format(
-        '{"class": "jsonschema", "attrs": {"forClass": %s}}',
-        class
-    )::jsonb)) -> 0 INTO class_schema;
+    SELECT reclada_object.get_schema(class) INTO class_schema;
 
     IF (class_schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class;
@@ -211,7 +203,7 @@ BEGIN
     class := data->'class';
 
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
     attrs := data->'attrs' || '{}'::jsonb;
@@ -346,7 +338,7 @@ BEGIN
 
     class := data->'class';
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
     objid := data->>'id';
@@ -359,10 +351,7 @@ BEGIN
         RAISE EXCEPTION 'The reclada object must have attrs';
     END IF;
 
-    SELECT (reclada_object.list(format(
-        '{"class": "jsonschema", "attrs": {"forClass": %s}}',
-        class
-        )::jsonb)) -> 0 INTO schema;
+    SELECT reclada_object.get_schema(class) INTO schema;
 
     IF (schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class;
@@ -427,7 +416,7 @@ BEGIN
 
     class := data->'class';
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
     objid := data->>'id';
