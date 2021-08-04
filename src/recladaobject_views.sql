@@ -1,3 +1,5 @@
+DROP FUNCTION IF EXISTS reclada_object.get_schema(jsonb);
+DROP VIEW IF EXISTS reclada.v_class;
 DROP VIEW IF EXISTS reclada.v_object;
 CREATE OR REPLACE VIEW reclada.v_object
 AS
@@ -8,13 +10,11 @@ AS
                 AND (objrev.data->'isDeleted' = 'false')));
                 
 
-DROP VIEW IF EXISTS reclada.v_class;
 CREATE OR REPLACE VIEW reclada.v_class
 AS
     SELECT data FROM reclada.v_object obj
     WHERE (data->'class' = '"jsonschema"');
 
-DROP FUNCTION IF EXISTS reclada_object.get_schema(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.get_schema(class jsonb)
 RETURNS jsonb AS $$
     SELECT data FROM reclada.v_class

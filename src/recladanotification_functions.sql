@@ -53,7 +53,17 @@ BEGIN
             -- no template defined for this (object,event).
             return;
         end if;
+        /*
+        SELECT v.data FROM reclada.v_object v
+        WHERE (v.data->'class' = '"Message"'::jsonb)
+            AND (v.data->'attrs'->>'event' = event)
+            AND (v.data->'attrs'->'class' = object_class)
+        INTO message;
 
+        IF message IS NULL THEN
+            RETURN;
+        END IF;
+        */
         query := format(E'select to_json(x) from jsonb_to_record($1) as x(%s)',
             (select string_agg(s::text || ' jsonb', ',') from jsonb_array_elements(message -> 'attrs' -> 'attrs') s));
         execute query into attrs using data -> 'attrs';
