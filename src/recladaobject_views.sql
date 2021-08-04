@@ -20,4 +20,4 @@ RETURNS jsonb AS $$
     SELECT data FROM reclada.v_class
     WHERE (data->'attrs'->'forClass' = class)
     LIMIT 1
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE SQL STABLE;
