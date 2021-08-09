@@ -49,7 +49,6 @@ BEGIN
         END IF;
 
         SELECT reclada_object.get_schema(class) INTO schema;
-
         IF (schema IS NULL) THEN
             RAISE EXCEPTION 'No json schema available for %', class;
         END IF;
@@ -113,7 +112,6 @@ BEGIN
     END IF;
 
     SELECT reclada_object.get_schema(class) INTO class_schema;
-
     IF (class_schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class;
     END IF;
@@ -128,12 +126,12 @@ BEGIN
                 "type": "object",
                 "properties": %s,
                 "required": %s
+                }
             }
-        }
-    }',
-    attrs->>'newClass',
-    (class_schema->'properties') || (attrs->'properties'),
-    (SELECT jsonb_agg(el) FROM (SELECT DISTINCT pg_catalog.jsonb_array_elements((class_schema -> 'required') || (attrs -> 'required')) el) arr)
+        }',
+        attrs->>'newClass',
+        (class_schema->'properties') || (attrs->'properties'),
+        (SELECT jsonb_agg(el) FROM (SELECT DISTINCT pg_catalog.jsonb_array_elements((class_schema -> 'required') || (attrs -> 'required')) el) arr)
     )::jsonb);
 
 END;
@@ -340,7 +338,7 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-    obj_id := data->>'id';
+    obj_id := (data->>'id')::uuid;
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
@@ -351,7 +349,6 @@ BEGIN
     END IF;
 
     SELECT reclada_object.get_schema(class) INTO schema;
-
     IF (schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class;
     END IF;
@@ -360,7 +357,7 @@ BEGIN
         RAISE EXCEPTION 'JSON invalid: %', attrs;
     END IF;
 
-    SELECT 	v.data
+    SELECT v.data
     FROM reclada.v_object v
 	WHERE v.id = (obj_id::text)
 	INTO old_obj;
@@ -417,12 +414,12 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-    obj_id := data->>'id';
+    obj_id := (data->>'id')::uuid;
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
 
-	SELECT 	v.data
+	SELECT v.data
 	FROM reclada.v_object v
 	WHERE v.id = (obj_id::text)
 	INTO old_obj;
@@ -485,7 +482,7 @@ BEGIN
         RAISE EXCEPTION 'There is no id';
     END IF;
 
-    SELECT 	v.data
+    SELECT v.data
 	FROM reclada.v_object v
 	WHERE v.id = (obj_id::text)
 	INTO obj;
@@ -563,7 +560,7 @@ BEGIN
 		RAISE EXCEPTION 'The is no id';
 	END IF;
 
-    SELECT 	v.data
+    SELECT v.data
     FROM reclada.v_object v
     WHERE v.id = (obj_id::text)
     INTO obj;
@@ -663,7 +660,7 @@ BEGIN
         RAISE EXCEPTION 'The related class is not specified';
     END IF;
 
-	SELECT 	v.data
+	SELECT v.data
 	FROM reclada.v_object v
 	WHERE v.id = (obj_id::text)
 	INTO obj;
@@ -702,7 +699,7 @@ BEGIN
     RETURN res;
 
 END;
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL STABLE;
 
 
 /*
@@ -856,5 +853,5 @@ BEGIN
     RETURN res;
 
 END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
 
