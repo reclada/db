@@ -97,14 +97,6 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-/* Just for demo */
-SELECT reclada_object.create('{
-    "class": "DataSet",
-    "attrs": {
-        "name": "defaultDataSet",
-        "dataSources": []
-        }
-}'::jsonb);
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
@@ -140,4 +132,13 @@ SELECT reclada_object.create_subclass('{
         },
         "required": ["class", "channelName", "event"]
     }
+}'::jsonb);
+
+/* Just for demo */
+SELECT reclada_object.create('{
+    "class": "DataSet",
+    "attrs": {
+        "name": "defaultDataSet",
+        "dataSources": []
+        }
 }'::jsonb);

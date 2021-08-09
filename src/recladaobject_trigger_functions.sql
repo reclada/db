@@ -1,4 +1,6 @@
 /* Just for demo */
+DROP TRIGGER IF EXISTS datasource_insert_trigger ON reclada.object;
+DROP FUNCTION IF EXISTS datasource_insert_trigger_fnc();
 CREATE OR REPLACE FUNCTION datasource_insert_trigger_fnc()
 RETURNS trigger AS $$
 DECLARE
@@ -30,7 +32,7 @@ BEGIN
         uri := NEW.data->'attrs'->>'uri';
 
         PERFORM reclada_object.create(
-            format('[{
+            format('{
                 "class": "Job",
                 "attrs": {
                     "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
@@ -39,7 +41,7 @@ BEGIN
                     "command": "./run_pipeline.sh",
                     "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
                     }
-                }]', uri, objid)::jsonb);
+                }', uri, objid)::jsonb);
 
     END IF;
 
@@ -47,8 +49,6 @@ RETURN NEW;
 END;
 $$ LANGUAGE 'plpgsql';
 
-
-DROP TRIGGER IF EXISTS datasource_insert_trigger ON reclada.object;
 
 CREATE TRIGGER datasource_insert_trigger
   AFTER INSERT
