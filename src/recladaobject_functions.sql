@@ -360,13 +360,6 @@ BEGIN
         RAISE EXCEPTION 'JSON invalid: %', attrs;
     END IF;
 
-    /*
-    SELECT reclada_object.list(format(
-        '{"class": %s, "id": "%s"}',
-        class,
-        obj_id
-        )::jsonb) -> 0 INTO old_obj;
-    */
     SELECT 	v.data
     FROM reclada.v_object v
 	WHERE v.id = (obj_id::text)
@@ -429,13 +422,6 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
 
-    /*
-    SELECT reclada_object.list(format(
-        '{"class": %s, "id": "%s"}',
-        class,
-        obj_id
-        )::jsonb) -> 0 INTO old_obj;
-    */
 	SELECT 	v.data
 	FROM reclada.v_object v
 	WHERE v.id = (obj_id::text)
@@ -498,13 +484,7 @@ BEGIN
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'There is no id';
     END IF;
-    /*
-    SELECT reclada_object.list(format(
-        '{"class": %s, "attrs": {}, "id": "%s"}',
-        class,
-        obj_id
-        )::jsonb) -> 0 INTO obj;
-    */
+
     SELECT 	v.data
 	FROM reclada.v_object v
 	WHERE v.id = (obj_id::text)
@@ -583,13 +563,6 @@ BEGIN
 		RAISE EXCEPTION 'The is no id';
 	END IF;
 
-    /*
-    SELECT reclada_object.list(format(
-        '{"class": %s, "attrs": {}, "id": "%s"}',
-        class,
-        obj_id
-        )::jsonb) -> 0 INTO obj;
-    */
     SELECT 	v.data
     FROM reclada.v_object v
     WHERE v.id = (obj_id::text)
@@ -689,13 +662,7 @@ BEGIN
     IF (related_class IS NULL) THEN
         RAISE EXCEPTION 'The related class is not specified';
     END IF;
-    /*
-    SELECT (reclada_object.list(format(
-        '{"class": %s, "attrs": {}, "id": "%s"}',
-        class,
-        obj_id
-        )::jsonb)) -> 0 INTO obj;
-    */
+
 	SELECT 	v.data
 	FROM reclada.v_object v
 	WHERE v.id = (obj_id::text)
