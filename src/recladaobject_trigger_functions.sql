@@ -32,7 +32,7 @@ BEGIN
         uri := NEW.data->'attrs'->>'uri';
 
         PERFORM reclada_object.create(
-            format('[{
+            format('{
                 "class": "Job",
                 "attrs": {
                     "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
@@ -41,7 +41,7 @@ BEGIN
                     "command": "./run_pipeline.sh",
                     "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
                     }
-                }]', uri, objid)::jsonb);
+                }', uri, objid)::jsonb);
 
     END IF;
 
