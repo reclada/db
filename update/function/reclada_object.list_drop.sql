@@ -13,8 +13,8 @@ DROP FUNCTION IF EXISTS reclada_object.list_drop(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.list_drop(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class           jsonb;
-    obj_id          jsonb;
+    class           text;
+    obj_id          uuid;
     obj             jsonb;
     values_to_drop  jsonb;
     field_value     jsonb;
@@ -25,31 +25,21 @@ DECLARE
 
 BEGIN
 
-	class := data->'class';
+	class := data->>'class';
 	IF (class IS NULL) THEN
 		RAISE EXCEPTION 'The reclada object class is not specified';
 	END IF;
-	
-	-- validate obj_id as uuid
-	PERFORM (data->>'id')::uuid;
-	
-	obj_id := data->'id';
+
+	obj_id := (data->>'id')::uuid;
 	IF (obj_id IS NULL) THEN
 		RAISE EXCEPTION 'The is no id';
 	END IF;
-	/*
-    SELECT reclada_object.list(format(
-        '{"class": %s, "attrs": {}, "id": "%s"}',
-        class,
-        obj_id
-        )::jsonb) -> 0 INTO obj;
-	*/
-	SELECT 	v.data
-		FROM reclada.v_object v
-			WHERE v.id = obj_id
-		INTO obj;
-		
-		
+
+    SELECT 	v.data
+    FROM reclada.v_object v
+    WHERE v.id = (obj_id::text)
+    INTO obj;
+
 	IF (obj IS NULL) THEN
 		RAISE EXCEPTION 'The is no object with such id';
 	END IF;
@@ -89,4 +79,3 @@ BEGIN
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
-

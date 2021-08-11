@@ -16,36 +16,33 @@ RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $body$
 DECLARE
-    class         jsonb  ;
-    obj_id        jsonb  ;
-    attrs         jsonb  ;
-    schema        jsonb  ;
-    oldobj        jsonb  ;
-    branch        uuid   ;
+    class         text;
+    obj_id        uuid;
+    attrs         jsonb;
+    schema        jsonb;
+    old_obj       jsonb;
+    branch        uuid;
     revid         integer;
 
 BEGIN
 
-    class := data->'class';
+    class := data->>'class';
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
-	
-    obj_id := data->'id';
+
+    obj_id := data->>'id';
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
-	
-	-- validate obj_id as uuid
-	PERFORM (data->>'id')::uuid;
 
     attrs := data->'attrs';
     IF (attrs IS NULL) THEN
         RAISE EXCEPTION 'The reclada object must have attrs';
     END IF;
 
-	SELECT reclada_object.get_schema(class) INTO schema;
-	
+    SELECT reclada_object.get_schema(class) INTO schema;
+
     IF (schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class;
     END IF;
@@ -53,20 +50,13 @@ BEGIN
     IF (NOT(validate_json_schema(schema->'attrs'->'schema', attrs))) THEN
         RAISE EXCEPTION 'JSON invalid: %', attrs;
     END IF;
-/*
-    SELECT reclada_object.list(format(
-        '{"class": %s, "id": "%s"}',
-        class,
-        objid
-        )::jsonb) -> 0 INTO oldobj;
-*/
-	SELECT 	v.data
-		FROM reclada.v_object v
-			-- WHERE v.id = ('"'||(obj_id)::text||'"')::jsonb
-			WHERE v.id = obj_id
-		INTO oldobj;
-	
-    IF (oldobj IS NULL) THEN
+
+    SELECT 	v.data
+    FROM reclada.v_object v
+	WHERE v.id = (obj_id::text)
+	INTO old_obj;
+
+    IF (old_obj IS NULL) THEN
         RAISE EXCEPTION 'Could not update object, no such id';
     END IF;
 

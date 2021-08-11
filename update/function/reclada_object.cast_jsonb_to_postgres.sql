@@ -36,3 +36,4 @@ SELECT
                     )
         END
 $$ LANGUAGE SQL IMMUTABLE;
+

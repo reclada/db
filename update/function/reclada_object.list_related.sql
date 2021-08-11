@@ -19,10 +19,10 @@ DROP FUNCTION IF EXISTS reclada_object.list_related(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.list_related(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class          jsonb;
-    obj_id         jsonb;
+    class          text;
+    obj_id         uuid;
     field          jsonb;
-    related_class  jsonb;
+    related_class  text;
     obj            jsonb;
     list_of_ids    jsonb;
     cond           jsonb = '{}'::jsonb;
@@ -32,15 +32,12 @@ DECLARE
     res            jsonb;
 
 BEGIN
-    class := data->'class';
+    class := data->>'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
-	
-	-- validate obj_id as uuid
-	PERFORM (data->>'id')::uuid;
-	
-    obj_id := data->'id';
+
+    obj_id := (data->>'id')::uuid;
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'The object id is not specified';
     END IF;
@@ -50,22 +47,16 @@ BEGIN
         RAISE EXCEPTION 'The object field is not specified';
     END IF;
 
-    related_class := data->'relatedClass';
+    related_class := data->>'relatedClass';
     IF (related_class IS NULL) THEN
         RAISE EXCEPTION 'The related class is not specified';
     END IF;
-	/*
-	SELECT (reclada_object.list(format(
-		'{"class": %s, "attrs": {}, "id": "%s"}',
-		class,
-		obj_id
-		)::jsonb)) -> 0 INTO obj;
-	*/
+
 	SELECT 	v.data
-		FROM reclada.v_object v
-			WHERE v.id = obj_id
-		INTO obj;
-		
+	FROM reclada.v_object v
+	WHERE v.id = (obj_id::text)
+	INTO obj;
+
     IF (obj IS NULL) THEN
         RAISE EXCEPTION 'There is no object with such id';
     END IF;
@@ -91,7 +82,7 @@ BEGIN
     END IF;
 
     SELECT reclada_object.list(format(
-        '{"class": %s, "attrs": {}, "id": {"operator": "<@", "object": %s}}',
+        '{"class": "%s", "attrs": {}, "id": {"operator": "<@", "object": %s}}',
         related_class,
         list_of_ids
         )::jsonb || cond)

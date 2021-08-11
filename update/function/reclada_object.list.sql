@@ -1,3 +1,4 @@
+
 /*
  * Function reclada_object.list returns the list of objects with specified fields.
  * A jsonb object with the following parameters is required.
@@ -56,10 +57,10 @@ DECLARE
     offset_             text;
 
 BEGIN
-    class := data->'class';
 
+    class := data->'class';
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class not specified';
+        RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
     attrs := data->'attrs' || '{}'::jsonb;

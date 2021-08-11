@@ -16,7 +16,6 @@
 DROP FUNCTION IF EXISTS reclada_object.get_condition_array(jsonb, text);
 CREATE OR REPLACE FUNCTION reclada_object.get_condition_array(data jsonb, key_path text)
 RETURNS text AS $$
-    
     SELECT
     CONCAT(
         key_path,

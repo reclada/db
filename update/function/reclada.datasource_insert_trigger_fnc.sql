@@ -1,6 +1,3 @@
-/* Just for demo */
-DROP TRIGGER IF EXISTS datasource_insert_trigger ON reclada.object;
-DROP FUNCTION IF EXISTS reclada.datasource_insert_trigger_fnc();
 CREATE OR REPLACE FUNCTION reclada.datasource_insert_trigger_fnc()
 RETURNS trigger AS $$
 DECLARE
@@ -48,9 +45,3 @@ BEGIN
 RETURN NEW;
 END;
 $$ LANGUAGE 'plpgsql';
-
-
-CREATE TRIGGER datasource_insert_trigger
-  AFTER INSERT
-  ON reclada.object FOR EACH ROW
-  EXECUTE PROCEDURE datasource_insert_trigger_fnc();

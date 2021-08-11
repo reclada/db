@@ -18,10 +18,10 @@ DECLARE
     branch     uuid;
     revid      integer;
     data       jsonb;
-    class      jsonb;
+    class      text;
     attrs      jsonb;
     schema     jsonb;
-    objid      uuid;
+    obj_id     uuid;
     res        jsonb[];
 
 BEGIN
@@ -38,8 +38,7 @@ BEGIN
 
     FOR data IN SELECT jsonb_array_elements(data_jsonb) LOOP
 
-        class := data->'class';
-
+        class := data->>'class';
         IF (class IS NULL) THEN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;
@@ -59,17 +58,17 @@ BEGIN
             RAISE EXCEPTION 'JSON invalid: %', attrs;
         END IF;
 
-        SELECT uuid_generate_v4() INTO objid;
+        SELECT uuid_generate_v4() INTO obj_id;
 
         IF (data->'revision' IS NULL) THEN
             data := data || format(
                 '{"id": "%s", "revision": %s, "isDeleted": false}',
-                objid, revid
+                obj_id, revid
             )::jsonb;
         ELSE
             data := data || format(
                 '{"id": "%s", "isDeleted": false}',
-                objid
+                obj_id
             )::jsonb;
         END IF;
 

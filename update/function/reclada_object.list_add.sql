@@ -1,3 +1,4 @@
+
 /*
  * Function reclada_object.list_add adds one element or several elements to the object.
  * A jsonb object with the following parameters is required.
@@ -13,42 +14,32 @@ DROP FUNCTION IF EXISTS reclada_object.list_add(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.list_add(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class          jsonb;
-    obj_id         jsonb;
+    class          text;
+    obj_id         uuid;
     obj            jsonb;
     values_to_add  jsonb;
     field_value    jsonb;
     json_path      text[];
     new_obj        jsonb;
     res            jsonb;
- 
+
 BEGIN
 
-    class := data->'class';
+    class := data->>'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-	-- validate obj_id as uuid
-	PERFORM (data->>'id')::uuid;
-
-    obj_id := data->'id';
+    obj_id := (data->>'id')::uuid;
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'There is no id';
     END IF;
 
-	/*
-    SELECT reclada_object.list(format(
-        '{"class": %s, "attrs": {}, "id": "%s"}',
-        class,
-        obj_id
-        )::jsonb) -> 0 INTO obj;
-	*/
-	SELECT 	v.data
-		FROM reclada.v_object v
-			WHERE v.id = obj_id
-		INTO obj;
-	
+    SELECT 	v.data
+	FROM reclada.v_object v
+	WHERE v.id = (obj_id::text)
+	INTO obj;
+
     IF (obj IS NULL) THEN
         RAISE EXCEPTION 'There is no object with such id';
     END IF;
@@ -82,4 +73,3 @@ BEGIN
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
-
