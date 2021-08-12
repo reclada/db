@@ -21,8 +21,8 @@ END;
 $$ LANGUAGE PLPGSQL STABLE;
 */
 
-DROP FUNCTION IF EXISTS reclada_user.is_allowed(jsonb, text, text);
-CREATE OR REPLACE FUNCTION reclada_user.is_allowed(jsonb, text, text)
+DROP FUNCTION IF EXISTS reclada_user.is_allowed(uuid, text, jsonb);
+CREATE OR REPLACE FUNCTION reclada_user.is_allowed(jsonb, text, jsonb)
 RETURNS boolean AS $$
 BEGIN
     RETURN TRUE;
