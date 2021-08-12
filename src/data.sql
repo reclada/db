@@ -65,7 +65,6 @@ SELECT reclada_object.create_subclass('{
         "properties": {
             "checksum": {"type": "string"},
             "mimeType": {"type": "string"},
-            "name": {"type": "string"},
             "uri": {"type": "string"}
         },
         "required": ["checksum", "mimeType"]
