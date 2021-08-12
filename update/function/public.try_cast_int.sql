@@ -1,4 +1,5 @@
-create or replace function public.try_cast_int(p_in text, p_default int default null)
+DROP FUNCTION public.try_cast_int;
+create or replace function public.try_cast_int(p_in varchar(32), p_default int default null)
 returns int
 as
 $$

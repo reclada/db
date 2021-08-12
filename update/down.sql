@@ -1,6 +1,6 @@
 -- you you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
-drop table dev.test1;
+alter table dev.test1 drop column id;
 
 --{function/public.try_cast_int}

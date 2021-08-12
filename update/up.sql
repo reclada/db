@@ -13,7 +13,7 @@ insert into var_table(ver)
 select public.raise_exception('Can not apply this version!') 
 	where not exists
 	(
-		select ver from var_table where ver = 1 --!!! write current version HERE !!!
+		select ver from var_table where ver = 2 --!!! write current version HERE !!!
 	);
 
 CREATE TEMP TABLE tmp
@@ -99,7 +99,7 @@ drop table tmp;
 	you can use "\i 'function/reclada_object.get_schema.sql'"
 	to run text script of functions
 */
-create table dev.test1(d text);
+alter table dev.test1 add id int;
 
 \i function/public.try_cast_int.sql
 
