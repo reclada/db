@@ -1,5 +1,5 @@
 DROP INDEX IF EXISTS reclada.id_index;
-CREATE INDEX id_index ON reclada.object ((data->>'id'));
+CREATE INDEX id_index ON reclada.object ((data->'id'));
 
 DROP INDEX IF EXISTS reclada.class_index;
 CREATE INDEX class_index ON reclada.object ((data->>'class'));

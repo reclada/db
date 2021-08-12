@@ -29,7 +29,7 @@ CREATE OR REPLACE FUNCTION api.reclada_object_create(data_jsonb jsonb)
 RETURNS jsonb AS $$
 DECLARE
     data             jsonb;
-    class            text;
+    class            jsonb;
     user_info        jsonb;
     attrs            jsonb;
     data_to_create   jsonb = '[]'::jsonb;
@@ -43,7 +43,7 @@ BEGIN
 
     FOR data IN SELECT jsonb_array_elements(data_jsonb) LOOP
 
-        class := data->>'class';
+        class := data->'class';
         IF (class IS NULL) THEN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;
@@ -121,13 +121,13 @@ DROP FUNCTION IF EXISTS api.reclada_object_list(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class               text;
+    class               jsonb;
     user_info           jsonb;
     result              jsonb;
 
 BEGIN
 
-    class := data->>'class';
+    class := data->'class';
     IF(class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
@@ -163,20 +163,20 @@ DROP FUNCTION IF EXISTS api.reclada_object_update(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class         text;
-    obj_id        uuid;
+    class         jsonb;
+    objid         uuid;
     attrs         jsonb;
     user_info     jsonb;
     result        jsonb;
 
 BEGIN
 
-    class := data->>'class';
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    obj_id := (data->>'id')::uuid;
+    objid := data->>'id';
     IF (objid IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
@@ -217,19 +217,19 @@ DROP FUNCTION IF EXISTS api.reclada_object_delete(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class         text;
-    obj_id        uuid;
+    class         jsonb;
+    objid         uuid;
     user_info     jsonb;
     result        jsonb;
 
 BEGIN
 
-    class := data->>'class';
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    obj_id := (data->>'id')::uuid;
+    objid := data->>'id';
     IF (objid IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
@@ -264,7 +264,7 @@ DROP FUNCTION IF EXISTS api.reclada_object_list_add(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list_add(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class          text;
+    class          jsonb;
     obj_id         uuid;
     user_info      jsonb;
     field_value    jsonb;
@@ -273,7 +273,7 @@ DECLARE
 
 BEGIN
 
-    class := data->>'class';
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
@@ -323,7 +323,7 @@ DROP FUNCTION IF EXISTS api.reclada_object_list_drop(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list_drop(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class           text;
+    class           jsonb;
     obj_id          uuid;
     user_info       jsonb;
     field_value     jsonb;
@@ -332,7 +332,7 @@ DECLARE
 
 BEGIN
 
-	class := data->>'class';
+	class := data->'class';
 	IF (class IS NULL) THEN
 		RAISE EXCEPTION 'The reclada object class is not specified';
 	END IF;
@@ -388,15 +388,15 @@ DROP FUNCTION IF EXISTS api.reclada_object_list_related(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list_related(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class          text;
+    class          jsonb;
     obj_id         uuid;
     field          jsonb;
-    related_class  text;
+    related_class  jsonb;
     user_info      jsonb;
     result         jsonb;
 
 BEGIN
-    class := data->>'class';
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
@@ -411,7 +411,7 @@ BEGIN
         RAISE EXCEPTION 'The object field is not specified';
     END IF;
 
-    related_class := data->>'relatedClass';
+    related_class := data->'relatedClass';
     IF (related_class IS NULL) THEN
         RAISE EXCEPTION 'The related class is not specified';
     END IF;
@@ -427,4 +427,4 @@ BEGIN
     RETURN result;
 
 END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE;
