@@ -42,7 +42,7 @@ update tmp set str = drp.v || scr.v
     )  obj ON TRUE
 		inner JOIN LATERAL
     (
-        select 	'drop '||obj.typ|| ' '|| obj.nam || ' ;' || E'\n' as v
+        select 	'drop '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n' as v
     )  drp ON TRUE
 	inner JOIN LATERAL
     (
