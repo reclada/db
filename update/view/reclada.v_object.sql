@@ -1,10 +1,20 @@
 CREATE OR REPLACE VIEW reclada.v_object
 AS
-    SELECT  obj.data,
-			obj.data->>'class' AS class_name,
-			obj.data->>'id' AS id
+    SELECT  obj.data, -- собрать json
+			obj.class AS class_name,
+			coalesce((obj.obj_id_int)::text,('"'||obj.obj_id||'"'):: text) AS id,
+			obj.obj_id_int as obj_id_int	,
+			obj.obj_id	 as obj_id		
+
 	FROM reclada.object obj
-	WHERE ((data->'revision')::numeric = (SELECT max((objrev.data->'revision')::numeric)
-	    FROM reclada.object objrev
-		WHERE (objrev.data->>'id' = obj.data->>'id')
-			AND (objrev.data->'isDeleted' = 'false')));
+	WHERE obj.revision = 
+	(
+		SELECT max((objrev.revision))
+			FROM reclada.object objrev
+			WHERE 
+				(
+					objrev.obj_id = obj.obj_id
+					or objrev.obj_id_int = obj.obj_id_int
+				)
+				AND objrev.status = 0
+	);

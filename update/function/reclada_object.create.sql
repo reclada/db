@@ -11,7 +11,7 @@
  *  branch - object's branch
  */
 
-DROP FUNCTION IF EXISTS reclada_object.create(jsonb, jsonb);
+DROP FUNCTION IF EXISTS reclada_object.create;
 CREATE OR REPLACE FUNCTION reclada_object.create(data_jsonb jsonb, user_info jsonb default '{}'::jsonb)
 RETURNS jsonb AS $$
 DECLARE
