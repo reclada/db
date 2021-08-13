@@ -17,13 +17,10 @@ BEGIN
 
         objid := NEW.data->>'id';
 
-        SELECT (reclada_object.list(format('{
-            "class": "DataSet",
-            "attrs": {
-                "name": "defaultDataSet"
-                }
-            }')::jsonb)) -> 0
-        INTO dataset;
+        SELECT v.data
+        FROM reclada.v_object v
+	    WHERE v.data->'attrs'->>'name' = 'defaultDataSet'
+	    INTO dataset;
 
         dataset := jsonb_set(dataset, '{attrs, dataSources}', dataset->'attrs'->'dataSources' || format('["%s"]', objid)::jsonb);
 
