@@ -13,7 +13,7 @@ BEGIN
         RAISE EXCEPTION 'data cannot be null';
     END IF;
 
-    IF (NEW.data->>'class' = 'DataSource') THEN
+    IF (NEW.data->>'class' = 'DataSource') OR (NEW.data->>'class' = 'File') THEN
 
         objid := NEW.data->>'id';
 
