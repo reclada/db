@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
     class         jsonb;
-    objid         uuid;
+    obj_id         uuid;
     user_info     jsonb;
     result        jsonb;
 
@@ -28,8 +28,8 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    objid := data->>'id';
-    IF (objid IS NULL) THEN
+    obj_id := data->>'id';
+    IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
 

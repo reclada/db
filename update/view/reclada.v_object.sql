@@ -1,20 +1,49 @@
+drop VIEW if EXISTS reclada.v_object;
 CREATE OR REPLACE VIEW reclada.v_object
 AS
-    SELECT  obj.data, -- собрать json
-			obj.class AS class_name,
-			coalesce((obj.obj_id_int)::text,('"'||obj.obj_id||'"'):: text) AS id,
-			obj.obj_id_int as obj_id_int	,
-			obj.obj_id	 as obj_id		
+with t as (
+    SELECT  
+            obj.id      ,
+            obj.obj_id  ,
+            obj.class   ,
+            r.num       ,
+            obj.revision,
+            obj.attrs   ,
+            obj.status  ,
+            obj.created_time    
+        FROM reclada.object obj
+        left join 
+        (
+            select  (r.attrs->'num')::bigint num,
+                    r.obj_id
+                from reclada.object r
+                    where class = 'revision'
+        ) r
+            on r.obj_id = obj.revision
+)
+    SELECT  
+            t.id                 ,
+            t.obj_id             ,
+            t.class              ,
+            t.num as revision_num,
+            t.status             ,
+            os.caption as status_caption ,
+            t.revision           ,
+            t.created_time       ,
+            t.attrs              ,
+            '{}'::jsonb as data -- собрать json
+        FROM t
+        join reclada.object_status os
+            on t.status = os.id
+            -- выбираем объект с максимальным номером ревизии
+            where t.num = 
+            (
+                select max(tt.num)
+                    from t as tt
+                        where tt.obj_id = t.obj_id
+                            and t.status = 1 -- active
+            )
+            or t.num is null;
 
-	FROM reclada.object obj
-	WHERE obj.revision = 
-	(
-		SELECT max((objrev.revision))
-			FROM reclada.object objrev
-			WHERE 
-				(
-					objrev.obj_id = obj.obj_id
-					or objrev.obj_id_int = obj.obj_id_int
-				)
-				AND objrev.status = 0
-	);
+-- select * from reclada.v_object limit 300
+-- select * from reclada.object

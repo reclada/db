@@ -20,14 +20,23 @@ update reclada.object o
 ​
 alter table reclada.object alter column data set not null;
 ​
+drop view if EXISTS reclada.v_class;
+drop view if EXISTS reclada.v_revision;
+drop view if EXISTS reclada.v_object;
+
 alter table reclada.object 
-	drop column id ,
-	drop column obj_id ,
-	drop column obj_id_int   ,
-	drop column	revision_int ,
-	drop column	class ,
-	drop column	status ,
-	drop column	attrs  ,
-	drop column time_when ;
+    drop column revision,
+	drop column id      ,
+	drop column obj_id  ,
+	drop column	name    ,
+	drop column	class   ,
+	drop column	status  ,
+	drop column	attrs   ,
+	drop column created_time,
+	drop column created_by;
+
+--{view/reclada.v_object}
+--{view/reclada.v_class}
 
 drop table reclada.object_status;
+

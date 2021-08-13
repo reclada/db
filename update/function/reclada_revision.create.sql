@@ -1,19 +1,43 @@
-DROP FUNCTION IF EXISTS reclada_revision.create(uuid, uuid);
-CREATE OR REPLACE FUNCTION reclada_revision.create(userid varchar, branch uuid)
-RETURNS integer AS $$
-    INSERT INTO reclada.object VALUES(format(
-        '{
-            "id": %s,
-            "class": "revision",
-            "attrs": {
-                "user": "%s",
-                "dateTime": "%s",
-                "branch": "%s"
-            }
-        }',
-        nextval('reclada.reclada_revisions'),
-        userid,
-        now(),
-        branch
-    )::jsonb) RETURNING (data->'id')::integer;
+DROP FUNCTION IF EXISTS reclada_revision.create;
+CREATE OR REPLACE FUNCTION reclada_revision.create
+(
+    userid varchar, 
+    branch uuid, 
+    obj uuid default null
+)
+RETURNS uuid AS $$
+    INSERT INTO reclada.object
+        (
+            obj_id,
+            revision,
+            name,
+            class,
+            attrs
+        )
+               
+        VALUES
+        (
+            public.uuid_generate_v4(), -- obj_id,
+            null                     ,-- revision,
+            null                     ,-- name,
+            'revision'               ,-- class,
+            format                    -- attrs
+            (                         
+                '{
+                    "num": %s,
+                    "user": "%s",
+                    "dateTime": "%s",
+                    "branch": "%s"
+                }',
+                (
+                    select count(distinct o.revision)+1 
+                        from reclada.object o
+                            where o.obj_id = obj
+                ),
+                userid,
+                now(),
+                branch
+            )::jsonb
+        ) RETURNING (obj_id)::uuid;
+    --nextval('reclada.reclada_revisions'),
 $$ LANGUAGE SQL VOLATILE;

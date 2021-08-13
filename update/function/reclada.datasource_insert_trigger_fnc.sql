@@ -1,18 +1,19 @@
+-- не грохаю, чтобы не поломать триггер
 CREATE OR REPLACE FUNCTION reclada.datasource_insert_trigger_fnc()
 RETURNS trigger AS $$
 DECLARE
-    objid         uuid;
+    obj_id         uuid;
     dataset       jsonb;
     uri           text;
 
 BEGIN
-    IF NEW.data IS NULL THEN
-        RAISE EXCEPTION 'data cannot be null';
-    END IF;
+    -- IF NEW.data IS NULL THEN
+    --     RAISE EXCEPTION 'data cannot be null';
+    -- END IF;
 
-    IF (NEW.data->>'class' = 'DataSource') THEN
+    IF (NEW.class = 'DataSource') THEN
 
-        objid := NEW.data->>'id';
+        obj_id := NEW.obj_id;
 
         SELECT (reclada_object.list(format('{
             "class": "DataSet",
@@ -22,7 +23,7 @@ BEGIN
             }')::jsonb)) -> 0
         INTO dataset;
 
-        dataset := jsonb_set(dataset, '{attrs, dataSources}', dataset->'attrs'->'dataSources' || format('["%s"]', objid)::jsonb);
+        dataset := jsonb_set(dataset, '{attrs, dataSources}', dataset->'attrs'->'dataSources' || format('["%s"]', obj_id)::jsonb);
 
         PERFORM reclada_object.update(dataset);
 
@@ -38,7 +39,7 @@ BEGIN
                     "command": "./run_pipeline.sh",
                     "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
                     }
-                }', uri, objid)::jsonb);
+                }', uri, obj_id)::jsonb);
 
     END IF;
 
