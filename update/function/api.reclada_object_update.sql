@@ -1,3 +1,4 @@
+
 /*
  * Function api.reclada_object_update checks valid data and uses reclada_object.update to update object with new revision.
  * A jsonb with the following parameters is required.
@@ -50,3 +51,4 @@ BEGIN
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
+

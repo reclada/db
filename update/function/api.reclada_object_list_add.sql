@@ -1,3 +1,5 @@
+
+
 /*
  * Function api.reclada_object_list_add checks valid data and uses reclada_object.list_add to add one element or several elements to the object.
  * A jsonb object with the following parameters is required.
@@ -55,3 +57,4 @@ BEGIN
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
+
