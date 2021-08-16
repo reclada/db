@@ -50,4 +50,4 @@ $$ LANGUAGE 'plpgsql';
 CREATE TRIGGER datasource_insert_trigger
   AFTER INSERT
   ON reclada.object FOR EACH ROW
-  EXECUTE PROCEDURE datasource_insert_trigger_fnc();
+  EXECUTE PROCEDURE reclada.datasource_insert_trigger_fnc();
