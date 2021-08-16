@@ -384,7 +384,7 @@ $body$;
 
 
 /*
- * Function reclada_object.delete to updates object with field "isDeleted": true.
+ * Function reclada_object.delete updates object with field "isDeleted": true.
  * A jsonb with the following parameters is required.
  * Required parameters:
  *  class - the class of object

@@ -25,11 +25,11 @@ $$ LANGUAGE SQL IMMUTABLE;
  */
 
 DROP FUNCTION IF EXISTS api.reclada_object_create(jsonb);
-CREATE OR REPLACE FUNCTION api.reclada_object_create(data_jsonb jsonb)
+CREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    data             jsonb;
-    class            text;
+    data_jsonb       jsonb;
+    class            jsonb;
     user_info        jsonb;
     attrs            jsonb;
     data_to_create   jsonb = '[]'::jsonb;
@@ -37,30 +37,30 @@ DECLARE
 
 BEGIN
 
-    IF (jsonb_typeof(data_jsonb) != 'array') THEN
-        data_jsonb := '[]'::jsonb || data_jsonb;
+    IF (jsonb_typeof(data) != 'array') THEN
+        data := '[]'::jsonb || data;
     END IF;
 
-    FOR data IN SELECT jsonb_array_elements(data_jsonb) LOOP
+    FOR data_jsonb IN SELECT jsonb_array_elements(data) LOOP
 
-        class := data->>'class';
+        class := data_jsonb->'class';
         IF (class IS NULL) THEN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;
 
-        SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
-        data := data - 'accessToken';
+        SELECT reclada_user.auth_by_token(data_jsonb->>'accessToken') INTO user_info;
+        data_jsonb := data_jsonb - 'accessToken';
 
         IF (NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN
             RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
         END IF;
 
-        attrs := data->'attrs';
+        attrs := data_jsonb->'attrs';
         IF (attrs IS NULL) THEN
             RAISE EXCEPTION 'The reclada object must have attrs';
         END IF;
 
-        data_to_create := data_to_create || data;
+        data_to_create := data_to_create || data_jsonb;
     END LOOP;
 
     SELECT reclada_object.create(data_to_create, user_info) INTO result;
@@ -121,13 +121,13 @@ DROP FUNCTION IF EXISTS api.reclada_object_list(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class               text;
+    class               jsonb;
     user_info           jsonb;
     result              jsonb;
 
 BEGIN
 
-    class := data->>'class';
+    class := data->'class';
     IF(class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
@@ -163,20 +163,20 @@ DROP FUNCTION IF EXISTS api.reclada_object_update(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class         text;
-    obj_id        uuid;
+    class         jsonb;
+    objid         uuid;
     attrs         jsonb;
     user_info     jsonb;
     result        jsonb;
 
 BEGIN
 
-    class := data->>'class';
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    obj_id := (data->>'id')::uuid;
+    objid := data->>'id';
     IF (objid IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
@@ -217,19 +217,19 @@ DROP FUNCTION IF EXISTS api.reclada_object_delete(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class         text;
-    obj_id        uuid;
+    class         jsonb;
+    objid         uuid;
     user_info     jsonb;
     result        jsonb;
 
 BEGIN
 
-    class := data->>'class';
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    obj_id := (data->>'id')::uuid;
+    objid := data->>'id';
     IF (objid IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
@@ -264,7 +264,7 @@ DROP FUNCTION IF EXISTS api.reclada_object_list_add(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list_add(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class          text;
+    class          jsonb;
     obj_id         uuid;
     user_info      jsonb;
     field_value    jsonb;
@@ -273,7 +273,7 @@ DECLARE
 
 BEGIN
 
-    class := data->>'class';
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
@@ -323,7 +323,7 @@ DROP FUNCTION IF EXISTS api.reclada_object_list_drop(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list_drop(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class           text;
+    class           jsonb;
     obj_id          uuid;
     user_info       jsonb;
     field_value     jsonb;
@@ -332,7 +332,7 @@ DECLARE
 
 BEGIN
 
-	class := data->>'class';
+	class := data->'class';
 	IF (class IS NULL) THEN
 		RAISE EXCEPTION 'The reclada object class is not specified';
 	END IF;
@@ -388,15 +388,15 @@ DROP FUNCTION IF EXISTS api.reclada_object_list_related(jsonb);
 CREATE OR REPLACE FUNCTION api.reclada_object_list_related(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class          text;
+    class          jsonb;
     obj_id         uuid;
     field          jsonb;
-    related_class  text;
+    related_class  jsonb;
     user_info      jsonb;
     result         jsonb;
 
 BEGIN
-    class := data->>'class';
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
@@ -411,7 +411,7 @@ BEGIN
         RAISE EXCEPTION 'The object field is not specified';
     END IF;
 
-    related_class := data->>'relatedClass';
+    related_class := data->'relatedClass';
     IF (related_class IS NULL) THEN
         RAISE EXCEPTION 'The related class is not specified';
     END IF;
@@ -427,4 +427,4 @@ BEGIN
     RETURN result;
 
 END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE;
