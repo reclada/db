@@ -11,7 +11,11 @@
 */
 
 DROP FUNCTION IF EXISTS reclada_object.update(jsonb, jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.update(data jsonb, user_info jsonb default '{}'::jsonb)
+CREATE OR REPLACE FUNCTION reclada_object.update
+(
+    data jsonb, 
+    user_info jsonb default '{}'::jsonb
+)
 RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $body$
@@ -41,7 +45,8 @@ BEGIN
         RAISE EXCEPTION 'The reclada object must have attrs';
     END IF;
 
-    SELECT reclada_object.get_schema(class) INTO schema;
+    SELECT reclada_object.get_schema(class) 
+        INTO schema;
 
     IF (schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class;
@@ -52,16 +57,19 @@ BEGIN
     END IF;
 
     SELECT 	v.data
-    FROM reclada.v_object v
-	WHERE v.id = (obj_id::text)
-	INTO old_obj;
+        FROM reclada.v_active_object v
+	        WHERE v.id = obj_id
+	    INTO old_obj;
 
     IF (old_obj IS NULL) THEN
         RAISE EXCEPTION 'Could not update object, no such id';
     END IF;
 
     branch := data->'branch';
-    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
+    SELECT reclada_revision.create(user_info->>'sub', branch, obj_id) 
+        INTO revid;
+    
+    INSERT INTO reclada.object(status;
 
     data := data || format(
         '{"revision": %s, "isDeleted": false}',
@@ -69,7 +77,6 @@ BEGIN
         )::jsonb; --TODO replace isDeleted with status attr
     --TODO compare old and data to avoid unnecessery inserts
 
-    INSERT INTO reclada.object VALUES(data);
     PERFORM reclada_notification.send_object_notification('update', data);
     RETURN data;
 

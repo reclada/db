@@ -23,7 +23,7 @@ BEGIN
             return;
         end if;
         
-        SELECT v.data FROM reclada.v_object v
+        SELECT v.data FROM reclada.v_active_object v
         WHERE (v.data->>'class' = 'Message')
             AND (v.data->'attrs'->>'event' = event)
             AND (v.data->'attrs'->>'class' = object_class)

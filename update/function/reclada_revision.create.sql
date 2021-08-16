@@ -17,9 +17,7 @@ RETURNS uuid AS $$
                
         VALUES
         (
-            public.uuid_generate_v4(), -- obj_id,
             null                     ,-- revision,
-            null                     ,-- name,
             'revision'               ,-- class,
             format                    -- attrs
             (                         

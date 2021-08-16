@@ -10,7 +10,7 @@
  *
 */
 
-DROP FUNCTION IF EXISTS reclada_object.delete(jsonb, jsonb);
+DROP FUNCTION IF EXISTS reclada_object.delete;
 CREATE OR REPLACE FUNCTION reclada_object.delete(data jsonb, user_info jsonb default '{}'::jsonb)
 RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
@@ -20,7 +20,7 @@ DECLARE
     obj_id        uuid;
     old_obj       jsonb;
     branch        uuid;
-    revid         integer;
+    revid         uuid;
 
 BEGIN
 
@@ -34,28 +34,20 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
 
-	SELECT 	v.data
-	FROM reclada.v_object v
-	WHERE v.id = (obj_id::text)
-	INTO old_obj;
+    update reclada.object o
+        set status = 2 -- archive
+	        WHERE o.obj_id = obj_id;
 
-    IF (old_obj IS NULL) THEN
+    select data from v_object o 
+        WHERE o.obj_id = obj_id
+        into data;
+    
+    IF (data IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object, no such id';
     END IF;
-
-    branch := data->'branch';
-
-    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
-    data := old_obj || format(
-            '{"revision": %s, "isDeleted": true}',
-            revid
-        )::jsonb;
-
-    INSERT INTO reclada.object VALUES(data);
 
     PERFORM reclada_notification.send_object_notification('delete', data);
 
     RETURN data;
-
 END;
 $$;

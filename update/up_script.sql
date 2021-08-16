@@ -9,22 +9,27 @@
 create table reclada.object_status
 (
     id      bigint GENERATED ALWAYS AS IDENTITY primary KEY,
-    caption text
+    caption text not null
 );
 insert into reclada.object_status(caption)
     select 'active';
 insert into reclada.object_status(caption)
     select 'archive';
 
+--SHOW search_path;        
+SET search_path TO public;
+DROP EXTENSION IF EXISTS "uuid-ossp";
+CREATE EXTENSION "uuid-ossp" SCHEMA public;
+
 alter table reclada.object
 	add id bigint GENERATED ALWAYS AS IDENTITY primary KEY,
-	add obj_id       uuid   ,
+	add obj_id       uuid   default public.uuid_generate_v4(),
 	add revision     uuid   ,
 	add obj_id_int   int    ,
 	add	revision_int bigint ,
 	add	name         text   ,
 	add	class        text   ,
-	add	status       int     DEFAULT 1,--active
+	add	status       int    DEFAULT 1,--active
 	add	attrs        jsonb  ,
 	add created_time timestamp with time zone DEFAULT now(),
     add created_by   text,
@@ -58,10 +63,7 @@ update reclada.object
 	set status = 1
         WHERE status is null;
 
---SHOW search_path;        
-SET search_path TO public;
-DROP EXTENSION IF EXISTS "uuid-ossp";
-CREATE EXTENSION "uuid-ossp" SCHEMA public;
+
 ​-- генерируем obj_id для объектов ревизий 
 update reclada.object as o
     set obj_id = g.obj_id
@@ -109,14 +111,26 @@ alter table reclada.object
 
 alter table reclada.object alter column data drop not null;
 
+alter table reclada.object 
+    alter column attrs set not null,
+    alter column class set not null,
+    alter column status set not null,
+    alter column obj_id set not null;
+
+-- delete from reclada.object where attrs is null
+
 drop VIEW if EXISTS reclada.v_class;
 
 ​\i 'view/reclada.v_object.sql'
+​\i 'view/reclada.v_active_object.sql'
 ​\i 'view/reclada.v_class.sql'
 ​\i 'view/reclada.v_revision.sql'
 ​\i 'function/reclada_revision.create.sql'
 ​\i 'function/reclada.datasource_insert_trigger_fnc.sql'
 ​\i 'function/reclada_object.get_schema.sql'
+​\i 'function/reclada.load_staging.sql'
+​\i 'function/reclada_object.create.sql'
+​\i 'function/reclada_object.delete.sql'
 
 
 
@@ -124,6 +138,18 @@ drop VIEW if EXISTS reclada.v_class;
 -- test 1
 -- select reclada_revision.create('123', null,'e2bdd471-cf23-46a9-84cf-f9e15db7887d')
 -- select reclada_revision.create(NULL, NULL)
+-- SELECT reclada_object.create('
+--   {
+--        "class": "Job",
+--        "revision": 10,
+--        "attrs": {
+--            "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
+--            "status": "new",
+--            "type": "K8S",
+--            "command": "./run_pipeline.sh",
+--            "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
+--            }
+--        }'::jsonb);
 
 
 select count(1)+1 
@@ -133,13 +159,13 @@ select count(1)+1
 SELECT * FROM reclada.v_revision ORDER BY ID DESC -- 77
     LIMIT 300
 
--- "reclada_object.create"
 -- "reclada_object.list"
 -- "reclada_object.update"
--- "reclada_object.delete"
--- "reclada.load_staging"
---+ "reclada_object.get_schema"
---+ "reclada_revision.create"
+-- + "reclada_object.delete"
+-- + "reclada_object.create"
+-- + "reclada.load_staging"
+-- + "reclada_object.get_schema"
+-- + "reclada_revision.create"
 
 
 

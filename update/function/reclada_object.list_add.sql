@@ -35,8 +35,8 @@ BEGIN
         RAISE EXCEPTION 'There is no id';
     END IF;
 
-    SELECT 	v.data
-	FROM reclada.v_object v
+    SELECT  v.data
+	FROM reclada.v_active_object v
 	WHERE v.id = (obj_id::text)
 	INTO obj;
 

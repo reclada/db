@@ -53,7 +53,7 @@ BEGIN
     END IF;
 
 	SELECT 	v.data
-	FROM reclada.v_object v
+	FROM reclada.v_active_object v
 	WHERE v.id = (obj_id::text)
 	INTO obj;
 

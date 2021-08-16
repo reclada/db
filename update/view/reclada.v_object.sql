@@ -31,19 +31,38 @@ with t as (
             t.revision           ,
             t.created_time       ,
             t.attrs              ,
-            '{}'::jsonb as data -- собрать json
+            format
+            (
+                '{
+                    "id": "%s",
+                    "class": "%s",
+                    "revision": %s, 
+                    "status": "%s",
+                    "attrs": %s
+                }',
+                t.obj_id    ,
+                t.class     ,
+                coalesce('"' || t.revision::text || '"','null')  ,
+                os.caption  ,
+                t.attrs
+            )::jsonb as data -- собираю json
         FROM t
         join reclada.object_status os
             on t.status = os.id
+            where 
             -- выбираем объект с максимальным номером ревизии
-            where t.num = 
-            (
-                select max(tt.num)
-                    from t as tt
-                        where tt.obj_id = t.obj_id
-                            and t.status = 1 -- active
+            ( 
+                t.num = 
+                (
+                    select max(tt.num)
+                        from t as tt
+                            where tt.obj_id = t.obj_id
+                )
+                or t.num is null
             )
-            or t.num is null;
+            -- объект не удален
+            -- and t.status = 1 -- active
+            ;
 
 -- select * from reclada.v_object limit 300
 -- select * from reclada.object

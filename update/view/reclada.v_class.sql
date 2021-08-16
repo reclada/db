@@ -11,6 +11,6 @@ AS
             obj.created_time  ,
             obj.attrs         ,
             obj.data
-	FROM reclada.v_object obj
+	FROM reclada.v_active_object obj
    	WHERE class = 'jsonschema';
 --select * from reclada.v_class
