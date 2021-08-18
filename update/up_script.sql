@@ -120,7 +120,6 @@ drop VIEW if EXISTS reclada.v_class;
 \i 'view/reclada.v_active_object.sql'
 \i 'view/reclada.v_class.sql'
 \i 'view/reclada.v_revision.sql'
-\i 'function/reclada_revision.create.sql'
 \i 'function/reclada.datasource_insert_trigger_fnc.sql'
 \i 'function/reclada_object.get_schema.sql'
 \i 'function/reclada.load_staging.sql'
@@ -128,6 +127,7 @@ drop VIEW if EXISTS reclada.v_class;
 \i 'function/reclada_object.delete.sql'
 \i 'function/reclada_object.update.sql'
 \i 'function/reclada_object.list.sql'
+\i 'function/reclada_revision.create.sql'
 
 -- удалим вспомагательные столбцы
 alter table reclada.object
@@ -135,11 +135,41 @@ alter table reclada.object
     drop column data,
     drop column obj_id_int;
 
+--{ indexes
+DROP INDEX IF EXISTS reclada.class_index;
+CREATE INDEX class_index 
+	ON reclada.object(class);
 
+DROP INDEX IF EXISTS reclada.obj_id_index;
+CREATE INDEX obj_id_index 
+	ON reclada.object(obj_id);
+
+DROP INDEX IF EXISTS reclada.revision_index;
+CREATE INDEX revision_index 
+	ON reclada.object(revision);
+
+DROP INDEX IF EXISTS reclada.status_index;
+CREATE INDEX status_index 
+	ON reclada.object(status);
+
+DROP INDEX IF EXISTS reclada.job_status_index;
+CREATE INDEX job_status_index 
+	ON reclada.object((attrs->'status'))
+	WHERE class = 'Job';
+
+DROP INDEX IF EXISTS reclada.runner_status_index;
+CREATE INDEX runner_status_index
+	ON reclada.object((attrs->'status'))
+	WHERE class = 'Runner';
+
+DROP INDEX IF EXISTS reclada.runner_type_index;
+CREATE INDEX runner_type_index 
+	ON reclada.object((attrs->'type'))
+	WHERE class = 'Runner';
+--} indexes
 
 -- test 1
 -- select reclada_revision.create('123', null,'e2bdd471-cf23-46a9-84cf-f9e15db7887d')
--- select reclada_revision.create(NULL, NULL)
 -- SELECT reclada_object.create('
 --   {
 --        "class": "Job",
@@ -152,6 +182,22 @@ alter table reclada.object
 --            "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
 --            }
 --        }'::jsonb);
+--
+-- SELECT reclada_object.update('
+--   {
+--      "id": "f47596e6-3117-419e-ab6d-2174f0ebf471",
+-- 	 	"class": "Job",
+--        "attrs": {
+--            "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
+--            "status": "new",
+--            "type": "K8S",
+--            "command": "./run_pipeline.sh",
+--            "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
+--            }
+--        }'::jsonb);
+
+-- SELECT reclada_object.delete( '{
+--       "id": "6cff152e-8391-4997-8134-8257e2717ac4"}')
 
 
 --select count(1)+1 
@@ -160,8 +206,12 @@ alter table reclada.object
 --
 --SELECT * FROM reclada.v_revision ORDER BY ID DESC -- 77
 --    LIMIT 300
+-- insert into staging
+--	select '{"id": "feb80c85-b0a7-40f8-864a-c874ff919bd1", "attrs": {"name": "Tmtagg tes2t f1ile.xlsx"}, "class": "Document", "fileId": "25ca0de7-e5b5-45f3-a368-788fe7eaecf8"}'
 
--- "reclada_object.list"
+-- select reclada_object.get_schema('Job')
+--update
+-- +"reclada_object.list"
 -- + "reclada_object.update"
 -- + "reclada_object.delete"
 -- + "reclada_object.create"
@@ -169,6 +219,15 @@ alter table reclada.object
 -- + "reclada_object.get_schema"
 -- + "reclada_revision.create"
 
+-- test
+-- + reclada.datasource_insert_trigger_fnc
+-- + reclada.load_staging
+-- + reclada_object.list
+-- + reclada_object.get_schema
+-- + reclada_object.delete
+-- + reclada_object.create
+-- + reclada_object.update
+-- + reclada_revision.create
 
 
 

@@ -1,3 +1,4 @@
 .idea/
 postgres-data/
 minio-data/
+update/connect.bat

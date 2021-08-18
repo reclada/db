@@ -16,16 +16,11 @@ RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $$
 DECLARE
-    class         text;
-    obj_id        uuid;
-    old_obj       jsonb;
-    branch        uuid;
-    revid         uuid;
-
+    v_obj_id        uuid;
 BEGIN
 
-    obj_id := data->>'id';
-    IF (obj_id IS NULL) THEN
+    v_obj_id := data->>'id';
+    IF (v_obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
 
@@ -33,11 +28,14 @@ BEGIN
     with t as (    
         update reclada.object o
             set status = 2 -- archive
-                WHERE o.obj_id = obj_id
-                    RETURNING data
+                WHERE o.obj_id = v_obj_id
+                    and status != 2
+                    RETURNING id
     ) 
-        SELECT data 
+        SELECT o.data
             from t
+            join v_object o
+                on o.id = t.id
             into data;
     
     IF (data IS NULL) THEN
