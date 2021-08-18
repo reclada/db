@@ -171,24 +171,24 @@ $$ LANGUAGE PLPGSQL VOLATILE;
  *   {
  *   "class": "class_name",
  *   "id": "id_1",
- *   "revision": {"operator": "!=", "object": 123},
  *   "isDeleted": false,
  *   "attrs":
  *       {
- *       "name": {"operator": "LIKE", "object": "%test%"}
+ *       "name": {"operator": "LIKE", "object": "%test%"},
+ *       "numericField": {"operator": "!=", "object": 123}
  *       },
- *   "orderBy": [{"field": "revision", "order": "DESC"}],
+ *   "orderBy": [{"field": "attrs, name", "order": "ASC"}],
  *   }::jsonb
  *   2. Input:
  *   {
  *   "class": "class_name",
- *   "revision": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}],
  *   "id": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
  *   "attrs":
  *       {
- *       "tags":{"operator": "@>", "object": ["value1", "value2"]}
+ *       "tags":{"operator": "@>", "object": ["value1", "value2"]},
+ *       "numericField": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}]
  *       },
- *   "orderBy": [{"field": "attrs, name", "order": "ASC"}],
+ *   "orderBy": [{"field": "id", "order": "DESC"}],
  *   "limit": 5,
  *   "offset": 2
  *   }::jsonb
