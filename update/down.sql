@@ -4,6 +4,7 @@
 --{function/public.try_cast_int}
 
 
+select public.raise_exception('Downgrade script not support');
 
 update reclada.object o
     set data =
@@ -17,11 +18,13 @@ update reclada.object o
             || '}'
         )::jsonb ;
     -- from reclada.object o
-​
+
 alter table reclada.object alter column data set not null;
-​
+
 drop view if EXISTS reclada.v_class;
 drop view if EXISTS reclada.v_revision;
+
+drop view if EXISTS reclada.v_active_object;
 drop view if EXISTS reclada.v_object;
 
 alter table reclada.object 

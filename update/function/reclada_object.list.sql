@@ -43,7 +43,7 @@
  *
 */
 
-DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
+DROP FUNCTION IF EXISTS reclada_object.list;
 CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
@@ -85,7 +85,7 @@ BEGIN
         limit_ := 'ALL';
     END IF;
     IF ((limit_ ~ '(\D+)') AND (limit_ != 'ALL')) THEN
-    		RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
+        RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
     END IF;
 
     offset_ := data->>'offset';
@@ -93,7 +93,7 @@ BEGIN
         offset_ := 0;
     END IF;
     IF (offset_ ~ '(\D+)') THEN
-    		RAISE EXCEPTION 'The offset must be an integer number';
+        RAISE EXCEPTION 'The offset must be an integer number';
     END IF;
 
     SELECT
@@ -121,19 +121,20 @@ BEGIN
             WHERE data->'id' IS NOT NULL
             UNION SELECT
                 CASE WHEN data->'revision' IS NULL THEN
-                    E'(data->>\'revision\'):: numeric = (SELECT max((objrev.data -> \'revision\')::numeric)
-                    FROM reclada.object objrev WHERE
-                    objrev.data -> \'id\' = obj.data -> \'id\')'
+                    E'revision_num = (
+                        SELECT max(objrev.revision_num)
+                            FROM reclada.v_object objrev 
+                                WHERE objrev.obj_id = obj.obj_id)'
                 WHEN jsonb_typeof(data->'revision') = 'array' THEN
                     (SELECT string_agg(
                         format(
                             E'(%s)',
-                            reclada_object.get_query_condition(cond, E'data->\'revision\'')
+                            reclada_object.get_query_condition(cond, E'revision_num')
                         ),
                         ' AND '
                     )
                     FROM jsonb_array_elements(data->'revision') AS cond)
-                ELSE reclada_object.get_query_condition(data->'revision', E'data->\'revision\'') END AS condition
+                ELSE reclada_object.get_query_condition(data->'revision', E'revision_num') END AS condition
             UNION SELECT
                 CASE WHEN jsonb_typeof(value) = 'array' THEN
                     (SELECT string_agg(
@@ -154,7 +155,7 @@ BEGIN
    EXECUTE E'SELECT to_jsonb(array_agg(T.data))
    FROM (
         SELECT obj.data
-        FROM reclada.object obj
+        FROM reclada.v_object obj
         WHERE ' || query_conditions ||
         ' ORDER BY ' || order_by ||
         ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'

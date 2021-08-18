@@ -3,20 +3,19 @@ CREATE OR REPLACE FUNCTION reclada_revision.create
 (
     userid varchar, 
     branch uuid, 
-    obj uuid default null
+    obj uuid
 )
 RETURNS uuid AS $$
     INSERT INTO reclada.object
         (
-            obj_id,
             revision,
-            name,
             class,
             attrs
         )
                
         VALUES
         (
+
             null                     ,-- revision,
             'revision'               ,-- class,
             format                    -- attrs

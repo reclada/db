@@ -1,4 +1,5 @@
 begin;
+SET CLIENT_ENCODING TO 'utf8';
 CREATE TEMP TABLE var_table
     (
         ver int,

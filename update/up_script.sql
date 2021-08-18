@@ -1,10 +1,11 @@
 -- version = 1
 /*
-	you can use "\i 'function/reclada_object.get_schema.sql'"
-	to run text script of functions
+    you can use "\i 'function/reclada_object.get_schema.sql'"
+    to run text script of functions
 */
 
-​\i 'function/public.try_cast_int.sql'
+\i 'function/public.try_cast_int.sql'
+
 
 create table reclada.object_status
 (
@@ -22,30 +23,30 @@ DROP EXTENSION IF EXISTS "uuid-ossp";
 CREATE EXTENSION "uuid-ossp" SCHEMA public;
 
 alter table reclada.object
-	add id bigint GENERATED ALWAYS AS IDENTITY primary KEY,
-	add obj_id       uuid   default public.uuid_generate_v4(),
-	add revision     uuid   ,
-	add obj_id_int   int    ,
-	add	revision_int bigint ,
-	add	name         text   ,
-	add	class        text   ,
-	add	status       int    DEFAULT 1,--active
-	add	attrs        jsonb  ,
-	add created_time timestamp with time zone DEFAULT now(),
+    add id bigint GENERATED ALWAYS AS IDENTITY primary KEY,
+    add obj_id       uuid   default public.uuid_generate_v4(),
+    add revision     uuid   ,
+    add obj_id_int   int    ,
+    add revision_int bigint ,
+    add name         text   ,
+    add class        text   ,
+    add status       int    DEFAULT 1,--active
+    add attrs        jsonb  ,
+    add created_time timestamp with time zone DEFAULT now(),
     add created_by   text,
     add CONSTRAINT fk_status
       FOREIGN KEY(status) 
-	  REFERENCES reclada.object_status(id);
-	
+      REFERENCES reclada.object_status(id);
+
 update reclada.object 
-	set obj_id_int = public.try_cast_int(data->>'id'),
-	    class  = data->>'class'                      ,
-	    revision_int  = (data->'revision')::bigint   ,
-	    status  = (data->'isDeleted')::boolean::int+1,
-	    attrs  = data->'attrs';
-​
+    set obj_id_int = public.try_cast_int(data->>'id'),
+        class  = data->>'class'                      ,
+        revision_int  = (data->'revision')::bigint   ,
+        status  = (data->'isDeleted')::boolean::int+1,
+        attrs  = data->'attrs';
+
 update reclada.object 
-	set obj_id = (data->>'id')::uuid
+    set obj_id = (data->>'id')::uuid
         WHERE obj_id_int is null;
 -- проверим, что числовой id только для ревизий
 select public.raise_exception('exist numeric id for other class!!!')
@@ -55,16 +56,15 @@ select public.raise_exception('exist numeric id for other class!!!')
             from reclada.object 
                 where obj_id_int is not null 
                     and class != 'revision'
-    )
+    );
 
---    select public.uuid_generate_v4();
-​-- проставим статус, тем у кого он отсутствует
-update reclada.object 
-	set status = 1
+
+update reclada.object -- проставим статус, тем у кого он отсутствует
+    set status = 1 
         WHERE status is null;
 
 
-​-- генерируем obj_id для объектов ревизий 
+-- генерируем obj_id для объектов ревизий 
 update reclada.object as o
     set obj_id = g.obj_id
     from 
@@ -104,11 +104,6 @@ update reclada.object as o
             HAVING g.obj_id_int is not NULL
     ) g
         where o.revision_int = g.obj_id_int;
--- удалим вспомагательные столбцы
-alter table reclada.object
-    drop column revision_int,
-    drop column obj_id_int;
-
 alter table reclada.object alter column data drop not null;
 
 alter table reclada.object 
@@ -121,17 +116,24 @@ alter table reclada.object
 
 drop VIEW if EXISTS reclada.v_class;
 
-​\i 'view/reclada.v_object.sql'
-​\i 'view/reclada.v_active_object.sql'
-​\i 'view/reclada.v_class.sql'
-​\i 'view/reclada.v_revision.sql'
-​\i 'function/reclada_revision.create.sql'
-​\i 'function/reclada.datasource_insert_trigger_fnc.sql'
-​\i 'function/reclada_object.get_schema.sql'
-​\i 'function/reclada.load_staging.sql'
-​\i 'function/reclada_object.create.sql'
-​\i 'function/reclada_object.delete.sql'
+\i 'view/reclada.v_object.sql'
+\i 'view/reclada.v_active_object.sql'
+\i 'view/reclada.v_class.sql'
+\i 'view/reclada.v_revision.sql'
+\i 'function/reclada_revision.create.sql'
+\i 'function/reclada.datasource_insert_trigger_fnc.sql'
+\i 'function/reclada_object.get_schema.sql'
+\i 'function/reclada.load_staging.sql'
+\i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.delete.sql'
+\i 'function/reclada_object.update.sql'
+\i 'function/reclada_object.list.sql'
 
+-- удалим вспомагательные столбцы
+alter table reclada.object
+    drop column revision_int,
+    drop column data,
+    drop column obj_id_int;
 
 
 
@@ -152,15 +154,15 @@ drop VIEW if EXISTS reclada.v_class;
 --        }'::jsonb);
 
 
-select count(1)+1 
-                        from reclada.object o
-                            where o.obj_id = 'e2bdd471-cf23-46a9-84cf-f9e15db7887d'
-
-SELECT * FROM reclada.v_revision ORDER BY ID DESC -- 77
-    LIMIT 300
+--select count(1)+1 
+--                        from reclada.object o
+--                            where o.obj_id = 'e2bdd471-cf23-46a9-84cf-f9e15db7887d'
+--
+--SELECT * FROM reclada.v_revision ORDER BY ID DESC -- 77
+--    LIMIT 300
 
 -- "reclada_object.list"
--- "reclada_object.update"
+-- + "reclada_object.update"
 -- + "reclada_object.delete"
 -- + "reclada_object.create"
 -- + "reclada.load_staging"

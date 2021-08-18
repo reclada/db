@@ -1,6 +1,11 @@
 drop VIEW if EXISTS reclada.v_object;
 CREATE OR REPLACE VIEW reclada.v_object
 AS
+/*
+    возвращает по все записи из таблицы 
+        + добавляет номер ревизии 
+        + собирает json
+*/
 with t as (
     SELECT  
             obj.id      ,
@@ -49,19 +54,6 @@ with t as (
         FROM t
         join reclada.object_status os
             on t.status = os.id
-            where 
-            -- выбираем объект с максимальным номером ревизии
-            ( 
-                t.num = 
-                (
-                    select max(tt.num)
-                        from t as tt
-                            where tt.obj_id = t.obj_id
-                )
-                or t.num is null
-            )
-            -- объект не удален
-            -- and t.status = 1 -- active
             ;
 
 -- select * from reclada.v_object limit 300

@@ -20,7 +20,6 @@ CREATE OR REPLACE FUNCTION reclada_object.create
 RETURNS jsonb AS $$
 DECLARE
     branch     uuid;
-    revid      uuid;
     data       jsonb;
     class      text;
     attrs      jsonb;
@@ -34,12 +33,6 @@ BEGIN
     END IF;
     /*TODO: check if some objects have revision and others do not */
     branch:= data_jsonb->0->'branch';
-
-    IF (data_jsonb->0->'revision' IS NULL) THEN
-        SELECT reclada_revision.create(user_info->>'sub', branch) 
-            INTO revid;
-    END IF;
-
     create temp table tmp(id uuid);
 
     FOR data IN SELECT jsonb_array_elements(data_jsonb) 
@@ -68,8 +61,8 @@ BEGIN
 
         with inserted as 
         (
-            INSERT INTO reclada.object(revision,class,attrs)
-                select revid, class, attrs
+            INSERT INTO reclada.object(class,attrs)
+                select class, attrs
                     RETURNING obj_id
         ) 
         insert into tmp(id)

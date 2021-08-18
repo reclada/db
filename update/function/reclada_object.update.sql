@@ -10,7 +10,7 @@
  *
 */
 
-DROP FUNCTION IF EXISTS reclada_object.update(jsonb, jsonb);
+DROP FUNCTION IF EXISTS reclada_object.update;
 CREATE OR REPLACE FUNCTION reclada_object.update
 (
     data jsonb, 
@@ -26,7 +26,7 @@ DECLARE
     schema        jsonb;
     old_obj       jsonb;
     branch        uuid;
-    revid         integer;
+    revid         uuid;
 
 BEGIN
 
@@ -58,7 +58,7 @@ BEGIN
 
     SELECT 	v.data
         FROM reclada.v_active_object v
-	        WHERE v.id = obj_id
+	        WHERE v.obj_id = obj_id
 	    INTO old_obj;
 
     IF (old_obj IS NULL) THEN
@@ -69,16 +69,31 @@ BEGIN
     SELECT reclada_revision.create(user_info->>'sub', branch, obj_id) 
         INTO revid;
     
-    INSERT INTO reclada.object(status;
+    update reclada.object o
+        set status = 2 -- archive
+            where o.obj_id = obj_id
+                and status != 2;
 
-    data := data || format(
-        '{"revision": %s, "isDeleted": false}',
-        revid
-        )::jsonb; --TODO replace isDeleted with status attr
-    --TODO compare old and data to avoid unnecessery inserts
+    INSERT INTO reclada.object( obj_id,
+                                revision,
+                                class,
+                                status,
+                                attrs
+                              )
+        select  v.obj_id,
+                revid,
+                class,
+                1,--status active
+                attrs
+            FROM reclada.v_active_object v
+	            WHERE v.obj_id = obj_id
+                LIMIT 1;
 
+    select v.data 
+        FROM reclada.v_active_object v
+            WHERE v.obj_id = obj_id
+        into data;
     PERFORM reclada_notification.send_object_notification('update', data);
     RETURN data;
-
 END;
 $body$;

@@ -24,23 +24,21 @@ DECLARE
 
 BEGIN
 
-    class := data->>'class';
-    IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class is not specified';
-    END IF;
-
     obj_id := data->>'id';
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
 
-    update reclada.object o
-        set status = 2 -- archive
-	        WHERE o.obj_id = obj_id;
-
-    select data from v_object o 
-        WHERE o.obj_id = obj_id
-        into data;
+    
+    with t as (    
+        update reclada.object o
+            set status = 2 -- archive
+                WHERE o.obj_id = obj_id
+                    RETURNING data
+    ) 
+        SELECT data 
+            from t
+            into data;
     
     IF (data IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object, no such id';
