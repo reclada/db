@@ -45,17 +45,17 @@
  *
 */
 
-DROP FUNCTION IF EXISTS api.reclada_object_list(jsonb);
+DROP FUNCTION IF EXISTS api.reclada_object_list;
 CREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class               jsonb;
+    class               text;
     user_info           jsonb;
     result              jsonb;
 
 BEGIN
 
-    class := data->'class';
+    class := data->>'class';
     IF(class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;

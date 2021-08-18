@@ -11,10 +11,11 @@
  *  branch - object's branch
  */
 
-CREATE OR REPLACE FUNCTION api.reclada_object_create(data_jsonb jsonb)
+DROP FUNCTION IF EXISTS api.reclada_object_create;
+CREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    data             jsonb;
+    data_jsonb       jsonb;
     class            jsonb;
     user_info        jsonb;
     attrs            jsonb;
@@ -23,30 +24,30 @@ DECLARE
 
 BEGIN
 
-    IF (jsonb_typeof(data_jsonb) != 'array') THEN
-        data_jsonb := '[]'::jsonb || data_jsonb;
+    IF (jsonb_typeof(data) != 'array') THEN
+        data := '[]'::jsonb || data;
     END IF;
 
-    FOR data IN SELECT jsonb_array_elements(data_jsonb) LOOP
+    FOR data_jsonb IN SELECT jsonb_array_elements(data) LOOP
 
-        class := data->'class';
+        class := data_jsonb->'class';
         IF (class IS NULL) THEN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;
 
-        SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
-        data := data - 'accessToken';
+        SELECT reclada_user.auth_by_token(data_jsonb->>'accessToken') INTO user_info;
+        data_jsonb := data_jsonb - 'accessToken';
 
         IF (NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN
             RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
         END IF;
 
-        attrs := data->'attrs';
+        attrs := data_jsonb->'attrs';
         IF (attrs IS NULL) THEN
             RAISE EXCEPTION 'The reclada object must have attrs';
         END IF;
 
-        data_to_create := data_to_create || data;
+        data_to_create := data_to_create || data_jsonb;
     END LOOP;
 
     SELECT reclada_object.create(data_to_create, user_info) INTO result;

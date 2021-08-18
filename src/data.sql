@@ -64,7 +64,8 @@ SELECT reclada_object.create_subclass('{
         "newClass": "File",
         "properties": {
             "checksum": {"type": "string"},
-            "mimeType": {"type": "string"}
+            "mimeType": {"type": "string"},
+            "uri": {"type": "string"}
         },
         "required": ["checksum", "mimeType"]
     }
