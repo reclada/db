@@ -129,6 +129,7 @@ alter table reclada.object
     add class        text   ,
     add status       int    DEFAULT 1,--active
     add attrs        jsonb  ,
+    add tran_id      bigint ,
     add created_time timestamp with time zone DEFAULT now(),
     add created_by   text,
     add CONSTRAINT fk_status
@@ -154,7 +155,6 @@ select public.raise_exception('exist numeric id for other class!!!')
                 where obj_id_int is not null 
                     and class != 'revision'
     );
-
 
 update reclada.object -- проставим статус, тем у кого он отсутствует
     set status = 1 
