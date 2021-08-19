@@ -155,28 +155,40 @@ $$ LANGUAGE PLPGSQL VOLATILE;
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
  * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
+ * Function supports:
+ * 1. Comparison Operators
+ * elem1   >, <, <=, >=, =, !=   elem2
+ * elem1 < x < elem2 -- like two conditions
+ * 2. Pattern Matching
+ * str1   LIKE / NOT LIKE   str2
+ * str   SIMILAR TO   exp
+ * str   ~ ~* !~ !~*   exp
+ * 3. Array Operators
+ * elem   <@   list
+ * list1   =, !=, <, >, <=, >=, @>, <@  list2
  * Examples:
  *   1. Input:
  *   {
  *   "class": "class_name",
  *   "id": "id_1",
- *   "revision": {"operator": "!=", "object": 123},
  *   "isDeleted": false,
  *   "attrs":
  *       {
- *       "name": {"operator": "LIKE", "object": "%test%"}
- *       }
+ *       "name": {"operator": "LIKE", "object": "%test%"},
+ *       "numericField": {"operator": "!=", "object": 123}
+ *       },
+ *   "orderBy": [{"field": "attrs, name", "order": "ASC"}],
  *   }::jsonb
  *   2. Input:
  *   {
  *   "class": "class_name",
- *   "revision": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}],
- *   "id": {"operator": "inList", "object": ["id_1", "id_2", "id_3"]},
+ *   "id": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
  *   "attrs":
  *       {
  *       "tags":{"operator": "@>", "object": ["value1", "value2"]},
+ *       "numericField": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}]
  *       },
- *   "orderBy": [{"field": "revision", "order": "DESC"}],
+ *   "orderBy": [{"field": "id", "order": "DESC"}],
  *   "limit": 5,
  *   "offset": 2
  *   }::jsonb
@@ -215,7 +227,7 @@ BEGIN
     		order_by_jsonb := format('[%s]', order_by_jsonb);
     END IF;
     SELECT string_agg(
-        format(E'obj.data->\'%s\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
+        format(E'obj.data#>\'{%s}\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
         ' , ')
     FROM jsonb_array_elements(order_by_jsonb) T
     INTO order_by;
@@ -465,6 +477,7 @@ DECLARE
     obj_id         uuid;
     obj            jsonb;
     values_to_add  jsonb;
+    field          text;
     field_value    jsonb;
     json_path      text[];
     new_obj        jsonb;
@@ -500,11 +513,11 @@ BEGIN
         values_to_add := format('[%s]', values_to_add)::jsonb;
     END IF;
 
-    field_value := data->'field';
-    IF (field_value IS NULL) THEN
+    field := data->>'field';
+    IF (field IS NULL) THEN
         RAISE EXCEPTION 'There is no field';
     END IF;
-    json_path := format('{attrs, %s}', field_value);
+    json_path := format('{attrs, %s}', field);
     field_value := obj#>json_path;
 
     IF ((field_value = 'null'::jsonb) OR (field_value IS NULL)) THEN
@@ -542,6 +555,7 @@ DECLARE
     obj_id          uuid;
     obj             jsonb;
     values_to_drop  jsonb;
+    field           text;
     field_value     jsonb;
     json_path       text[];
     new_value       jsonb;
@@ -578,13 +592,13 @@ BEGIN
 		values_to_drop := format('[%s]', values_to_drop)::jsonb;
 	END IF;
 
-	field_value := data->'field';
-	IF (field_value IS NULL OR field_value = 'null'::jsonb) THEN
+	field := data->>'field';
+	IF (field IS NULL) THEN
 		RAISE EXCEPTION 'There is no field';
 	END IF;
-	json_path := format('{attrs, %s}', field_value);
+	json_path := format('{attrs, %s}', field);
 	field_value := obj#>json_path;
-	IF (field_value IS NULL) THEN
+	IF (field_value IS NULL OR field_value = 'null'::jsonb) THEN
 		RAISE EXCEPTION 'The object does not have this field';
 	END IF;
 
@@ -612,7 +626,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
  * Required parameters:
  *  class - the class of the object
  *  id - identifier of the object
- *  field - the name of the field containing the related object references
+ *  field - the name of the field containing the related object references (for multiple attributes separate fields by comma)
  *  relatedClass - the class of the related objects
  * Optional parameters:
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
@@ -629,14 +643,14 @@ RETURNS jsonb AS $$
 DECLARE
     class          text;
     obj_id         uuid;
-    field          jsonb;
+    field          text;
     related_class  text;
     obj            jsonb;
     list_of_ids    jsonb;
     cond           jsonb = '{}'::jsonb;
     order_by       jsonb;
-    limit_         jsonb;
-    offset_        jsonb;
+    limit_         text;
+    offset_        text;
     res            jsonb;
 
 BEGIN
@@ -650,7 +664,7 @@ BEGIN
         RAISE EXCEPTION 'The object id is not specified';
     END IF;
 
-    field := data->'field';
+    field := data->>'field';
     IF (field IS NULL) THEN
         RAISE EXCEPTION 'The object field is not specified';
     END IF;
@@ -679,14 +693,14 @@ BEGIN
         cond := cond || (format('{"orderBy": %s}', order_by)::jsonb);
     END IF;
 
-    limit_ := data->'limit';
+    limit_ := data->>'limit';
     IF (limit_ IS NOT NULL) THEN
-        cond := cond || (format('{"limit": %s}', limit_)::jsonb);
+        cond := cond || (format('{"limit": "%s"}', limit_)::jsonb);
     END IF;
 
-    offset_ := data->'offset';
+    offset_ := data->>'offset';
     IF (offset_ IS NOT NULL) THEN
-        cond := cond || (format('{"offset": %s}', offset_)::jsonb);
+        cond := cond || (format('{"offset": "%s"}', offset_)::jsonb);
     END IF;
 
     SELECT reclada_object.list(format(
