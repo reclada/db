@@ -32,7 +32,7 @@ alter table reclada.object
     add class        text   ,
     add status       int    DEFAULT 1,--active
     add attrs        jsonb  ,
-    add tran_id      bigint ,
+    add transaction_id bigint ,
     add created_time timestamp with time zone DEFAULT now(),
     add created_by   text,
     add CONSTRAINT fk_status
