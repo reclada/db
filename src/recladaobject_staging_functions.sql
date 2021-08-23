@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION reclada.load_staging() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION load_staging() RETURNS TRIGGER AS $$
 DECLARE
     revision    jsonb;
 BEGIN

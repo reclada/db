@@ -4,7 +4,7 @@
  * Required parameters:
  *  class - the class of the object
  *  id - identifier of the object
- *  field - the name of the field containing the related object references
+ *  field - the name of the field containing the related object references (for multiple attributes separate fields by comma)
  *  relatedClass - the class of the related objects
  * Optional parameters:
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
@@ -21,14 +21,14 @@ RETURNS jsonb AS $$
 DECLARE
     class          text;
     obj_id         uuid;
-    field          jsonb;
+    field          text;
     related_class  text;
     obj            jsonb;
     list_of_ids    jsonb;
     cond           jsonb = '{}'::jsonb;
     order_by       jsonb;
-    limit_         jsonb;
-    offset_        jsonb;
+    limit_         text;
+    offset_        text;
     res            jsonb;
 
 BEGIN
@@ -42,7 +42,7 @@ BEGIN
         RAISE EXCEPTION 'The object id is not specified';
     END IF;
 
-    field := data->'field';
+    field := data->>'field';
     IF (field IS NULL) THEN
         RAISE EXCEPTION 'The object field is not specified';
     END IF;
@@ -52,7 +52,7 @@ BEGIN
         RAISE EXCEPTION 'The related class is not specified';
     END IF;
 
-	SELECT 	v.data
+	SELECT v.data
 	FROM reclada.v_active_object v
 	WHERE v.id = (obj_id::text)
 	INTO obj;
@@ -71,14 +71,14 @@ BEGIN
         cond := cond || (format('{"orderBy": %s}', order_by)::jsonb);
     END IF;
 
-    limit_ := data->'limit';
+    limit_ := data->>'limit';
     IF (limit_ IS NOT NULL) THEN
-        cond := cond || (format('{"limit": %s}', limit_)::jsonb);
+        cond := cond || (format('{"limit": "%s"}', limit_)::jsonb);
     END IF;
 
-    offset_ := data->'offset';
+    offset_ := data->>'offset';
     IF (offset_ IS NOT NULL) THEN
-        cond := cond || (format('{"offset": %s}', offset_)::jsonb);
+        cond := cond || (format('{"offset": "%s"}', offset_)::jsonb);
     END IF;
 
     SELECT reclada_object.list(format(
@@ -91,4 +91,5 @@ BEGIN
     RETURN res;
 
 END;
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL STABLE;
+
