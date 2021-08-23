@@ -27,7 +27,7 @@ BEGIN
 
         PERFORM reclada_object.update(dataset);
 
-        uri := NEW.data->'attrs'->>'uri';
+        uri := NEW.attrs->>'uri';
 
         PERFORM reclada_object.create(
             format('{
