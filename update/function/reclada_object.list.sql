@@ -1,4 +1,3 @@
-
 /*
  * Function reclada_object.list returns the list of objects with specified fields.
  * A jsonb object with the following parameters is required.
@@ -15,35 +14,47 @@
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
  * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
+ * Function supports:
+ * 1. Comparison Operators
+ * elem1   >, <, <=, >=, =, !=   elem2
+ * elem1 < x < elem2 -- like two conditions
+ * 2. Pattern Matching
+ * str1   LIKE / NOT LIKE   str2
+ * str   SIMILAR TO   exp
+ * str   ~ ~* !~ !~*   exp
+ * 3. Array Operators
+ * elem   <@   list
+ * list1   =, !=, <, >, <=, >=, @>, <@  list2
  * Examples:
  *   1. Input:
  *   {
  *   "class": "class_name",
  *   "id": "id_1",
- *   "revision": {"operator": "!=", "object": 123},
  *   "isDeleted": false,
  *   "attrs":
  *       {
- *       "name": {"operator": "LIKE", "object": "%test%"}
- *       }
+ *       "name": {"operator": "LIKE", "object": "%test%"},
+ *       "numericField": {"operator": "!=", "object": 123}
+ *       },
+ *   "orderBy": [{"field": "attrs, name", "order": "ASC"}],
  *   }::jsonb
  *   2. Input:
  *   {
  *   "class": "class_name",
- *   "revision": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}],
- *   "id": {"operator": "inList", "object": ["id_1", "id_2", "id_3"]},
+ *   "id": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
  *   "attrs":
  *       {
  *       "tags":{"operator": "@>", "object": ["value1", "value2"]},
+ *       "numericField": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}]
  *       },
- *   "orderBy": [{"field": "revision", "order": "DESC"}],
+ *   "orderBy": [{"field": "id", "order": "DESC"}],
  *   "limit": 5,
  *   "offset": 2
  *   }::jsonb
  *
 */
 
-DROP FUNCTION IF EXISTS reclada_object.list;
+DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
 CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
@@ -75,7 +86,7 @@ BEGIN
     		order_by_jsonb := format('[%s]', order_by_jsonb);
     END IF;
     SELECT string_agg(
-        format(E'obj.data->\'%s\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
+        format(E'obj.data#>\'{%s}\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
         ' , ')
     FROM jsonb_array_elements(order_by_jsonb) T
     INTO order_by;
@@ -85,7 +96,7 @@ BEGIN
         limit_ := 'ALL';
     END IF;
     IF ((limit_ ~ '(\D+)') AND (limit_ != 'ALL')) THEN
-        RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
+    		RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
     END IF;
 
     offset_ := data->>'offset';
@@ -93,7 +104,7 @@ BEGIN
         offset_ := 0;
     END IF;
     IF (offset_ ~ '(\D+)') THEN
-        RAISE EXCEPTION 'The offset must be an integer number';
+    		RAISE EXCEPTION 'The offset must be an integer number';
     END IF;
 
     SELECT
@@ -119,22 +130,21 @@ BEGIN
                     FROM jsonb_array_elements(data->'id') AS cond)
                 ELSE reclada_object.get_query_condition(data->'id', E'data->\'id\'') END AS condition
             WHERE data->'id' IS NOT NULL
-            UNION SELECT
-                CASE WHEN data->'revision' IS NULL THEN
-                    E'revision_num = (
-                        SELECT max(objrev.revision_num)
-                            FROM reclada.v_object objrev 
-                                WHERE objrev.obj_id = obj.obj_id)'
-                WHEN jsonb_typeof(data->'revision') = 'array' THEN
-                    (SELECT string_agg(
-                        format(
-                            E'(%s)',
-                            reclada_object.get_query_condition(cond, E'revision_num')
-                        ),
-                        ' AND '
-                    )
-                    FROM jsonb_array_elements(data->'revision') AS cond)
-                ELSE reclada_object.get_query_condition(data->'revision', E'revision_num') END AS condition
+            -- UNION SELECT
+            --     CASE WHEN data->'revision' IS NULL THEN
+            --         E'(data->>\'revision\'):: numeric = (SELECT max((objrev.data -> \'revision\')::numeric)
+            --         FROM reclada.v_object objrev WHERE
+            --         objrev.data -> \'id\' = obj.data -> \'id\')'
+            --     WHEN jsonb_typeof(data->'revision') = 'array' THEN
+            --         (SELECT string_agg(
+            --             format(
+            --                 E'(%s)',
+            --                 reclada_object.get_query_condition(cond, E'data->\'revision\'')
+            --             ),
+            --             ' AND '
+            --         )
+            --         FROM jsonb_array_elements(data->'revision') AS cond)
+            --     ELSE reclada_object.get_query_condition(data->'revision', E'data->\'revision\'') END AS condition
             UNION SELECT
                 CASE WHEN jsonb_typeof(value) = 'array' THEN
                     (SELECT string_agg(
