@@ -134,9 +134,11 @@ BEGIN
                                 )
                                 FROM jsonb_array_elements(data->'id') AS cond
                         )
-                        ELSE reclada_object.get_query_condition(data->'id', E'data->\'id\'') END AS condition
+                        ELSE reclada_object.get_query_condition(data->'id', E'data->''id''') 
                     END AS condition
                 WHERE coalesce(data->'id','null'::jsonb) != 'null'::jsonb
+            UNION 
+            SELECT 'obj.data->>''status''=''active'''-- TODO: change working with tevision
             -- UNION SELECT
             --     CASE WHEN data->'revision' IS NULL THEN
             --         E'(data->>''revision''):: numeric = (SELECT max((objrev.data -> ''revision'')::numeric)
@@ -176,7 +178,12 @@ BEGIN
         ) conds
     INTO query_conditions;
 
-   /* RAISE NOTICE 'conds: %', query_conditions; */
+    -- RAISE NOTICE 'conds: %', '
+    --             SELECT obj.data
+    --             FROM reclada.v_object obj
+    --             WHERE ' || query_conditions ||
+    --             ' ORDER BY ' || order_by ||
+    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ; 
    EXECUTE E'SELECT to_jsonb(array_agg(T.data))
    FROM (
         SELECT obj.data
