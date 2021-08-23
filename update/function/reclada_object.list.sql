@@ -68,7 +68,7 @@ DECLARE
     offset_             text;
 
 BEGIN
-    
+
     class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
@@ -116,22 +116,29 @@ BEGIN
             ' AND '
         )
         FROM (
-            SELECT
-                reclada_object.get_query_condition(class, E'data->''class''') AS condition
-            UNION SELECT
-                CASE WHEN jsonb_typeof(data->'id') = 'array' THEN
-                    (SELECT string_agg(
-                        format(
-                            E'(%s)',
-                            reclada_object.get_query_condition(cond, E'data->''id''')
-                        ),
-                        ' AND '
-                    )
-                    FROM jsonb_array_elements(data->'id') AS cond)
-                ELSE reclada_object.get_query_condition(data->'id', E'data->''id''') END AS condition
-            WHERE data->'id' IS NOT NULL
+            SELECT 
+                -- ((('"'||class||'"')::jsonb#>>'{}')::text = 'Job')
+                --reclada_object.get_query_condition(class, E'data->''class''') AS condition
+                'class = data->>''class''' AS condition
             UNION 
-            SELECT 'obj.data->>''status''=''active'''-- пока так, позже надо переделать
+            SELECT  CASE 
+                        WHEN jsonb_typeof(data->'id') = 'array' THEN
+                        (
+                            SELECT string_agg
+                                (
+                                    format(
+                                        E'(%s)',
+                                        reclada_object.get_query_condition(cond, E'data->''id''')
+                                    ),
+                                    ' AND '
+                                )
+                                FROM jsonb_array_elements(data->'id') AS cond
+                        )
+                        ELSE reclada_object.get_query_condition(data->'id', E'data->''id''') 
+                    END AS condition
+                WHERE coalesce(data->'id','null'::jsonb) != 'null'::jsonb
+            UNION 
+            SELECT 'obj.data->>''status''=''active'''-- TODO: change working with tevision
             -- UNION SELECT
             --     CASE WHEN data->'revision' IS NULL THEN
             --         E'(data->>''revision''):: numeric = (SELECT max((objrev.data -> ''revision'')::numeric)
@@ -147,18 +154,26 @@ BEGIN
             --         )
             --         FROM jsonb_array_elements(data->'revision') AS cond)
             --     ELSE reclada_object.get_query_condition(data->'revision', E'data->''revision''') END AS condition
-            UNION SELECT
-                CASE WHEN jsonb_typeof(value) = 'array' THEN
-                    (SELECT string_agg(
-                        format(
-                            E'(%s)',
-                            reclada_object.get_query_condition(cond, format(E'data->''attrs''->%L', key))
-                        ),
-                        ' AND '
-                    )
-                    FROM jsonb_array_elements(value) AS cond)
-                ELSE reclada_object.get_query_condition(value, format(E'data->''attrs''->%L', key)) END AS condition
-           FROM jsonb_each(attrs)
+            UNION 
+            SELECT
+                CASE 
+                    WHEN jsonb_typeof(value) = 'array' 
+                        THEN
+                            (
+                                SELECT string_agg
+                                    (
+                                        format
+                                        (
+                                            E'(%s)',
+                                            reclada_object.get_query_condition(cond, format(E'data->''attrs''->%L', key))
+                                        ),
+                                        ' AND '
+                                    )
+                                    FROM jsonb_array_elements(value) AS cond
+                            )
+                    ELSE reclada_object.get_query_condition(value, format(E'data->''attrs''->%L', key)) 
+                END AS condition
+                FROM jsonb_each(attrs)
            WHERE data->'attrs' != ('{}'::jsonb)
         ) conds
     INTO query_conditions;

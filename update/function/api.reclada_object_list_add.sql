@@ -1,10 +1,12 @@
+
+
 /*
  * Function api.reclada_object_list_add checks valid data and uses reclada_object.list_add to add one element or several elements to the object.
  * A jsonb object with the following parameters is required.
  * Required parameters:
  *  class - the class of the object
  *  id - id of the object
- *  field - the name of the field to add the value to
+ *  field - the name of the field to add the value to (for multiple attributes separate fields by comma)
  *  value - one scalar value or array of values
  *  accessToken - jwt token to authorize
  *
@@ -55,3 +57,4 @@ BEGIN
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
+

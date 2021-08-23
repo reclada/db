@@ -1,5 +1,5 @@
 /*
- * Function api.reclada_object_list_related checks valid data and uses reclada_object.list_related to return the list of objects from the field of the specified object.
+ * Function api.reclada_object_list_related checks valid data and uses reclada_object.list_related to return the list of objects from the field of the specified object and the number of these objects.
  * A jsonb object with the following parameters is required.
  * Required parameters:
  *  class - the class of the object
@@ -25,6 +25,7 @@ DECLARE
     field          jsonb;
     related_class  jsonb;
     user_info      jsonb;
+    objects        jsonb;
     result         jsonb;
 
 BEGIN
@@ -55,7 +56,11 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list_related', class;
     END IF;
 
-    SELECT reclada_object.list_related(data) INTO result;
+    SELECT reclada_object.list_related(data) INTO objects;
+
+    result := jsonb_build_object(
+        'number', jsonb_array_length(objects),
+        'objects', objects);
     RETURN result;
 
 END;

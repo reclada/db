@@ -1,4 +1,3 @@
-
 /*
  * Function reclada_object.list_add adds one element or several elements to the object.
  * A jsonb object with the following parameters is required.
@@ -18,6 +17,7 @@ DECLARE
     obj_id         uuid;
     obj            jsonb;
     values_to_add  jsonb;
+    field          text;
     field_value    jsonb;
     json_path      text[];
     new_obj        jsonb;
@@ -35,7 +35,7 @@ BEGIN
         RAISE EXCEPTION 'There is no id';
     END IF;
 
-    SELECT  v.data
+    SELECT v.data
 	FROM reclada.v_active_object v
 	WHERE v.id = (obj_id::text)
 	INTO obj;
@@ -53,11 +53,11 @@ BEGIN
         values_to_add := format('[%s]', values_to_add)::jsonb;
     END IF;
 
-    field_value := data->'field';
-    IF (field_value IS NULL) THEN
+    field := data->>'field';
+    IF (field IS NULL) THEN
         RAISE EXCEPTION 'There is no field';
     END IF;
-    json_path := format('{attrs, %s}', field_value);
+    json_path := format('{attrs, %s}', field);
     field_value := obj#>json_path;
 
     IF ((field_value = 'null'::jsonb) OR (field_value IS NULL)) THEN
