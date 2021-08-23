@@ -68,7 +68,7 @@ DECLARE
     offset_             text;
 
 BEGIN
-
+    
     class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
@@ -86,7 +86,7 @@ BEGIN
     		order_by_jsonb := format('[%s]', order_by_jsonb);
     END IF;
     SELECT string_agg(
-        format(E'obj.data#>\'{%s}\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
+        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
         ' , ')
     FROM jsonb_array_elements(order_by_jsonb) T
     INTO order_by;
@@ -117,51 +117,58 @@ BEGIN
         )
         FROM (
             SELECT
-                reclada_object.get_query_condition(class, E'data->\'class\'') AS condition
+                reclada_object.get_query_condition(class, E'data->''class''') AS condition
             UNION SELECT
                 CASE WHEN jsonb_typeof(data->'id') = 'array' THEN
                     (SELECT string_agg(
                         format(
                             E'(%s)',
-                            reclada_object.get_query_condition(cond, E'data->\'id\'')
+                            reclada_object.get_query_condition(cond, E'data->''id''')
                         ),
                         ' AND '
                     )
                     FROM jsonb_array_elements(data->'id') AS cond)
-                ELSE reclada_object.get_query_condition(data->'id', E'data->\'id\'') END AS condition
+                ELSE reclada_object.get_query_condition(data->'id', E'data->''id''') END AS condition
             WHERE data->'id' IS NOT NULL
+            UNION 
+            SELECT 'obj.data->>''status''=''active'''-- пока так, позже надо переделать
             -- UNION SELECT
             --     CASE WHEN data->'revision' IS NULL THEN
-            --         E'(data->>\'revision\'):: numeric = (SELECT max((objrev.data -> \'revision\')::numeric)
+            --         E'(data->>''revision''):: numeric = (SELECT max((objrev.data -> ''revision'')::numeric)
             --         FROM reclada.v_object objrev WHERE
-            --         objrev.data -> \'id\' = obj.data -> \'id\')'
+            --         objrev.data -> ''id'' = obj.data -> ''id'')'
             --     WHEN jsonb_typeof(data->'revision') = 'array' THEN
             --         (SELECT string_agg(
             --             format(
             --                 E'(%s)',
-            --                 reclada_object.get_query_condition(cond, E'data->\'revision\'')
+            --                 reclada_object.get_query_condition(cond, E'data->''revision''')
             --             ),
             --             ' AND '
             --         )
             --         FROM jsonb_array_elements(data->'revision') AS cond)
-            --     ELSE reclada_object.get_query_condition(data->'revision', E'data->\'revision\'') END AS condition
+            --     ELSE reclada_object.get_query_condition(data->'revision', E'data->''revision''') END AS condition
             UNION SELECT
                 CASE WHEN jsonb_typeof(value) = 'array' THEN
                     (SELECT string_agg(
                         format(
                             E'(%s)',
-                            reclada_object.get_query_condition(cond, format(E'data->\'attrs\'->%L', key))
+                            reclada_object.get_query_condition(cond, format(E'data->''attrs''->%L', key))
                         ),
                         ' AND '
                     )
                     FROM jsonb_array_elements(value) AS cond)
-                ELSE reclada_object.get_query_condition(value, format(E'data->\'attrs\'->%L', key)) END AS condition
+                ELSE reclada_object.get_query_condition(value, format(E'data->''attrs''->%L', key)) END AS condition
            FROM jsonb_each(attrs)
            WHERE data->'attrs' != ('{}'::jsonb)
         ) conds
     INTO query_conditions;
 
-   /* RAISE NOTICE 'conds: %', query_conditions; */
+    -- RAISE NOTICE 'conds: %', '
+    --             SELECT obj.data
+    --             FROM reclada.v_object obj
+    --             WHERE ' || query_conditions ||
+    --             ' ORDER BY ' || order_by ||
+    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ; 
    EXECUTE E'SELECT to_jsonb(array_agg(T.data))
    FROM (
         SELECT obj.data
