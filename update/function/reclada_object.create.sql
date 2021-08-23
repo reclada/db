@@ -33,8 +33,9 @@ BEGIN
     END IF;
     /*TODO: check if some objects have revision and others do not */
     branch:= data_jsonb->0->'branch';
-    create temp table tmp(id uuid);
-
+    create temp table IF NOT EXISTS tmp(id uuid)
+    ON COMMIT drop;
+    delete from tmp;
     FOR data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
 
@@ -86,7 +87,6 @@ BEGIN
             'create',
             res
         );
-    drop table tmp;
     RETURN res;
 
 END;
