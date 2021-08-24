@@ -1,4 +1,4 @@
-DROP FUNCTION IF EXISTS api.storage_generate_presigned_get(jsonb);
+DROP FUNCTION IF EXISTS api.storage_generate_presigned_get;
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_get(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
@@ -24,7 +24,14 @@ BEGIN
         object_id
     )::jsonb) -> 0 INTO object_data;
 
-    SELECT reclada_storage.s3_generate_presigned_get(credentials, object_data) INTO result;
+    SELECT payload
+    FROM aws_lambda.invoke(
+        aws_commons.create_lambda_function_arn(
+            's3_get_presigned_url_dev1',
+            'eu-west-1'
+            ),
+        format('{"uri": "%s", "expiration": 3600}', object_data->'attrs'->> 'uri')::jsonb)
+    INTO result;
     RETURN result;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
