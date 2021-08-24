@@ -7,7 +7,8 @@ with t as (
             obj.obj_id  ,
             obj.class   ,
             r.num       ,
-            obj.revision,
+            NULLIF(obj.attributes ->> 'revision','')::uuid 
+                as revision,
             obj.attributes as attrs,
             obj.status  ,
             obj.created_time ,
@@ -20,7 +21,7 @@ with t as (
                 from reclada.object r
                     where class = 'revision'
         ) r
-            on r.obj_id = obj.revision
+            on r.obj_id = NULLIF(obj.attributes ->> 'revision','')::uuid
 )
     SELECT  
             t.id                 ,
@@ -56,7 +57,7 @@ with t as (
             on u.obj_id = t.created_by
             ;
 
--- select distinct status from reclada.v_object 
+-- select * from reclada.v_object where revision is not null
 -- select distinct status from reclada.object 
 -- select obj_id from reclada.v_object_status 
 

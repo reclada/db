@@ -231,6 +231,13 @@ DROP INDEX IF EXISTS reclada.runner_type_index;
 CREATE INDEX runner_type_index 
 	ON reclada.object((attributes->'type'))
 	WHERE class = 'Runner';
+
+update reclada.object o 
+    set attributes = o.attributes || format('{"revision":"%s"}',o.revision)::jsonb
+        where o.revision is not null;
+
+alter table reclada.object
+    drop COLUMN revision;
 --} indexes
 
 

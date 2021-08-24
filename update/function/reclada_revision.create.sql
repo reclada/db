@@ -8,15 +8,12 @@ CREATE OR REPLACE FUNCTION reclada_revision.create
 RETURNS uuid AS $$
     INSERT INTO reclada.object
         (
-            revision,
             class,
             attributes
         )
                
         VALUES
         (
-
-            null                     ,-- revision,
             'revision'               ,-- class,
             format                    -- attrs
             (                         
@@ -27,7 +24,7 @@ RETURNS uuid AS $$
                     "branch": "%s"
                 }',
                 (
-                    select count(distinct o.revision)+1 
+                    select count(*)
                         from reclada.object o
                             where o.obj_id = obj
                 ),

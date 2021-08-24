@@ -75,16 +75,14 @@ BEGIN
                 and status != reclada_object.get_archive_status_obj_id();
 
     INSERT INTO reclada.object( obj_id,
-                                revision,
                                 class,
                                 status,
                                 attributes
                               )
         select  v.obj_id,
-                revid,
                 v_class,
                 reclada_object.get_active_status_obj_id(),--status 
-                v_attrs
+                v_attrs || format('{"revision":"%s"}',revid)::jsonb
             FROM reclada.v_object v
 	            WHERE v.obj_id = v_obj_id
                 LIMIT 1;
