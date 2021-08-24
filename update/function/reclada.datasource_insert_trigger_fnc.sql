@@ -1,4 +1,3 @@
--- не грохаю, чтобы не поломать триггер
 CREATE OR REPLACE FUNCTION reclada.datasource_insert_trigger_fnc()
 RETURNS trigger AS $$
 DECLARE
@@ -7,27 +6,24 @@ DECLARE
     uri           text;
 
 BEGIN
-    -- IF NEW.data IS NULL THEN
-    --     RAISE EXCEPTION 'data cannot be null';
-    -- END IF;
 
     IF (NEW.class = 'DataSource') THEN
 
         obj_id := NEW.obj_id;
 
-        SELECT (reclada_object.list(format('{
+        SELECT (reclada_object.list('{
             "class": "DataSet",
             "attrs": {
                 "name": "defaultDataSet"
                 }
-            }')::jsonb)) -> 0
+            }'::jsonb)) -> 0
         INTO dataset;
 
         dataset := jsonb_set(dataset, '{attrs, dataSources}', dataset->'attrs'->'dataSources' || format('["%s"]', obj_id)::jsonb);
 
         PERFORM reclada_object.update(dataset);
 
-        uri := NEW.attrs->>'uri';
+        uri := NEW.attributes->>'uri';
 
         PERFORM reclada_object.create(
             format('{

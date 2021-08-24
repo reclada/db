@@ -62,7 +62,7 @@ BEGIN
 
         with inserted as 
         (
-            INSERT INTO reclada.object(class,attrs)
+            INSERT INTO reclada.object(class,attributes)
                 select class, attrs
                     RETURNING obj_id
         ) 

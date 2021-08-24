@@ -70,20 +70,20 @@ BEGIN
         INTO revid;
     
     update reclada.object o
-        set status = 2 -- archive
+        set status = reclada_object.get_archive_status_obj_id()
             where o.obj_id = v_obj_id
-                and status != 2;
+                and status != reclada_object.get_archive_status_obj_id();
 
     INSERT INTO reclada.object( obj_id,
                                 revision,
                                 class,
                                 status,
-                                attrs
+                                attributes
                               )
         select  v.obj_id,
                 revid,
                 v_class,
-                1,--status active
+                reclada_object.get_active_status_obj_id(),--status 
                 v_attrs
             FROM reclada.v_object v
 	            WHERE v.obj_id = v_obj_id

@@ -27,9 +27,9 @@ BEGIN
     
     with t as (    
         update reclada.object o
-            set status = 2 -- archive
+            set status = reclada_object.get_archive_status_obj_id() 
                 WHERE o.obj_id = v_obj_id
-                    and status != 2
+                    and status != reclada_object.get_archive_status_obj_id()
                     RETURNING id
     ) 
         SELECT o.data

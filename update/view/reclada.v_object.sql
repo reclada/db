@@ -1,11 +1,6 @@
 drop VIEW if EXISTS reclada.v_object;
 CREATE OR REPLACE VIEW reclada.v_object
 AS
-/*
-    возвращает по все записи из таблицы 
-        + добавляет номер ревизии 
-        + собирает json
-*/
 with t as (
     SELECT  
             obj.id      ,
@@ -13,13 +8,14 @@ with t as (
             obj.class   ,
             r.num       ,
             obj.revision,
-            obj.attrs   ,
+            obj.attributes as attrs,
             obj.status  ,
-            obj.created_time    
+            obj.created_time ,
+            obj.created_by   
         FROM reclada.object obj
         left join 
         (
-            select  (r.attrs->'num')::bigint num,
+            select  (r.attributes->'num')::bigint num,
                     r.obj_id
                 from reclada.object r
                     where class = 'revision'
@@ -30,9 +26,8 @@ with t as (
             t.id                 ,
             t.obj_id             ,
             t.class              ,
-            t.num as revision_num,
-            t.status             ,
-            os.caption as status_caption ,
+            t.num       as revision_num     ,
+            os.caption  as status_caption   ,
             t.revision           ,
             t.created_time       ,
             t.attrs              ,
@@ -50,11 +45,19 @@ with t as (
                 coalesce('"' || t.revision::text || '"','null')  ,
                 os.caption  ,
                 t.attrs
-            )::jsonb as data -- собираю json
+            )::jsonb as data, 
+            u.login as login_created_by,
+            t.created_by as created_by,
+            t.status             
         FROM t
-        join reclada.object_status os
-            on t.status = os.id
+        left join reclada.v_object_status os
+            on t.status = os.obj_id
+        left join reclada.v_user u
+            on u.obj_id = t.created_by
             ;
 
--- select * from reclada.v_object limit 300
--- select * from reclada.object
+-- select distinct status from reclada.v_object 
+-- select distinct status from reclada.object 
+-- select obj_id from reclada.v_object_status 
+
+

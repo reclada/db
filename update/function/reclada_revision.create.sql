@@ -10,7 +10,7 @@ RETURNS uuid AS $$
         (
             revision,
             class,
-            attrs
+            attributes
         )
                
         VALUES

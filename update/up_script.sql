@@ -7,15 +7,56 @@
 \i 'function/public.try_cast_int.sql'
 
 
-create table reclada.object_status
-(
-    id      bigint GENERATED ALWAYS AS IDENTITY primary KEY,
-    caption text not null
-);
-insert into reclada.object_status(caption)
-    select 'active';
-insert into reclada.object_status(caption)
-    select 'archive';
+-- create table reclada.object_status
+-- (
+--     id      bigint GENERATED ALWAYS AS IDENTITY primary KEY,
+--     caption text not null
+-- );
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attrs": {
+        "newClass": "ObjectStatus",
+        "properties": {
+            "caption": {"type": "string"}
+        },
+        "required": ["caption"]
+    }
+}'::jsonb);
+-- insert into reclada.object_status(caption)
+--     select 'active';
+SELECT reclada_object.create('{
+    "class": "ObjectStatus",
+    "attrs": {
+        "caption": "active"
+    }
+}'::jsonb);
+-- insert into reclada.object_status(caption)
+--     select 'archive';
+SELECT reclada_object.create('{
+    "class": "ObjectStatus",
+    "attrs": {
+        "caption": "archive"
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attrs": {
+        "newClass": "User",
+        "properties": {
+            "login": {"type": "string"}
+        },
+        "required": ["login"]
+    }
+}'::jsonb);
+SELECT reclada_object.create('{
+    "class": "User",
+    "attrs": {
+        "login": "dev"
+    }
+}'::jsonb);
+
+
 
 --SHOW search_path;        
 SET search_path TO public;
@@ -28,27 +69,53 @@ alter table reclada.object
     add revision     uuid   ,
     add obj_id_int   int    ,
     add revision_int bigint ,
-    add name         text   ,
     add class        text   ,
-    add status       int    DEFAULT 1,--active
-    add attrs        jsonb  ,
+    add status       uuid   ,--DEFAULT reclada_object.get_active_status_obj_id(),
+    add attributes   jsonb  ,
     add transaction_id bigint ,
     add created_time timestamp with time zone DEFAULT now(),
-    add created_by   text,
-    add CONSTRAINT fk_status
-      FOREIGN KEY(status) 
-      REFERENCES reclada.object_status(id);
+    add created_by   uuid  ;--DEFAULT reclada_object.get_default_user_obj_id();
+
+drop VIEW if EXISTS reclada.v_class;
+drop VIEW if EXISTS reclada.v_object_status;
+
+\i 'view/reclada.v_object_status.sql'
+\i 'function/reclada_object.get_active_status_obj_id.sql'
+\i 'function/reclada_object.get_archive_status_obj_id.sql'
 
 update reclada.object 
+    set class      = data->>'class',
+        attributes = data->'attrs' ;
+update reclada.object 
     set obj_id_int = public.try_cast_int(data->>'id'),
-        class  = data->>'class'                      ,
-        revision_int  = (data->'revision')::bigint   ,
-        status  = (data->'isDeleted')::boolean::int+1,
-        attrs  = data->'attrs';
-
+        revision_int  = (data->'revision')::bigint   
+        -- status  = (data->'isDeleted')::boolean::int+1,
+        ;
 update reclada.object 
     set obj_id = (data->>'id')::uuid
         WHERE obj_id_int is null;
+
+update reclada.object 
+    set status  = 
+        case coalesce((data->'isDeleted')::boolean::int+1,1)
+            when 1 
+                then reclada_object.get_active_status_obj_id()
+            else reclada_object.get_archive_status_obj_id()
+        end;
+
+\i 'view/reclada.v_user.sql'
+\i 'view/reclada.v_object.sql'
+\i 'view/reclada.v_active_object.sql'
+\i 'function/reclada_object.get_default_user_obj_id.sql'
+
+alter table reclada.object
+    alter COLUMN status 
+        set DEFAULT reclada_object.get_active_status_obj_id(),
+    alter COLUMN created_by 
+        set DEFAULT reclada_object.get_default_user_obj_id();
+
+update reclada.object set created_by = reclada_object.get_default_user_obj_id();
+
 -- проверим, что числовой id только для ревизий
 select public.raise_exception('exist numeric id for other class!!!')
     where exists
@@ -60,7 +127,7 @@ select public.raise_exception('exist numeric id for other class!!!')
     );
 
 update reclada.object -- проставим статус, тем у кого он отсутствует
-    set status = 1 
+    set status = reclada_object.get_active_status_obj_id()
         WHERE status is null;
 
 
@@ -79,7 +146,7 @@ update reclada.object as o
 
 -- заносим номер ревизии в attrs
 update reclada.object o
-    set attrs = o.attrs 
+    set attributes = o.attributes 
                 || jsonb ('{"num":'|| 
                     (
                         select count(1)+1 
@@ -107,17 +174,13 @@ update reclada.object as o
 alter table reclada.object alter column data drop not null;
 
 alter table reclada.object 
-    alter column attrs set not null,
+    alter column attributes set not null,
     alter column class set not null,
     alter column status set not null,
     alter column obj_id set not null;
 
 -- delete from reclada.object where attrs is null
 
-drop VIEW if EXISTS reclada.v_class;
-
-\i 'view/reclada.v_object.sql'
-\i 'view/reclada.v_active_object.sql'
 \i 'view/reclada.v_class.sql'
 \i 'view/reclada.v_revision.sql'
 \i 'function/reclada.datasource_insert_trigger_fnc.sql'
@@ -129,11 +192,13 @@ drop VIEW if EXISTS reclada.v_class;
 \i 'function/reclada_object.list.sql'
 \i 'function/reclada_revision.create.sql'
 
+
 -- удалим вспомагательные столбцы
 alter table reclada.object
     drop column revision_int,
     drop column data,
     drop column obj_id_int;
+
 
 --{ indexes
 DROP INDEX IF EXISTS reclada.class_index;
@@ -154,19 +219,28 @@ CREATE INDEX status_index
 
 DROP INDEX IF EXISTS reclada.job_status_index;
 CREATE INDEX job_status_index 
-	ON reclada.object((attrs->'status'))
+	ON reclada.object((attributes->'status'))
 	WHERE class = 'Job';
 
 DROP INDEX IF EXISTS reclada.runner_status_index;
 CREATE INDEX runner_status_index
-	ON reclada.object((attrs->'status'))
+	ON reclada.object((attributes->'status'))
 	WHERE class = 'Runner';
 
 DROP INDEX IF EXISTS reclada.runner_type_index;
 CREATE INDEX runner_type_index 
-	ON reclada.object((attrs->'type'))
+	ON reclada.object((attributes->'type'))
 	WHERE class = 'Runner';
 --} indexes
+
+
+--SELECT distinct status FROM reclada.object;
+
+--select distinct status_caption, status from reclada.v_object;
+
+
+
+--select dlkfmdlknfal();
 
 -- test 1
 -- select reclada_revision.create('123', null,'e2bdd471-cf23-46a9-84cf-f9e15db7887d')

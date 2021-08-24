@@ -14,7 +14,7 @@ AS
             t.data 
         FROM reclada.v_object as t
             -- объект не удален
-            where t.status = 1 -- active
+            where t.status = reclada_object.get_active_status_obj_id()
             ;
 
 -- select * from reclada.v_object limit 300

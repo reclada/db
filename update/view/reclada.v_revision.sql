@@ -9,11 +9,11 @@ AS
             obj.attrs->>'dateTime'      as date_time,
             obj.attrs->>'old_num'       as old_num  ,
             obj.revision_num  ,
-            obj.status        ,
             obj.status_caption,
             obj.revision      ,
             obj.created_time  ,
             obj.attrs         ,
+            obj.status        ,
             obj.data
 	FROM reclada.v_active_object obj
    	WHERE class = 'revision';
