@@ -1,4 +1,3 @@
--- не грохаю, чтобы не поломать триггер
 CREATE OR REPLACE FUNCTION reclada.load_staging() 
 RETURNS TRIGGER 
 AS $$

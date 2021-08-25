@@ -69,11 +69,14 @@ BEGIN
     SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) 
         INTO revid;
     
-    update reclada.object o
-        set status = reclada_object.get_archive_status_obj_id()
-            where o.obj_id = v_obj_id
-                and status != reclada_object.get_archive_status_obj_id();
-
+    with t as 
+    (
+        update reclada.object o
+            set status = reclada_object.get_archive_status_obj_id()
+                where o.obj_id = v_obj_id
+                    and status != reclada_object.get_archive_status_obj_id()
+                        RETURNING id
+    )
     INSERT INTO reclada.object( obj_id,
                                 class,
                                 status,
@@ -84,9 +87,10 @@ BEGIN
                 reclada_object.get_active_status_obj_id(),--status 
                 v_attrs || format('{"revision":"%s"}',revid)::jsonb
             FROM reclada.v_object v
-	            WHERE v.obj_id = v_obj_id
-                LIMIT 1;
-
+            JOIN t 
+                on t.id = v.id
+	            WHERE v.obj_id = v_obj_id;
+                    
     select v.data 
         FROM reclada.v_active_object v
             WHERE v.obj_id = v_obj_id

@@ -7,3 +7,4 @@ update/update_to_dev4_reclada_k8s.bat
 output_tmtagg.csv
 src/1.sql
 update/up.sql
+.vscode/

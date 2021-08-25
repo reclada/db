@@ -231,6 +231,7 @@ DROP INDEX IF EXISTS reclada.runner_type_index;
 CREATE INDEX runner_type_index 
 	ON reclada.object((attributes->'type'))
 	WHERE class = 'Runner';
+--} indexes
 
 update reclada.object o 
     set attributes = o.attributes || format('{"revision":"%s"}',o.revision)::jsonb
@@ -238,13 +239,19 @@ update reclada.object o
 
 alter table reclada.object
     drop COLUMN revision;
---} indexes
 
 
---SELECT distinct status FROM reclada.object;
-
---select distinct status_caption, status from reclada.v_object;
-
+\i 'function/reclada_notification.send_object_notification.sql'
+\i 'function/reclada_object.list_add.sql'
+\i 'function/reclada_object.list_drop.sql'
+\i 'function/reclada_object.list_related.sql'
+\i 'function/api.reclada_object_create.sql'
+\i 'function/api.reclada_object_delete.sql'
+\i 'function/api.reclada_object_list.sql'
+\i 'function/api.reclada_object_list_add.sql'
+\i 'function/api.reclada_object_list_drop.sql'
+\i 'function/api.reclada_object_list_related.sql'
+\i 'function/api.storage_generate_presigned_get.sql'
 
 
 --select dlkfmdlknfal();
@@ -311,14 +318,3 @@ alter table reclada.object
 -- + reclada_revision.create
 
 
-
--- select * from reclada.v_object ORDER BY ID DESC;
--- select * from reclada.v_class;
-
--- select * from reclada.object ORDER BY id
--- insert into reclada.object(data,obj_id,revision,obj_id_int,revision_int,class,status,  
--- attrs    ,
--- time_when)
--- select data,obj_id,revision,obj_id_int,revision_int,class,status,  
--- attrs    ,
--- time_when from reclada.object where id = 7

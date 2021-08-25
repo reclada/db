@@ -138,7 +138,7 @@ BEGIN
                     END AS condition
                 WHERE coalesce(data->'id','null'::jsonb) != 'null'::jsonb
             UNION 
-            SELECT 'obj.data->>''status''=''active'''-- TODO: change working with tevision
+            SELECT 'obj.data->>''status''=''active'''-- TODO: change working with revision
             -- UNION SELECT
             --     CASE WHEN data->'revision' IS NULL THEN
             --         E'(data->>''revision''):: numeric = (SELECT max((objrev.data -> ''revision'')::numeric)
