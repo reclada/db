@@ -526,6 +526,7 @@ DECLARE
     obj_id         uuid;
     obj            jsonb;
     values_to_add  jsonb;
+    field          text;
     field_value    jsonb;
     json_path      text[];
     new_obj        jsonb;
@@ -561,11 +562,11 @@ BEGIN
         values_to_add := format('[%s]', values_to_add)::jsonb;
     END IF;
 
-    field_value := data->'field';
-    IF (field_value IS NULL) THEN
+    field := data->>'field';
+    IF (field IS NULL) THEN
         RAISE EXCEPTION 'There is no field';
     END IF;
-    json_path := format('{attrs, %s}', field_value);
+    json_path := format('{attrs, %s}', field);
     field_value := obj#>json_path;
 
     IF ((field_value = 'null'::jsonb) OR (field_value IS NULL)) THEN
@@ -603,6 +604,7 @@ DECLARE
     obj_id          uuid;
     obj             jsonb;
     values_to_drop  jsonb;
+    field           text;
     field_value     jsonb;
     json_path       text[];
     new_value       jsonb;
@@ -639,13 +641,13 @@ BEGIN
 		values_to_drop := format('[%s]', values_to_drop)::jsonb;
 	END IF;
 
-	field_value := data->'field';
-	IF (field_value IS NULL OR field_value = 'null'::jsonb) THEN
+	field := data->>'field';
+	IF (field IS NULL) THEN
 		RAISE EXCEPTION 'There is no field';
 	END IF;
-	json_path := format('{attrs, %s}', field_value);
+	json_path := format('{attrs, %s}', field);
 	field_value := obj#>json_path;
-	IF (field_value IS NULL) THEN
+	IF (field_value IS NULL OR field_value = 'null'::jsonb) THEN
 		RAISE EXCEPTION 'The object does not have this field';
 	END IF;
 
@@ -673,7 +675,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
  * Required parameters:
  *  class - the class of the object
  *  id - identifier of the object
- *  field - the name of the field containing the related object references
+ *  field - the name of the field containing the related object references (for multiple attributes separate fields by comma)
  *  relatedClass - the class of the related objects
  * Optional parameters:
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
@@ -690,14 +692,14 @@ RETURNS jsonb AS $$
 DECLARE
     class          text;
     obj_id         uuid;
-    field          jsonb;
+    field          text;
     related_class  text;
     obj            jsonb;
     list_of_ids    jsonb;
     cond           jsonb = '{}'::jsonb;
     order_by       jsonb;
-    limit_         jsonb;
-    offset_        jsonb;
+    limit_         text;
+    offset_        text;
     res            jsonb;
 
 BEGIN
@@ -711,7 +713,7 @@ BEGIN
         RAISE EXCEPTION 'The object id is not specified';
     END IF;
 
-    field := data->'field';
+    field := data->>'field';
     IF (field IS NULL) THEN
         RAISE EXCEPTION 'The object field is not specified';
     END IF;
@@ -740,14 +742,14 @@ BEGIN
         cond := cond || (format('{"orderBy": %s}', order_by)::jsonb);
     END IF;
 
-    limit_ := data->'limit';
+    limit_ := data->>'limit';
     IF (limit_ IS NOT NULL) THEN
-        cond := cond || (format('{"limit": %s}', limit_)::jsonb);
+        cond := cond || (format('{"limit": "%s"}', limit_)::jsonb);
     END IF;
 
-    offset_ := data->'offset';
+    offset_ := data->>'offset';
     IF (offset_ IS NOT NULL) THEN
-        cond := cond || (format('{"offset": %s}', offset_)::jsonb);
+        cond := cond || (format('{"offset": "%s"}', offset_)::jsonb);
     END IF;
 
     SELECT reclada_object.list(format(
