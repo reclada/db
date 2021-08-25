@@ -155,7 +155,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
  *      field - required value with name of property to order by
  *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
- *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
+ *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is 500.
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
  * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
@@ -241,7 +241,7 @@ BEGIN
 
     limit_ := data->>'limit';
     IF (limit_ IS NULL) THEN
-        limit_ := 'ALL';
+        limit_ := 500;
     END IF;
     IF ((limit_ ~ '(\D+)') AND (limit_ != 'ALL')) THEN
     		RAISE EXCEPTION 'The limit must be an integer number or "ALL"';

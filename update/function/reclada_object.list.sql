@@ -1,8 +1,11 @@
-
 /*
  * Function reclada_object.list returns the list of objects with specified fields.
- * A jsonb object with the following parameters is required.
- * Required parameters:
+ * Input: Also it is possible to get the number of objects. For that two arguments are required for input:
+ * 1. the jsonb object with information about specified fields with the following parameters is required
+ * 2. boolean argument is optional
+ *    If it is true then output is jsonb like this {"objects": [<list of objects>], "number": <number of objects>}.
+ *    If it is false (default value) then output is jsonb like this [<list of objects>].
+ * Required parameters for the jsonb object:
  *  class - the class of objects
  * Optional parameters:
  *  attrs - the attributes of objects (can be empty)
@@ -11,32 +14,44 @@
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
  *      field - required value with name of property to order by
  *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
- *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
+ *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is 500.
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
  * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
+ * Function supports:
+ * 1. Comparison Operators
+ * elem1   >, <, <=, >=, =, !=   elem2
+ * elem1 < x < elem2 -- like two conditions
+ * 2. Pattern Matching
+ * str1   LIKE / NOT LIKE   str2
+ * str   SIMILAR TO   exp
+ * str   ~ ~* !~ !~*   exp
+ * 3. Array Operators
+ * elem   <@   list
+ * list1   =, !=, <, >, <=, >=, @>, <@  list2
  * Examples:
  *   1. Input:
  *   {
  *   "class": "class_name",
  *   "id": "id_1",
- *   "revision": {"operator": "!=", "object": 123},
  *   "isDeleted": false,
  *   "attrs":
  *       {
- *       "name": {"operator": "LIKE", "object": "%test%"}
- *       }
+ *       "name": {"operator": "LIKE", "object": "%test%"},
+ *       "numericField": {"operator": "!=", "object": 123}
+ *       },
+ *   "orderBy": [{"field": "attrs, name", "order": "ASC"}],
  *   }::jsonb
  *   2. Input:
  *   {
  *   "class": "class_name",
- *   "revision": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}],
- *   "id": {"operator": "inList", "object": ["id_1", "id_2", "id_3"]},
+ *   "id": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
  *   "attrs":
  *       {
  *       "tags":{"operator": "@>", "object": ["value1", "value2"]},
+ *       "numericField": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}]
  *       },
- *   "orderBy": [{"field": "revision", "order": "DESC"}],
+ *   "orderBy": [{"field": "id", "order": "DESC"}],
  *   "limit": 5,
  *   "offset": 2
  *   }::jsonb
@@ -44,17 +59,20 @@
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb)
+DROP FUNCTION IF EXISTS reclada_object.list(jsonb, boolean);
+CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, with_number boolean default false)
 RETURNS jsonb AS $$
 DECLARE
     class               jsonb;
     attrs               jsonb;
-    query_conditions    text;
-    res                 jsonb;
     order_by_jsonb      jsonb;
     order_by            text;
     limit_              text;
     offset_             text;
+    query_conditions    text;
+    number_of_objects   int;
+    objects             jsonb;
+    res                 jsonb;
 
 BEGIN
 
@@ -75,14 +93,14 @@ BEGIN
     		order_by_jsonb := format('[%s]', order_by_jsonb);
     END IF;
     SELECT string_agg(
-        format(E'obj.data->\'%s\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
+        format(E'obj.data#>\'{%s}\' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
         ' , ')
     FROM jsonb_array_elements(order_by_jsonb) T
     INTO order_by;
 
     limit_ := data->>'limit';
     IF (limit_ IS NULL) THEN
-        limit_ := 'ALL';
+        limit_ := 500;
     END IF;
     IF ((limit_ ~ '(\D+)') AND (limit_ != 'ALL')) THEN
     		RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
@@ -151,15 +169,57 @@ BEGIN
     INTO query_conditions;
 
    /* RAISE NOTICE 'conds: %', query_conditions; */
-   EXECUTE E'SELECT to_jsonb(array_agg(T.data))
-   FROM (
-        SELECT obj.data
-        FROM reclada.object obj
-        WHERE ' || query_conditions ||
-        ' ORDER BY ' || order_by ||
-        ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
-   INTO res;
-   RETURN res;
+   /*
+        EXECUTE E'CREATE TEMP TABLE temp_table_list ON COMMIT DROP
+        AS
+            SELECT obj.data
+            FROM reclada.object obj
+            WHERE ' || query_conditions ||
+            ' ORDER BY ' || order_by;
+
+        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+           FROM (
+                SELECT obj.data
+                FROM temp_table_list obj
+                OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+        INTO objects;
+
+        EXECUTE E'SELECT count(*) FROM temp_table_list'
+        INTO number_of_objects;
+    */
+
+    IF with_number THEN
+        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+        FROM (
+            SELECT obj.data
+            FROM reclada.object obj
+            WHERE ' || query_conditions ||
+            ' ORDER BY ' || order_by ||
+            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+        INTO objects;
+
+        EXECUTE E'SELECT count(1)
+        FROM (
+            SELECT obj.data
+            FROM reclada.object obj
+            WHERE ' || query_conditions || ') T'
+        INTO number_of_objects;
+
+        res := jsonb_build_object(
+        'number', number_of_objects,
+        'objects', objects);
+    ELSE
+        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+        FROM (
+            SELECT obj.data
+            FROM reclada.object obj
+            WHERE ' || query_conditions ||
+            ' ORDER BY ' || order_by ||
+            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+        INTO res;
+    END IF;
+
+    RETURN res;
 
 END;
 $$ LANGUAGE PLPGSQL STABLE;
