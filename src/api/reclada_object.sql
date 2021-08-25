@@ -152,11 +152,8 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;
     END IF;
 
-    SELECT reclada_object.list(data) INTO objects;
+    SELECT reclada_object.list(data, true) INTO result;
 
-    result := jsonb_build_object(
-        'number', jsonb_array_length(objects),
-        'objects', objects);
     RETURN result;
 
 END;
@@ -444,4 +441,4 @@ BEGIN
     RETURN result;
 
 END;
-$$ LANGUAGE PLPGSQL VOLATILE;
+$$ LANGUAGE PLPGSQL STABLE;

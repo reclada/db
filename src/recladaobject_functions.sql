@@ -141,8 +141,12 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 /*
  * Function reclada_object.list returns the list of objects with specified fields.
- * A jsonb object with the following parameters is required.
- * Required parameters:
+ * Input: Also it is possible to get the number of objects. For that two arguments are required for input:
+ * 1. the jsonb object with information about specified fields with the following parameters is required
+ * 2. boolean argument is optional
+ *    If it is true then output is jsonb like this {"objects": [<list of objects>], "number": <number of objects>}.
+ *    If it is false (default value) then output is jsonb like this [<list of objects>].
+ * Required parameters for the jsonb object:
  *  class - the class of objects
  * Optional parameters:
  *  attrs - the attributes of objects (can be empty)
@@ -196,17 +200,20 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb)
+DROP FUNCTION IF EXISTS reclada_object.list(jsonb, boolean);
+CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, with_number boolean default false)
 RETURNS jsonb AS $$
 DECLARE
     class               jsonb;
     attrs               jsonb;
-    query_conditions    text;
-    res                 jsonb;
     order_by_jsonb      jsonb;
     order_by            text;
     limit_              text;
     offset_             text;
+    query_conditions    text;
+    number_of_objects   int;
+    objects             jsonb;
+    res                 jsonb;
 
 BEGIN
 
@@ -303,15 +310,57 @@ BEGIN
     INTO query_conditions;
 
    /* RAISE NOTICE 'conds: %', query_conditions; */
-   EXECUTE E'SELECT to_jsonb(array_agg(T.data))
-   FROM (
-        SELECT obj.data
-        FROM reclada.object obj
-        WHERE ' || query_conditions ||
-        ' ORDER BY ' || order_by ||
-        ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
-   INTO res;
-   RETURN res;
+   /*
+        EXECUTE E'CREATE TEMP TABLE temp_table_list ON COMMIT DROP
+        AS
+            SELECT obj.data
+            FROM reclada.object obj
+            WHERE ' || query_conditions ||
+            ' ORDER BY ' || order_by;
+
+        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+           FROM (
+                SELECT obj.data
+                FROM temp_table_list obj
+                OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+        INTO objects;
+
+        EXECUTE E'SELECT count(*) FROM temp_table_list'
+        INTO number_of_objects;
+    */
+
+    IF with_number THEN
+        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+        FROM (
+            SELECT obj.data
+            FROM reclada.object obj
+            WHERE ' || query_conditions ||
+            ' ORDER BY ' || order_by ||
+            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+        INTO objects;
+
+        EXECUTE E'SELECT count(1)
+        FROM (
+            SELECT obj.data
+            FROM reclada.object obj
+            WHERE ' || query_conditions || ') T'
+        INTO number_of_objects;
+
+        res := jsonb_build_object(
+        'number', number_of_objects,
+        'objects', objects);
+    ELSE
+        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+        FROM (
+            SELECT obj.data
+            FROM reclada.object obj
+            WHERE ' || query_conditions ||
+            ' ORDER BY ' || order_by ||
+            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+        INTO res;
+    END IF;
+
+    RETURN res;
 
 END;
 $$ LANGUAGE PLPGSQL STABLE;
