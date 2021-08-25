@@ -13,6 +13,7 @@ DECLARE
     user_info    jsonb;
     uri          varchar;
     url          varchar;
+
 BEGIN
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
@@ -36,16 +37,36 @@ BEGIN
         object_name,
         file_type,
         uri
-    )::jsonb) INTO object;
+    )::jsonb)->0 INTO object;
 
-    data := data || format('{"objectPath": "%s"}', object_path)::jsonb;
-    SELECT reclada_storage.s3_generate_presigned_post(data, credentials)::jsonb INTO url;
+    --data := data || format('{"objectPath": "%s"}', object_path)::jsonb;
+    --SELECT reclada_storage.s3_generate_presigned_post(data, credentials)::jsonb INTO url;
+    SELECT payload::jsonb
+    FROM aws_lambda.invoke(
+        aws_commons.create_lambda_function_arn(
+            's3_get_presigned_url_dev1',
+            'eu-west-1'
+            ),
+        format('{
+            "type": "post",
+            "bucketName": "%s",
+            "fileName": "%s",
+            "fileType": "%s",
+            "fileSize": "%s",
+            "expiration": 3600}',
+            bucket_name,
+            object_name,
+            file_type,
+            data->>'fileSize'
+            )::jsonb)
+    INTO url;
 
     result = format(
         '{"object": %s, "uploadUrl": %s}',
         object,
         url
     )::jsonb;
+
     RETURN result;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
