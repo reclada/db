@@ -1,4 +1,4 @@
--- version = 2
+-- version = 3
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
@@ -316,5 +316,3 @@ alter table reclada.object
 -- + reclada_object.create
 -- + reclada_object.update
 -- + reclada_revision.create
-
-

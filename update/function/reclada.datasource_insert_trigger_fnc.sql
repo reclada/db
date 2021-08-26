@@ -6,18 +6,14 @@ DECLARE
     uri           text;
 
 BEGIN
-
-    IF (NEW.class = 'DataSource') THEN
+    IF (NEW.data->>'class' = 'DataSource') OR (NEW.data->>'class' = 'File') THEN
 
         obj_id := NEW.obj_id;
 
-        SELECT (reclada_object.list('{
-            "class": "DataSet",
-            "attrs": {
-                "name": "defaultDataSet"
-                }
-            }'::jsonb)) -> 0
-        INTO dataset;
+        SELECT v.data
+        FROM reclada.v_object v
+	      WHERE v.data->'attrs'->>'name' = 'defaultDataSet'
+	      INTO dataset;
 
         dataset := jsonb_set(dataset, '{attrs, dataSources}', dataset->'attrs'->'dataSources' || format('["%s"]', obj_id)::jsonb);
 

@@ -7,6 +7,7 @@ DECLARE
     object_id    uuid;
     result       jsonb;
     user_info    jsonb;
+
 BEGIN
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
@@ -30,8 +31,14 @@ BEGIN
             's3_get_presigned_url_dev1',
             'eu-west-1'
             ),
-        format('{"uri": "%s", "expiration": 3600}', object_data->'attrs'->> 'uri')::jsonb)
+        format('{
+            "type": "get",
+            "uri": "%s",
+            "expiration": 3600}',
+            object_data->'attrs'->>'uri'
+            )::jsonb)
     INTO result;
+
     RETURN result;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
