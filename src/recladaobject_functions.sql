@@ -756,7 +756,8 @@ BEGIN
         '{"class": "%s", "attrs": {}, "id": {"operator": "<@", "object": %s}}',
         related_class,
         list_of_ids
-        )::jsonb || cond)
+        )::jsonb || cond,
+        true)
     INTO res;
 
     RETURN res;

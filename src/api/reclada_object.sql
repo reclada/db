@@ -407,7 +407,6 @@ DECLARE
     field          jsonb;
     related_class  jsonb;
     user_info      jsonb;
-    objects        jsonb;
     result         jsonb;
 
 BEGIN
@@ -438,11 +437,8 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list_related', class;
     END IF;
 
-    SELECT reclada_object.list_related(data) INTO objects;
+    SELECT reclada_object.list_related(data) INTO result;
 
-    result := jsonb_build_object(
-        'number', jsonb_array_length(objects),
-        'objects', objects);
     RETURN result;
 
 END;
