@@ -1,3 +1,10 @@
 .idea/
 postgres-data/
 minio-data/
+update/connect.bat
+update/update_to_dev4_reclada_k8s.bat
+2.csv
+output_tmtagg.csv
+src/1.sql
+update/up.sql
+.vscode/

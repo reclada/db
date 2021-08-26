@@ -1,7 +1,7 @@
 try:
     upgrade_script = ''
     version = -1
-    with open("up_script.sql") as f:
+    with open("up_script.sql",encoding = 'utf-8') as f:
         t = f.readline()
         version = int(t.replace("-- version =",''))
         upgrade_script = f.read()
@@ -12,14 +12,14 @@ try:
         
     else:
         tamplate = ''
-        with open("upgrade_script_tamplate.sql") as f:
+        with open("upgrade_script_tamplate.sql",encoding = 'utf-8') as f:
             tamplate = f.read()
 
         up = tamplate.replace('/*#@#@#upgrade_script#@#@#*/',upgrade_script)
         up = up.replace('/*#@#@#version#@#@#*/',str(version))
 
 
-        with open("up.sql",'w') as f:
+        with open("up.sql",'w', encoding = "utf-8") as f:
             f.write(up)
 
         input('Done')

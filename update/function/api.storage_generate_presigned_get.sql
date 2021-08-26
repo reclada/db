@@ -1,4 +1,4 @@
-DROP FUNCTION IF EXISTS api.storage_generate_presigned_get(jsonb);
+DROP FUNCTION IF EXISTS api.storage_generate_presigned_get;
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_get(data jsonb)
 RETURNS jsonb AS $$
 DECLARE

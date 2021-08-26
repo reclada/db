@@ -17,6 +17,7 @@ DECLARE
     obj_id          uuid;
     obj             jsonb;
     values_to_drop  jsonb;
+    field           text;
     field_value     jsonb;
     json_path       text[];
     new_value       jsonb;
@@ -35,8 +36,8 @@ BEGIN
 		RAISE EXCEPTION 'The is no id';
 	END IF;
 
-    SELECT 	v.data
-    FROM reclada.v_object v
+    SELECT v.data
+    FROM reclada.v_active_object v
     WHERE v.id = (obj_id::text)
     INTO obj;
 
@@ -53,13 +54,13 @@ BEGIN
 		values_to_drop := format('[%s]', values_to_drop)::jsonb;
 	END IF;
 
-	field_value := data->'field';
-	IF (field_value IS NULL OR field_value = 'null'::jsonb) THEN
+	field := data->>'field';
+	IF (field IS NULL) THEN
 		RAISE EXCEPTION 'There is no field';
 	END IF;
-	json_path := format('{attrs, %s}', field_value);
+	json_path := format('{attrs, %s}', field);
 	field_value := obj#>json_path;
-	IF (field_value IS NULL) THEN
+	IF (field_value IS NULL OR field_value = 'null'::jsonb) THEN
 		RAISE EXCEPTION 'The object does not have this field';
 	END IF;
 

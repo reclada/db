@@ -6,7 +6,7 @@
  * Required parameters:
  *  class - the class of the object
  *  id - id of the object
- *  field - the name of the field to add the value to
+ *  field - the name of the field to add the value to (for multiple attributes separate fields by comma)
  *  value - one scalar value or array of values
  *  accessToken - jwt token to authorize
  *
