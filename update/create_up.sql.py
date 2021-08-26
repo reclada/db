@@ -22,7 +22,7 @@ try:
         with open("up.sql",'w', encoding = "utf-8") as f:
             f.write(up)
 
-        input('Done')
+        print('Done')
 
 except Exception as e:
     input(str(e))
