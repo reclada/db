@@ -1,5 +1,5 @@
 /*
- * Function reclada_object.list_related returns the list of objects from the field of the specified object.
+ * Function reclada_object.list_related returns the list of objects from the field of the specified object and the number of these objects.
  * A jsonb object with the following parameters is required.
  * Required parameters:
  *  class - the class of the object
@@ -85,11 +85,11 @@ BEGIN
         '{"class": "%s", "attrs": {}, "id": {"operator": "<@", "object": %s}}',
         related_class,
         list_of_ids
-        )::jsonb || cond)
+        )::jsonb || cond,
+        true)
     INTO res;
 
     RETURN res;
 
 END;
 $$ LANGUAGE PLPGSQL STABLE;
-
