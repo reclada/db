@@ -62,7 +62,7 @@ DROP FUNCTION IF EXISTS reclada_object.list;
 CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, with_number boolean default false)
 RETURNS jsonb AS $$
 DECLARE
-    class               jsonb;
+    class               text;
     attrs               jsonb;
     order_by_jsonb      jsonb;
     order_by            text;
@@ -75,7 +75,7 @@ DECLARE
     query               text;
 BEGIN
 
-    class := data->'class';
+    class := data->>'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
@@ -125,7 +125,8 @@ BEGIN
             SELECT
                 -- ((('"'||class||'"')::jsonb#>>'{}')::text = 'Job')
                 --reclada_object.get_query_condition(class, E'data->''class''') AS condition
-                'class = data->>''class''' AS condition
+                --'class = data->>''class''' AS condition
+                format('obj.class = ''%s''', class) AS condition
             UNION
             SELECT  CASE
                         WHEN jsonb_typeof(data->'id') = 'array' THEN
@@ -179,8 +180,8 @@ BEGIN
                             )
                     ELSE reclada_object.get_query_condition(value, format(E'data->''attrs''->%L', key))
                 END AS condition
-                FROM jsonb_each(attrs)
-           WHERE data->'attrs' != ('{}'::jsonb)
+            FROM jsonb_each(attrs)
+            WHERE data->'attrs' != ('{}'::jsonb)
         ) conds
     INTO query_conditions;
 
@@ -191,6 +192,7 @@ BEGIN
     --             ' ORDER BY ' || order_by ||
     --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
     query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
+    raise notice 'query: %', query;
     EXECUTE E'SELECT to_jsonb(array_agg(T.data))
         FROM (
             SELECT obj.data
