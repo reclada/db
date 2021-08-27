@@ -15,12 +15,12 @@
  *
 */
 
-DROP FUNCTION IF EXISTS reclada_object.list_related(jsonb);
+DROP FUNCTION IF EXISTS reclada_object.list_related;
 CREATE OR REPLACE FUNCTION reclada_object.list_related(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
     class          text;
-    obj_id         uuid;
+    objid          uuid;
     field          text;
     related_class  text;
     obj            jsonb;
@@ -37,8 +37,8 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-    obj_id := (data->>'id')::uuid;
-    IF (obj_id IS NULL) THEN
+    objid := (data->>'id')::uuid;
+    IF (objid IS NULL) THEN
         RAISE EXCEPTION 'The object id is not specified';
     END IF;
 
@@ -54,7 +54,7 @@ BEGIN
 
 	SELECT v.data
 	FROM reclada.v_active_object v
-	WHERE v.id = (obj_id::text)
+	WHERE v.obj_id = objid
 	INTO obj;
 
     IF (obj IS NULL) THEN

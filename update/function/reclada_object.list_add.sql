@@ -9,12 +9,12 @@
  *
 */
 
-DROP FUNCTION IF EXISTS reclada_object.list_add(jsonb);
+DROP FUNCTION IF EXISTS reclada_object.list_add;
 CREATE OR REPLACE FUNCTION reclada_object.list_add(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
     class          text;
-    obj_id         uuid;
+    objid          uuid;
     obj            jsonb;
     values_to_add  jsonb;
     field          text;
@@ -30,14 +30,14 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-    obj_id := (data->>'id')::uuid;
-    IF (obj_id IS NULL) THEN
+    objid := (data->>'id')::uuid;
+    IF (objid IS NULL) THEN
         RAISE EXCEPTION 'There is no id';
     END IF;
 
     SELECT v.data
 	FROM reclada.v_active_object v
-	WHERE v.id = (obj_id::text)
+	WHERE v.obj_id = objid
 	INTO obj;
 
     IF (obj IS NULL) THEN

@@ -34,7 +34,7 @@ BEGIN
     ) 
         SELECT o.data
             from t
-            join v_object o
+            join reclada.v_object o
                 on o.id = t.id
             into data;
     
