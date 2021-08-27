@@ -72,7 +72,7 @@ DECLARE
     number_of_objects   int;
     objects             jsonb;
     res                 jsonb;
-
+    query               text;
 BEGIN
 
     class := data->'class';
@@ -143,8 +143,8 @@ BEGIN
                         ELSE reclada_object.get_query_condition(data->'id', E'data->''id''')
                     END AS condition
                 WHERE coalesce(data->'id','null'::jsonb) != 'null'::jsonb
-            UNION
-            SELECT 'obj.data->>''status''=''active'''-- TODO: change working with revision
+            -- UNION
+            -- SELECT 'obj.data->>''status''=''active'''-- TODO: change working with revision
             -- UNION SELECT
             --     CASE WHEN data->'revision' IS NULL THEN
             --         E'(data->>''revision''):: numeric = (SELECT max((objrev.data -> ''revision'')::numeric)
@@ -190,35 +190,27 @@ BEGIN
     --             WHERE ' || query_conditions ||
     --             ' ORDER BY ' || order_by ||
     --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
-    IF with_number THEN
-        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+    query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
+    EXECUTE E'SELECT to_jsonb(array_agg(T.data))
         FROM (
             SELECT obj.data
-            FROM reclada.v_object obj
-            WHERE ' || query_conditions ||
+            '
+            || query
+            ||
             ' ORDER BY ' || order_by ||
             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
-        INTO objects;
+    INTO objects;
+    IF with_number THEN
 
         EXECUTE E'SELECT count(1)
-        FROM (
-            SELECT obj.data
-            FROM reclada.v_object obj
-            WHERE ' || query_conditions || ') T'
+        '|| query
         INTO number_of_objects;
 
         res := jsonb_build_object(
         'number', number_of_objects,
         'objects', objects);
     ELSE
-        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
-        FROM (
-            SELECT obj.data
-            FROM reclada.v_object obj
-            WHERE ' || query_conditions ||
-            ' ORDER BY ' || order_by ||
-            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
-        INTO res;
+        res := objects;
     END IF;
 
     RETURN res;
