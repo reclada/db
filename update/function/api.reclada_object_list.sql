@@ -11,7 +11,7 @@
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
  *      field - required value with name of property to order by
  *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
- *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
+ *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is 500.
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
  * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
@@ -63,7 +63,6 @@ RETURNS jsonb AS $$
 DECLARE
     class               jsonb;
     user_info           jsonb;
-    objects             jsonb;
     result              jsonb;
 
 BEGIN
@@ -80,11 +79,8 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;
     END IF;
 
-    SELECT reclada_object.list(data) INTO objects;
+    SELECT reclada_object.list(data, true) INTO result;
 
-    result := jsonb_build_object(
-        'number', jsonb_array_length(objects),
-        'objects', objects);
     RETURN result;
 
 END;

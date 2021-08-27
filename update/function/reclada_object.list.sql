@@ -1,7 +1,11 @@
 /*
  * Function reclada_object.list returns the list of objects with specified fields.
- * A jsonb object with the following parameters is required.
- * Required parameters:
+ * Also it is possible to get the number of objects. For that two arguments are required for input:
+ * 1. the jsonb object with information about specified fields with the following parameters is required
+ * 2. boolean argument is optional
+ *    If it is true then output is jsonb like this {"objects": [<list of objects>], "number": <number of objects>}.
+ *    If it is false (default value) then output is jsonb like this [<list of objects>].
+ * Required parameters for the jsonb object:
  *  class - the class of objects
  * Optional parameters:
  *  attrs - the attributes of objects (can be empty)
@@ -10,7 +14,7 @@
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
  *      field - required value with name of property to order by
  *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
- *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is "ALL".
+ *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is 500.
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
  * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
@@ -54,18 +58,20 @@
  *
 */
 
-DROP FUNCTION IF EXISTS reclada_object.list(jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb)
+DROP FUNCTION IF EXISTS reclada_object.list;
+CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, with_number boolean default false)
 RETURNS jsonb AS $$
 DECLARE
     class               jsonb;
     attrs               jsonb;
-    query_conditions    text;
-    res                 jsonb;
     order_by_jsonb      jsonb;
     order_by            text;
     limit_              text;
     offset_             text;
+    query_conditions    text;
+    number_of_objects   int;
+    objects             jsonb;
+    res                 jsonb;
 
 BEGIN
 
@@ -93,7 +99,7 @@ BEGIN
 
     limit_ := data->>'limit';
     IF (limit_ IS NULL) THEN
-        limit_ := 'ALL';
+        limit_ := 500;
     END IF;
     IF ((limit_ ~ '(\D+)') AND (limit_ != 'ALL')) THEN
     		RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
@@ -116,12 +122,12 @@ BEGIN
             ' AND '
         )
         FROM (
-            SELECT 
+            SELECT
                 -- ((('"'||class||'"')::jsonb#>>'{}')::text = 'Job')
                 --reclada_object.get_query_condition(class, E'data->''class''') AS condition
                 'class = data->>''class''' AS condition
-            UNION 
-            SELECT  CASE 
+            UNION
+            SELECT  CASE
                         WHEN jsonb_typeof(data->'id') = 'array' THEN
                         (
                             SELECT string_agg
@@ -134,10 +140,10 @@ BEGIN
                                 )
                                 FROM jsonb_array_elements(data->'id') AS cond
                         )
-                        ELSE reclada_object.get_query_condition(data->'id', E'data->''id''') 
+                        ELSE reclada_object.get_query_condition(data->'id', E'data->''id''')
                     END AS condition
                 WHERE coalesce(data->'id','null'::jsonb) != 'null'::jsonb
-            UNION 
+            UNION
             SELECT 'obj.data->>''status''=''active'''-- TODO: change working with revision
             -- UNION SELECT
             --     CASE WHEN data->'revision' IS NULL THEN
@@ -154,10 +160,10 @@ BEGIN
             --         )
             --         FROM jsonb_array_elements(data->'revision') AS cond)
             --     ELSE reclada_object.get_query_condition(data->'revision', E'data->''revision''') END AS condition
-            UNION 
+            UNION
             SELECT
-                CASE 
-                    WHEN jsonb_typeof(value) = 'array' 
+                CASE
+                    WHEN jsonb_typeof(value) = 'array'
                         THEN
                             (
                                 SELECT string_agg
@@ -171,7 +177,7 @@ BEGIN
                                     )
                                     FROM jsonb_array_elements(value) AS cond
                             )
-                    ELSE reclada_object.get_query_condition(value, format(E'data->''attrs''->%L', key)) 
+                    ELSE reclada_object.get_query_condition(value, format(E'data->''attrs''->%L', key))
                 END AS condition
                 FROM jsonb_each(attrs)
            WHERE data->'attrs' != ('{}'::jsonb)
@@ -183,16 +189,39 @@ BEGIN
     --             FROM reclada.v_object obj
     --             WHERE ' || query_conditions ||
     --             ' ORDER BY ' || order_by ||
-    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ; 
-   EXECUTE E'SELECT to_jsonb(array_agg(T.data))
-   FROM (
-        SELECT obj.data
-        FROM reclada.v_object obj
-        WHERE ' || query_conditions ||
-        ' ORDER BY ' || order_by ||
-        ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
-   INTO res;
-   RETURN res;
+    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
+    IF with_number THEN
+        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+        FROM (
+            SELECT obj.data
+            FROM reclada.v_object obj
+            WHERE ' || query_conditions ||
+            ' ORDER BY ' || order_by ||
+            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+        INTO objects;
+
+        EXECUTE E'SELECT count(1)
+        FROM (
+            SELECT obj.data
+            FROM reclada.v_object obj
+            WHERE ' || query_conditions || ') T'
+        INTO number_of_objects;
+
+        res := jsonb_build_object(
+        'number', number_of_objects,
+        'objects', objects);
+    ELSE
+        EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+        FROM (
+            SELECT obj.data
+            FROM reclada.v_object obj
+            WHERE ' || query_conditions ||
+            ' ORDER BY ' || order_by ||
+            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+        INTO res;
+    END IF;
+
+    RETURN res;
 
 END;
 $$ LANGUAGE PLPGSQL STABLE;
