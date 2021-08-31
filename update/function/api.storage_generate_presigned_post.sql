@@ -1,4 +1,4 @@
-DROP FUNCTION IF EXISTS api.storage_generate_presigned_post(jsonb);
+DROP FUNCTION IF EXISTS api.storage_generate_presigned_post;
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
@@ -22,18 +22,19 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';
     END IF;
 
-    SELECT reclada_object.list('{"class": "S3Config", "attrs": {}}')::jsonb -> 0 INTO credentials;
+    SELECT reclada_object.list('{"class": "S3Config", "attributes": {}}')::jsonb -> 0 
+        INTO credentials;
 
     object_name := data->>'objectName';
     file_type := data->>'fileType';
-    bucket_name := credentials->'attrs'->>'bucketName';
+    bucket_name := credentials->'attributes'->>'bucketName';
     SELECT uuid_generate_v4() INTO object_id;
     object_path := object_id;
     uri := 's3://' || bucket_name || '/' || object_path;
 
     -- TODO: remove checksum from required attrs for File class?
     SELECT reclada_object.create(format(
-        '{"class": "File", "attrs": {"name": "%s", "mimeType": "%s", "uri": "%s", "checksum": "tempChecksum"}}',
+        '{"class": "File", "attributes": {"name": "%s", "mimeType": "%s", "uri": "%s", "checksum": "tempChecksum"}}',
         object_name,
         file_type,
         uri

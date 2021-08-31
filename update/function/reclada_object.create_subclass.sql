@@ -3,10 +3,10 @@
  * A jsonb object with the following parameters is required.
  * Required parameters:
  *  class - the name of class to create
- *  attrs - the attributes of objects of the class
+ *  attributes - the attributes of objects of the class
  */
 
-DROP FUNCTION IF EXISTS reclada_object.create_subclass(jsonb);
+DROP FUNCTION IF EXISTS reclada_object.create_subclass;
 CREATE OR REPLACE FUNCTION reclada_object.create_subclass(data jsonb)
 RETURNS VOID AS $$
 DECLARE
@@ -21,9 +21,9 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-    attrs := data->'attrs';
+    attrs := data->'attributes';
     IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object must have attrs';
+        RAISE EXCEPTION 'The reclada object must have attributes';
     END IF;
 
     SELECT reclada_object.get_schema(class) INTO class_schema;
@@ -32,11 +32,11 @@ BEGIN
         RAISE EXCEPTION 'No json schema available for %', class;
     END IF;
 
-    class_schema := class_schema->'attrs'->'schema';
+    class_schema := class_schema->'attributes'->'schema';
 
     PERFORM reclada_object.create(format('{
         "class": "jsonschema",
-        "attrs": {
+        "attributes": {
             "forClass": "%s",
             "schema": {
                 "type": "object",
@@ -47,7 +47,10 @@ BEGIN
     }',
     attrs->>'newClass',
     (class_schema->'properties') || (attrs->'properties'),
-    (SELECT jsonb_agg(el) FROM (SELECT DISTINCT pg_catalog.jsonb_array_elements((class_schema -> 'required') || (attrs -> 'required')) el) arr)
+    (SELECT jsonb_agg(el) FROM (
+        SELECT DISTINCT pg_catalog.jsonb_array_elements(
+            (class_schema -> 'required') || (attrs -> 'required')
+        ) el) arr)
     )::jsonb);
 
 END;

@@ -60,7 +60,7 @@ update tmp set str = drp.v || scr.v
 											where n.nspname||'.'||p.proname = obj.nam
 										LIMIT 1
 								) 
-								then (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))
+								then (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))||';'
 							else ''
 						end
 				when obj.typ = 'view'

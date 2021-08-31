@@ -35,17 +35,20 @@ BEGIN
         END IF;
 
         query := format(E'select to_json(x) from jsonb_to_record($1) as x(%s)',
-            (select string_agg(s::text || ' jsonb', ',') from jsonb_array_elements(message -> 'attrs' -> 'attrs') s));
-        execute query into attrs using data -> 'attrs';
+            (
+                select string_agg(s::text || ' jsonb', ',') 
+                    from jsonb_array_elements(message -> 'attributes' -> 'attrs') s
+            ));
+        execute query into attrs using data -> 'attributes';
 
         msg := jsonb_build_object(
             'objectId', data -> 'id',
             'class', object_class,
             'event', event,
-            'attrs', attrs
+            'attributes', attrs
         );
 
-        perform reclada_notification.send(message #>> '{attrs, channelName}', msg);
+        perform reclada_notification.send(message #>> '{attributes, channelName}', msg);
 
     END LOOP;
 END

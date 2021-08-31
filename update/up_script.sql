@@ -1,37 +1,30 @@
--- version = 8
+-- version = 9
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
+drop VIEW if EXISTS reclada.v_revision;
+drop VIEW if EXISTS reclada.v_class;
+drop VIEW if EXISTS v_active_object;
+\i 'view/reclada.v_object.sql'
+\i 'view/reclada.v_active_object.sql'
+\i 'view/reclada.v_class.sql'
+\i 'view/reclada.v_revision.sql'
 
-DROP TRIGGER IF EXISTS datasource_insert_trigger ON reclada.object;
-CREATE TRIGGER datasource_insert_trigger
-  BEFORE INSERT
-  ON reclada.object FOR EACH ROW
-  EXECUTE PROCEDURE reclada.datasource_insert_trigger_fnc();
-
-/*
-    if we use AFTER trigger 
-    code from reclada_object.create:
-        with inserted as 
-        (
-            INSERT INTO reclada.object(class,attributes)
-                select class, attrs
-                    RETURNING obj_id
-        ) 
-        insert into tmp(id)
-            select obj_id 
-                from inserted;
-    twice returns obj_id for object which created from trigger (Job).
-    
-    As result query:
-        SELECT reclada_object.create('{"id": "", "class": "File", 
-							 	"attrs":{
-							 		"name": "SCkyqZSNmCFlWxPNSHWl", 
-								 	"checksum": "", 
-								 	"mimeType": "application/pdf", 
-							 		"uri": "s3://test-reclada-bucket/inbox/SCkyqZSNmCFlWxPNSHWl"
-							 }
-							 }', null);
-    selects only Job object.
-*/
+\i 'function/api.reclada_object_create.sql'
+\i 'function/api.reclada_object_list.sql'
+\i 'function/api.reclada_object_update.sql'
+\i 'function/api.storage_generate_presigned_post.sql'
+\i 'function/api.storage_generate_presigned_get.sql'
+\i 'function/reclada_notification.send_object_notification.sql'
+\i 'function/reclada_object.cast_jsonb_to_postgres.sql'
+\i 'function/reclada_object.create_subclass.sql'
+\i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.get_query_condition.sql'
+\i 'function/reclada_object.list_add.sql'
+\i 'function/reclada_object.list_drop.sql'
+\i 'function/reclada_object.list_related.sql'
+\i 'function/reclada_object.list.sql'
+\i 'function/reclada_object.update.sql'
+\i 'function/reclada_revision.create.sql'
+\i 'function/reclada.datasource_insert_trigger_fnc.sql'

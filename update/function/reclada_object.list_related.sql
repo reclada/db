@@ -61,7 +61,7 @@ BEGIN
         RAISE EXCEPTION 'There is no object with such id';
     END IF;
 
-    list_of_ids := obj#>(format('{attrs, %s}', field)::text[]);
+    list_of_ids := obj#>(format('{attributes, %s}', field)::text[]);
     IF (list_of_ids IS NULL) THEN
         RAISE EXCEPTION 'The object does not have this field';
     END IF;
@@ -82,7 +82,7 @@ BEGIN
     END IF;
 
     SELECT reclada_object.list(format(
-        '{"class": "%s", "attrs": {}, "id": {"operator": "<@", "object": %s}}',
+        '{"class": "%s", "attributes": {}, "id": {"operator": "<@", "object": %s}}',
         related_class,
         list_of_ids
         )::jsonb || cond,

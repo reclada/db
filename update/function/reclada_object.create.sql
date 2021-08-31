@@ -5,7 +5,7 @@
  * An array of jsonb objects with the following parameters is required to create a bunch of objects.
  * Required parameters:
  *  class - the class of objects
- *  attrs - the attributes of objects
+ *  attributes - the attributes of objects
  * Optional parameters:
  *  revision - object's revision. If a revision already exists, new revision will not be created. One revision is used to create a bunch of objects.
  *  branch - object's branch
@@ -44,9 +44,9 @@ BEGIN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;
 
-        attrs := data->'attrs';
+        attrs := data->'attributes';
         IF (attrs IS NULL) THEN
-            RAISE EXCEPTION 'The reclada object must have attrs';
+            RAISE EXCEPTION 'The reclada object must have attributes';
         END IF;
 
         SELECT reclada_object.get_schema(class) 
@@ -56,7 +56,7 @@ BEGIN
             RAISE EXCEPTION 'No json schema available for %', class;
         END IF;
 
-        IF (NOT(validate_json_schema(schema->'attrs'->'schema', attrs))) THEN
+        IF (NOT(validate_json_schema(schema->'attributes'->'schema', attrs))) THEN
             RAISE EXCEPTION 'JSON invalid: %', attrs;
         END IF;
 

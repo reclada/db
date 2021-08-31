@@ -57,7 +57,7 @@ BEGIN
     IF (field IS NULL) THEN
         RAISE EXCEPTION 'There is no field';
     END IF;
-    json_path := format('{attrs, %s}', field);
+    json_path := format('{attributes, %s}', field);
     field_value := obj#>json_path;
 
     IF ((field_value = 'null'::jsonb) OR (field_value IS NULL)) THEN

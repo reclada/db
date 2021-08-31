@@ -15,7 +15,7 @@ RETURNS uuid AS $$
         VALUES
         (
             'revision'               ,-- class,
-            format                    -- attrs
+            format                    -- attributes
             (                         
                 '{
                     "num": %s,
