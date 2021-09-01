@@ -19,7 +19,6 @@ CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
     bucket_name  varchar;
-    credentials  jsonb;
     file_type    varchar;
     object       jsonb;
     object_id    uuid;
@@ -38,11 +37,9 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';
     END IF;
 
-    SELECT reclada_object.list('{"class": "S3Config", "attrs": {}}')::jsonb -> 0 INTO credentials;
-
     object_name := data->>'objectName';
     file_type := data->>'fileType';
-    bucket_name := credentials->'attrs'->>'bucketName';
+    bucket_name := data->>'bucketName';
     SELECT uuid_generate_v4() INTO object_id;
     object_path := object_id;
     uri := 's3://' || bucket_name || '/' || object_path;
@@ -55,12 +52,10 @@ BEGIN
         uri
     )::jsonb)->0 INTO object;
 
-    --data := data || format('{"objectPath": "%s"}', object_path)::jsonb;
-    --SELECT reclada_storage.s3_generate_presigned_post(data, credentials)::jsonb INTO url;
     SELECT payload::jsonb
     FROM aws_lambda.invoke(
         aws_commons.create_lambda_function_arn(
-            's3_get_presigned_url_dev1',
+            's3_get_presigned_url_test',
             'eu-west-1'
             ),
         format('{
