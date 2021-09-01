@@ -1,3 +1,19 @@
+/*
+ * Function api.storage_generate_presigned_post creates File object and returns this object with url.
+ * Output is jsonb like this: {
+ *     "object": {...},
+ *     "uploadUrl": {"url": "...", "fields": {"key": "..."}}
+ *     }
+ * A jsonb object with the following parameters is required.
+ * Required parameters:
+ *  objectName - name of the object
+ *  fileType - id of the object
+ *  fileSize - size of the object
+ *  bucketName - name of Amazon S3 bucket
+ *  accessToken - jwt token to authorize
+ *
+*/
+
 DROP FUNCTION IF EXISTS api.storage_generate_presigned_post(jsonb);
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
