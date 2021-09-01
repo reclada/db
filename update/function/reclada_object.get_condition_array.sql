@@ -4,13 +4,13 @@
  *  data - the jsonb field which contains array
  *  key_path - the path to jsonb object field
  * Examples:
- * 1. Input: data = {"operator": "inList", "object": [60, 64, 65]}::jsonb,
+ * 1. Input: data = {"operator": "<@", "object": [60, 64, 65]}::jsonb,
              key_path = data->'revision'
- *    Output: ((data->'revision')::numeric = ANY(ARRAY[60, 64, 65]))
+ *    Output: data->'revision' <@ '[60, 64, 65]'::jsonb
  * 2. Input: data = {"object": ["value1", "value2", "value3"]}::jsonb,
              key_path = data->'attrs'->'tags'
- *    Output: ((ARRAY(SELECT jsonb_array_elements_text(data->'attrs'->'tags')::text) = ARRAY['value1', 'value2', 'value3'])
- * Only valid input is expected.
+ *    Output: data->'attrs'->'tags' = '["value1", "value2", "value3"]'::jsonb
+  * Only valid input is expected.
 */
 
 DROP FUNCTION IF EXISTS reclada_object.get_condition_array(jsonb, text);
@@ -19,6 +19,6 @@ RETURNS text AS $$
     SELECT
     CONCAT(
         key_path,
-        ' ', data->>'operator', ' ',
+        ' ', COALESCE(data->>'operator', '='), ' ',
         format(E'\'%s\'::jsonb', data->'object'#>>'{}'))
 $$ LANGUAGE SQL IMMUTABLE;
