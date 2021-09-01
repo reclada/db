@@ -2,7 +2,6 @@ DROP FUNCTION IF EXISTS api.storage_generate_presigned_get;
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_get(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    credentials  jsonb;
     object_data  jsonb;
     object_id    uuid;
     result       jsonb;
@@ -16,8 +15,6 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';
     END IF;
 
-    SELECT reclada_object.list('{"class": "S3Config", "attrs": {}}')::jsonb -> 0 INTO credentials;
-
     -- TODO: check user's permissions for reclada object access?
     object_id := data->>'objectId';
     SELECT reclada_object.list(format(
@@ -28,7 +25,7 @@ BEGIN
     SELECT payload
     FROM aws_lambda.invoke(
         aws_commons.create_lambda_function_arn(
-            's3_get_presigned_url_dev1',
+            's3_get_presigned_url_test',
             'eu-west-1'
             ),
         format('{
