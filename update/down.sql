@@ -30,7 +30,3 @@ CREATE TRIGGER datasource_insert_trigger
   BEFORE INSERT
   ON reclada.object FOR EACH ROW
   EXECUTE PROCEDURE reclada.datasource_insert_trigger_fnc();
-
--- PL/pgSQL function dev.downgrade_version() line 25 at EXECUTE
--- SQLSTATE: 2BP01
--- SQLERRM : cannot drop function datasource_insert_trigger_fnc() because other objects depend on it

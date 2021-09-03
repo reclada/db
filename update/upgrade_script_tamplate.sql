@@ -43,7 +43,19 @@ update tmp set str = drp.v || scr.v
     )  obj ON TRUE
 		inner JOIN LATERAL
     (
-        select 	'drop '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n' as v
+        select case
+				when obj.typ = 'trigger'
+					then
+					    (select 'DROP '|| obj.typ || ' IF EXISTS '|| obj.nam ||' ON ' || schm||'.'||tbl ||';' || E'\n'
+                        from (
+                            select n.nspname as schm,
+                                   c.relname as tbl
+                            from pg_trigger t
+                                join pg_class c on c.oid = t.tgrelid
+                                join pg_namespace n on n.oid = c.relnamespace
+                            where t.tgname = 'datasource_insert_trigger') o)
+                else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'
+                end as v
     )  drp ON TRUE
 	inner JOIN LATERAL
     (
@@ -79,11 +91,26 @@ update tmp set str = drp.v || scr.v
                                         || (select pg_get_viewdef(obj.nam, true))
 							else ''
 						end
+				when obj.typ = 'trigger'
+					then
+						case
+							when EXISTS
+								(
+									select 1 a
+										from pg_trigger v
+                                            where v.tgname = obj.nam
+										LIMIT 1
+								)
+								then (select pg_catalog.pg_get_triggerdef(oid, true)
+								        from pg_trigger
+								        where tgname = obj.nam)||';'
+							else ''
+						end
 				else 
 					ttt.str
 			end as v
     )  scr ON TRUE
-	where ttt.str = tmp.str 
+	where ttt.id = tmp.id
 		and tmp.str like '--{%/%}';
 	
 update var_table set downgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');	

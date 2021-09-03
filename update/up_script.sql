@@ -1,8 +1,9 @@
--- version = 9
+-- version = 11
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
+
 drop VIEW if EXISTS reclada.v_revision;
 drop VIEW if EXISTS reclada.v_class;
 drop VIEW if EXISTS v_active_object;
