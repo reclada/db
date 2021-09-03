@@ -33,7 +33,13 @@ BEGIN
         END IF;
 
         IF (jsonb_typeof(data->'object') = 'object') THEN
-            RAISE EXCEPTION 'The input_jsonb->''object'' can not contain jsonb object';
+            operator :=  data->>'operator';
+            IF operator = '=' then
+                key := reclada_object.cast_jsonb_to_postgres(key_path, 'string' );
+                RETURN (key || ' ' || operator || ' ''' || (data->'object')::text || '''');
+            ELSE
+                RAISE EXCEPTION 'The input_jsonb->''object'' can not contain jsonb object';
+            END If;
         END IF;
 
         IF (jsonb_typeof(data->'operator') != 'string' AND data->'operator' IS NOT NULL) THEN
