@@ -27,7 +27,7 @@ BEGIN
     -- TODO: check user's permissions for reclada object access?
     object_id := data->>'objectId';
     SELECT reclada_object.list(format(
-        '{"class": "File", "attrs": {}, "id": "%s"}',
+        '{"class": "File", "attributes": {}, "id": "%s"}',
         object_id
     )::jsonb) -> 0 INTO object_data;
 
@@ -41,7 +41,7 @@ BEGIN
             "type": "get",
             "uri": "%s",
             "expiration": 3600}',
-            object_data->'attrs'->>'uri'
+            object_data->'attributes'->>'uri'
             )::jsonb)
     INTO result;
 

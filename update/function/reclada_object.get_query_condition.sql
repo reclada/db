@@ -9,10 +9,10 @@
  *    Output: (((data->'revision')::numeric >= 100) AND ((data->'revision')::numeric < 124))
  * 2. Input: data = {"operator": "LIKE", "object": "%test%"}::jsonb,
  *            key_path = data->'name'
- *    Output: ((data->'attrs'->'name'#>>'{}')::text LIKE '%test%')
+ *    Output: ((data->'attributes'->'name'#>>'{}')::text LIKE '%test%')
 */
 
-DROP FUNCTION IF EXISTS reclada_object.get_query_condition(jsonb, text);
+DROP FUNCTION IF EXISTS reclada_object.get_query_condition;
 CREATE OR REPLACE FUNCTION reclada_object.get_query_condition(data jsonb, key_path text)
 RETURNS text AS $$
 DECLARE

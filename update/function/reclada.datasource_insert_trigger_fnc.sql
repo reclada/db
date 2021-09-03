@@ -15,7 +15,7 @@ BEGIN
 	    WHERE v.attrs->>'name' = 'defaultDataSet'
 	    INTO dataset;
 
-        dataset := jsonb_set(dataset, '{attrs, dataSources}', dataset->'attrs'->'dataSources' || format('["%s"]', obj_id)::jsonb);
+        dataset := jsonb_set(dataset, '{attributes, dataSources}', dataset->'attributes'->'dataSources' || format('["%s"]', obj_id)::jsonb);
 
         PERFORM reclada_object.update(dataset);
 
@@ -24,7 +24,7 @@ BEGIN
         PERFORM reclada_object.create(
             format('{
                 "class": "Job",
-                "attrs": {
+                "attributes": {
                     "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
                     "status": "new",
                     "type": "K8S",

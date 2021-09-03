@@ -1,3 +1,4 @@
+DROP FUNCTION IF EXISTS api.storage_generate_presigned_post;
 /*
  * Function api.storage_generate_presigned_post creates File object and returns this object with url.
  * Output is jsonb like this: {
@@ -13,8 +14,6 @@
  *  accessToken - jwt token to authorize
  *
 */
-
-DROP FUNCTION IF EXISTS api.storage_generate_presigned_post(jsonb);
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
@@ -40,13 +39,14 @@ BEGIN
     object_name := data->>'objectName';
     file_type := data->>'fileType';
     bucket_name := data->>'bucketName';
+
     SELECT uuid_generate_v4() INTO object_id;
     object_path := object_id;
     uri := 's3://' || bucket_name || '/' || object_path;
 
     -- TODO: remove checksum from required attrs for File class?
     SELECT reclada_object.create(format(
-        '{"class": "File", "attrs": {"name": "%s", "mimeType": "%s", "uri": "%s", "checksum": "tempChecksum"}}',
+        '{"class": "File", "attributes": {"name": "%s", "mimeType": "%s", "uri": "%s", "checksum": "tempChecksum"}}',
         object_name,
         file_type,
         uri

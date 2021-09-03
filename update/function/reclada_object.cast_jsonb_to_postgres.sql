@@ -8,12 +8,12 @@
  * Examples:
  * 1. Input: key_path = data->'revision', type = number
  *    Output: (data->'revision')::numeric
- * 2. Input: key_path = data->'attrs'->'tags', type = array, type_of_array = string
- *    Output: (ARRAY(SELECT jsonb_array_elements_text(data->'attrs'->'tags')::text)
+ * 2. Input: key_path = data->'attributes'->'tags', type = array, type_of_array = string
+ *    Output: (ARRAY(SELECT jsonb_array_elements_text(data->'attributes'->'tags')::text)
  * Only valid input is expected.
 */
 
-DROP FUNCTION IF EXISTS reclada_object.cast_jsonb_to_postgres(text, text, text);
+DROP FUNCTION IF EXISTS reclada_object.cast_jsonb_to_postgres;
 CREATE OR REPLACE FUNCTION reclada_object.cast_jsonb_to_postgres(key_path text, type text, type_of_array text default 'text')
 RETURNS text AS $$
 SELECT

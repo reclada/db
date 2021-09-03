@@ -4,7 +4,7 @@
  * Required parameters:
  *  class - the class of object
  *  id - identifier of the object
- *  attrs - the attributes of object
+ *  attributes - the attributes of object
  * Optional parameters:
  *  branch - object's branch
  *
@@ -40,9 +40,9 @@ BEGIN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
-    v_attrs := data->'attrs';
+    v_attrs := data->'attributes';
     IF (v_attrs IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object must have attrs';
+        RAISE EXCEPTION 'The reclada object must have attributes';
     END IF;
 
     SELECT reclada_object.get_schema(v_class) 
@@ -52,7 +52,7 @@ BEGIN
         RAISE EXCEPTION 'No json schema available for %', v_class;
     END IF;
 
-    IF (NOT(validate_json_schema(schema->'attrs'->'schema', v_attrs))) THEN
+    IF (NOT(validate_json_schema(schema->'attributes'->'schema', v_attrs))) THEN
         RAISE EXCEPTION 'JSON invalid: %', v_attrs;
     END IF;
 
