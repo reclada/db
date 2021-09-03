@@ -32,21 +32,17 @@ with t as (
             t.revision           ,
             t.created_time       ,
             t.attrs              ,
-            format
             (
-                '{
-                    "id": "%s",
-                    "class": "%s",
-                    "revision": %s, 
-                    "status": "%s",
-                    "attributes": %s
-                }',
-                t.obj_id    ,
-                t.class     ,
-                coalesce('"' || t.revision::text || '"','null')  ,
-                os.caption  ,
-                t.attrs
-            )::jsonb as data, 
+                select json_agg(tmp)->0
+                    FROM 
+                    (
+                        SELECT  t.obj_id   as id        ,
+                                t.class    as class     ,
+                                t.revision as revision  ,
+                                os.caption as status    ,
+                                t.attrs    as attributes
+                    ) as tmp
+            )::jsonb as data,
             u.login as login_created_by,
             t.created_by as created_by,
             t.status             
