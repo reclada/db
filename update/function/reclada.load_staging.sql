@@ -1,9 +1,8 @@
-CREATE OR REPLACE FUNCTION reclada.load_staging() 
-RETURNS TRIGGER 
+CREATE OR REPLACE FUNCTION reclada.load_staging()
+RETURNS TRIGGER
 AS $$
 BEGIN
-    PERFORM reclada_object.create(data) 
-        FROM NEW_TABLE;
+    PERFORM reclada_object.create(NEW.data);
     RETURN NEW;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;

@@ -3,4 +3,9 @@
 
 --{function/reclada_object.create}
 
-drop index unique_guid_revision;
+CREATE TABLE reclada.staging(
+    data    jsonb   NOT NULL
+);
+\i 'function/reclada.load_staging'
+\i 'view/reclada.staging'
+\i 'trigger/load_staging'
