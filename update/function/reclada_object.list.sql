@@ -172,16 +172,16 @@ BEGIN
                                         format
                                         (
                                             E'(%s)',
-                                            reclada_object.get_query_condition(cond, format(E'data->''attributes''->%L', key))
+                                            reclada_object.get_query_condition(cond, format(E'attrs->%L', key))
                                         ),
                                         ' AND '
                                     )
                                     FROM jsonb_array_elements(value) AS cond
                             )
-                    ELSE reclada_object.get_query_condition(value, format(E'data->''attributes''->%L', key))
+                    ELSE reclada_object.get_query_condition(value, format(E'attrs->%L', key))
                 END AS condition
             FROM jsonb_each(attrs)
-            WHERE data->'attributes' != ('{}'::jsonb)
+            WHERE attrs != ('{}'::jsonb)
         ) conds
     INTO query_conditions;
 
