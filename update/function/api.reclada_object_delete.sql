@@ -7,7 +7,7 @@
  *  id - identifier of the object
  *  accessToken - jwt token to authorize
  * Optional parameters:
- *  attrs - the attributes of object
+ *  attributes - the attributes of object
  *  branch - object's branch
  *
 */
