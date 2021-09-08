@@ -17,5 +17,5 @@ AS
             where t.status = reclada_object.get_active_status_obj_id()
             ;
 
--- select * from reclada.v_object limit 300
+-- select * from reclada.v_active_object limit 300
 -- select * from reclada.object

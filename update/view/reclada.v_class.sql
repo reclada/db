@@ -12,5 +12,5 @@ AS
             obj.status        ,
             obj.data
 	FROM reclada.v_active_object obj
-   	WHERE class = 'jsonschema';
+   	WHERE class in (select reclada_object.get_GUID_for_class('jsonschema'));
 --select * from reclada.v_class

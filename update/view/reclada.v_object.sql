@@ -19,7 +19,7 @@ with t as (
             select  (r.attributes->'num')::bigint num,
                     r.obj_id
                 from reclada.object r
-                    where class = 'revision'
+                    where class in (select reclada_object.get_GUID_for_class('revision'))
         ) r
             on r.obj_id = NULLIF(obj.attributes ->> 'revision','')::uuid
 )
