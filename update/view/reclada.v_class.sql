@@ -4,6 +4,7 @@ AS
     SELECT  obj.id            ,
             obj.obj_id        ,
             obj.attrs->>'forClass' as for_class,
+            (obj.attrs->'version')::bigint as for_class,
             obj.revision_num  ,
             obj.status_caption,
             obj.revision      ,
