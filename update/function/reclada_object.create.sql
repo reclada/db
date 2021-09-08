@@ -24,6 +24,7 @@ DECLARE
     class      text;
     attrs      jsonb;
     schema     jsonb;
+    objid      uuid;
     res        jsonb;
 
 BEGIN
@@ -59,12 +60,23 @@ BEGIN
         IF (NOT(validate_json_schema(schema->'attributes'->'schema', attrs))) THEN
             RAISE EXCEPTION 'JSON invalid: %', attrs;
         END IF;
-
+        
+        objid := (data->>'id')::uuid;
+        IF EXISTS (
+            select 1 from reclada.object 
+                where obj_id = objid
+        ) then
+            RAISE EXCEPTION 'id: % is duplicate', objid;
+        end if;
         with inserted as 
         (
-            INSERT INTO reclada.object(class,attributes)
-                select class, attrs
-                    RETURNING obj_id
+            INSERT INTO reclada.object(obj_id,class,attributes)
+                select public.uuid_generate_v4(), class, attrs
+                    where objid IS NULL
+                union
+                select objid, class, attrs
+                    where objid IS not NULL
+                RETURNING obj_id
         ) 
         insert into tmp(id)
             select obj_id 
