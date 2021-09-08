@@ -1,12 +1,10 @@
--- version = 16
+-- version = 17
+
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
-
-\i 'function/reclada_object.create.sql'
-
-
-CREATE UNIQUE INDEX unique_guid_revision 
-    ON reclada.object((attributes->>'revision'),obj_id);
-
+DROP TABLE IF EXISTS reclada.staging;
+\i 'function/reclada.load_staging.sql'
+\i 'view/reclada.staging.sql'
+\i 'trigger/load_staging.sql'
