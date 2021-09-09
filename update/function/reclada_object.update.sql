@@ -20,9 +20,10 @@ RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $body$
 DECLARE
-    v_class         text;
-    v_obj_id        uuid;
-    v_attrs         jsonb;
+    class_name     text;
+    class_uuid     uuid;
+    v_obj_id       uuid;
+    v_attrs        jsonb;
     schema        jsonb;
     old_obj       jsonb;
     branch        uuid;
@@ -30,11 +31,11 @@ DECLARE
 
 BEGIN
 
-    v_class := data->>'class';
-    IF (v_class IS NULL) THEN
+    class_name := data->>'class';
+    IF (class_name IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
-
+    class_uuid := public.try_cast_uuid(class_name);
     v_obj_id := data->>'id';
     IF (v_obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no id';
@@ -45,11 +46,20 @@ BEGIN
         RAISE EXCEPTION 'The reclada object must have attributes';
     END IF;
 
-    SELECT reclada_object.get_schema(v_class) 
+    SELECT reclada_object.get_schema(class_name) 
         INTO schema;
 
+    if class_uuid is null then
+        SELECT reclada_object.get_schema(class_name) 
+            INTO schema;
+    else
+        select v.data 
+            from reclada.v_class v
+                where class_uuid = v.obj_id
+            INTO schema;
+    end if;
     IF (schema IS NULL) THEN
-        RAISE EXCEPTION 'No json schema available for %', v_class;
+        RAISE EXCEPTION 'No json schema available for %', class_name;
     END IF;
 
     IF (NOT(validate_json_schema(schema->'attributes'->'schema', v_attrs))) THEN
@@ -83,7 +93,7 @@ BEGIN
                                 attributes
                               )
         select  v.obj_id,
-                v_class,
+                (schema->>'id')::uuid,
                 reclada_object.get_active_status_obj_id(),--status 
                 v_attrs || format('{"revision":"%s"}',revid)::jsonb
             FROM reclada.v_object v

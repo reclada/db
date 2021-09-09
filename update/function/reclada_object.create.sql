@@ -21,7 +21,8 @@ RETURNS jsonb AS $$
 DECLARE
     branch     uuid;
     data       jsonb;
-    class      text;
+    class_name text;
+    class_uuid uuid;
     attrs      jsonb;
     schema     jsonb;
     objid      uuid;
@@ -35,26 +36,34 @@ BEGIN
     /*TODO: check if some objects have revision and others do not */
     branch:= data_jsonb->0->'branch';
     create temp table IF NOT EXISTS tmp(id uuid)
-    ON COMMIT drop;
+        ON COMMIT drop;
     delete from tmp;
     FOR data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
 
-        class := data->>'class';
-        IF (class IS NULL) THEN
+        class_name := data->>'class';
+
+        IF (class_name IS NULL) THEN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;
+        class_uuid := public.try_cast_uuid(class_name);
 
         attrs := data->'attributes';
         IF (attrs IS NULL) THEN
             RAISE EXCEPTION 'The reclada object must have attributes';
         END IF;
 
-        SELECT reclada_object.get_schema(class) 
-            INTO schema;
-
+        if class_uuid is null then
+            SELECT reclada_object.get_schema(class_name) 
+                INTO schema;
+        else
+            select v.data 
+                from reclada.v_class v
+                    where class_uuid = v.obj_id
+                INTO schema;
+        end if;
         IF (schema IS NULL) THEN
-            RAISE EXCEPTION 'No json schema available for %', class;
+            RAISE EXCEPTION 'No json schema available for %', class_name;
         END IF;
 
         IF (NOT(validate_json_schema(schema->'attributes'->'schema', attrs))) THEN
@@ -71,11 +80,13 @@ BEGIN
         with inserted as 
         (
             INSERT INTO reclada.object(obj_id,class,attributes)
-                select public.uuid_generate_v4(), class, attrs
-                    where objid IS NULL
-                union
-                select objid, class, attrs
-                    where objid IS not NULL
+                select  case
+                            when objid IS NULL
+                                then public.uuid_generate_v4()
+                            else objid
+                        end as obj_id,
+                        (schema->>'id')::uuid, 
+                        attrs                
                 RETURNING obj_id
         ) 
         insert into tmp(id)

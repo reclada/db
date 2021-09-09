@@ -32,6 +32,7 @@ with t as (
             t.revision           ,
             t.created_time       ,
             t.attrs              ,
+            cl.for_class as class_name,
             (
                 select json_agg(tmp)->0
                     FROM 
@@ -51,6 +52,8 @@ with t as (
             on t.status = os.obj_id
         left join reclada.v_user u
             on u.obj_id = t.created_by
+        left join reclada.v_class_lite cl
+            on cl.obj_id = t.class
             ;
 
 -- select * from reclada.v_object where revision is not null

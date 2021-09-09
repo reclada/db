@@ -10,6 +10,7 @@ AS
             t.status_caption    ,
             t.revision          ,
             t.created_time      ,
+            t.class_name        ,
             t.attrs             ,
             t.data 
         FROM reclada.v_object as t

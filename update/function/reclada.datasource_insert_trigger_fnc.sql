@@ -6,7 +6,9 @@ DECLARE
     uri           text;
 
 BEGIN
-    IF (NEW.class = 'DataSource') OR (NEW.class = 'File') THEN
+    IF NEW.class in 
+            (select reclada_object.get_GUID_for_class('DataSource'))
+        OR NEW.class in (select reclada_object.get_GUID_for_class('File')) THEN
 
         obj_id := NEW.obj_id;
 

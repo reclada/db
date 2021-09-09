@@ -51,6 +51,7 @@ alter table reclada.object
 create index class_index 
     ON reclada.object(class);
 
+\i 'function/public.try_cast_uuid.sql'
 \i 'function/reclada_object.get_jsonschema_GUID.sql'
 \i 'view/reclada.v_class_lite.sql'
 \i 'function/reclada_object.get_GUID_for_class.sql'
@@ -85,6 +86,15 @@ UPDATE reclada.object o
 \i 'view/reclada.v_active_object.sql'
 \i 'view/reclada.v_revision.sql'
 \i 'view/reclada.v_class.sql'
+
+\i 'function/reclada_object.get_schema.sql'
+\i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.update.sql'
+\i 'function/reclada_object.list.sql'
+\i 'function/reclada.datasource_insert_trigger_fnc.sql'
+\i 'function/reclada_notification.send_object_notification.sql'
+\i 'function/reclada_revision.create.sql'
+
 
 
 -- проверить, что вернет reclada_object.get_GUID_for_class если есть несколько классов
