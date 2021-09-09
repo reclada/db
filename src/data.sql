@@ -36,32 +36,25 @@ SELECT reclada_object.create('{
         }
     }
 }'::jsonb);
-
-    SELECT *
-    FROM reclada.v_class
-    WHERE for_class = 'tag_2'
-
-select reclada_object.get_schema('tag_2')
-
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
-    "attributes": {
-        "newClass": "tag_2",
+    "attrs": {
+        "newClass": "tag",
         "properties": {
-            "name_": {"type": "string"}
+            "name": {"type": "string"}
         },
-        "required": ["name_"]
+        "required": ["name"]
     }
 }'::jsonb);
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
-    "attributes": {
+    "attrs": {
         "newClass": "DataSource",
         "properties": {
             "name": {"type": "string"},
             "uri": {"type": "string"}
         },
-        "required": ["name", "uri"]
+        "required": ["name"]
     }
 }'::jsonb);
 SELECT reclada_object.create_subclass('{
@@ -90,14 +83,13 @@ SELECT reclada_object.create_subclass('{
         "required": ["accessKeyId", "secretAccessKey", "bucketName"]
     }
 }'::jsonb);
-
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
-    "attributes": {
+    "attrs": {
         "newClass": "DataSet",
         "properties": {
             "name": {"type": "string"},
-            "dataSources_": {
+            "dataSources": {
                 "type": "array",
                 "items": {"type": "string"}
             }
@@ -105,21 +97,6 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attrs": {
-        "newClass": "S3Config",
-        "properties": {
-            "endpointURL": {"type": "string"},
-            "regionName": {"type": "string"},
-            "accessKeyId": {"type": "string"},
-            "secretAccessKey": {"type": "string"},
-            "bucketName": {"type": "string"}
-            },
-        "required": ["accessKeyId", "secretAccessKey", "bucketName"]
-    }
-}'::jsonb);
-
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
@@ -145,13 +122,8 @@ SELECT reclada_object.create_subclass('{
 /* Just for demo */
 SELECT reclada_object.create('{
     "class": "DataSet",
-    "attributes": {
-        "name": "defaultDataSet2",
+    "attrs": {
+        "name": "defaultDataSet",
         "dataSources": []
         }
 }'::jsonb);
-
-    SELECT *
-    FROM reclada.v_class
-    WHERE for_class = 'DataSet'
-    ORDER BY version DESC
