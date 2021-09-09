@@ -4,6 +4,7 @@ AS
     SELECT  obj.id            ,
             obj.obj_id        ,
             obj.attrs->>'forClass' as for_class,
+            COALESCE((obj.attrs->>'version')::bigint, 1) as version,
             obj.revision_num  ,
             obj.status_caption,
             obj.revision      ,

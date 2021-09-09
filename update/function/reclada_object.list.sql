@@ -134,13 +134,13 @@ BEGIN
                                 (
                                     format(
                                         E'(%s)',
-                                        reclada_object.get_query_condition(cond, E'data->''id''')
+                                        reclada_object.get_query_condition(cond, E'data->''id''') -- TODO: change data->'id' to obj_id(GUID)
                                     ),
                                     ' AND '
                                 )
                                 FROM jsonb_array_elements(data->'id') AS cond
                         )
-                        ELSE reclada_object.get_query_condition(data->'id', E'data->''id''')
+                        ELSE reclada_object.get_query_condition(data->'id', E'data->''id''') -- TODO: change data->'id' to obj_id(GUID)
                     END AS condition
                 WHERE coalesce(data->'id','null'::jsonb) != 'null'::jsonb
             -- UNION
