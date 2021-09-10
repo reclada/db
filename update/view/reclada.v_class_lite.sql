@@ -2,7 +2,7 @@ drop VIEW if EXISTS reclada.v_class_lite;
 CREATE OR REPLACE VIEW reclada.v_class_lite
 AS
     SELECT  obj.id,
-            obj.obj_id,
+            obj.GUID as obj_id,
             obj.attributes->>'forClass' as for_class,
             (attributes->>'version')::bigint as version,
             obj.created_time,

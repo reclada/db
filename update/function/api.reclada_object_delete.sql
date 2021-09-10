@@ -28,7 +28,7 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    obj_id := data->>'id';
+    obj_id := data->>'GUID';
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;

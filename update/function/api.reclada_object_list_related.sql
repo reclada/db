@@ -16,7 +16,7 @@
  *
 */
 
-DROP FUNCTION IF EXISTS api.reclada_object_list_related(jsonb);
+DROP FUNCTION IF EXISTS api.reclada_object_list_related;
 CREATE OR REPLACE FUNCTION api.reclada_object_list_related(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
@@ -33,9 +33,9 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-    obj_id := (data->>'id')::uuid;
+    obj_id := (data->>'GUID')::uuid;
     IF (obj_id IS NULL) THEN
-        RAISE EXCEPTION 'The object id is not specified';
+        RAISE EXCEPTION 'The object GUID is not specified';
     END IF;
 
     field := data->'field';

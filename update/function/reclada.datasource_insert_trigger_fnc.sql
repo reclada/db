@@ -10,7 +10,7 @@ BEGIN
             (select reclada_object.get_GUID_for_class('DataSource'))
         OR NEW.class in (select reclada_object.get_GUID_for_class('File')) THEN
 
-        obj_id := NEW.obj_id;
+        obj_id := NEW.GUID;
 
         SELECT v.data
         FROM reclada.v_active_object v
