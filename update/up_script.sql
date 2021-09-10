@@ -1,3 +1,4 @@
+
 -- version = 18
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
