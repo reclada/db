@@ -4,7 +4,7 @@ AS
     SELECT  obj.id,
             obj.obj_id,
             obj.attributes->>'forClass' as for_class,
-            attributes->>'version' as version,
+            (attributes->>'version')::bigint as version,
             obj.created_time,
             obj.attributes,
             obj.status        

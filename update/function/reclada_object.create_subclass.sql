@@ -36,8 +36,8 @@ BEGIN
         RAISE EXCEPTION 'No json schema available for %', class;
     END IF;
 
-    SELECT count(1) + 1
-    FROM reclada.v_class v
+    SELECT max(version) + 1
+    FROM reclada.v_class_lite v
     WHERE v.for_class = new_class
     INTO version;
 

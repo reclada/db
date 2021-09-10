@@ -94,7 +94,7 @@ UPDATE reclada.object o
 \i 'function/reclada.datasource_insert_trigger_fnc.sql'
 \i 'function/reclada_notification.send_object_notification.sql'
 \i 'function/reclada_revision.create.sql'
-\i 'function/reclada_object.get_schema.sql'
+
 
 
 

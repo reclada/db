@@ -58,6 +58,7 @@ BEGIN
                 where class_uuid = v.obj_id
             INTO schema;
     end if;
+    -- TODO: don't allow update jsonschema
     IF (schema IS NULL) THEN
         RAISE EXCEPTION 'No json schema available for %', class_name;
     END IF;
