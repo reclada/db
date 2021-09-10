@@ -14,7 +14,7 @@ RETURNS uuid AS $$
                
         VALUES
         (
-            (reclada_object.get_schema('revision')->>'id')::uuid,-- class,
+            (reclada_object.get_schema('revision')->>'GUID')::uuid,-- class,
             format                    -- attributes
             (                         
                 '{
@@ -26,12 +26,12 @@ RETURNS uuid AS $$
                 (
                     select count(*) + 1
                         from reclada.object o
-                            where o.obj_id = obj
+                            where o.GUID = obj
                 ),
                 userid,
                 now(),
                 branch
             )::jsonb
-        ) RETURNING (obj_id)::uuid;
+        ) RETURNING (GUID)::uuid;
     --nextval('reclada.reclada_revisions'),
 $$ LANGUAGE SQL VOLATILE;

@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION reclada_object.get_jsonschema_GUID()
 RETURNS uuid AS $$
     SELECT class
         FROM reclada.object o
-            where o.obj_id = 
+            where o.GUID = 
                 (
                     select class 
                         from reclada.object 

@@ -29,9 +29,9 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    objid := data->>'id';
+    objid := data->>'GUID';
     IF (objid IS NULL) THEN
-        RAISE EXCEPTION 'Could not update object with no id';
+        RAISE EXCEPTION 'Could not update object with no GUID';
     END IF;
 
     attrs := data->'attributes';

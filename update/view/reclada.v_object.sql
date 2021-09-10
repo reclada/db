@@ -4,12 +4,12 @@ AS
 with t as (
     SELECT  
             obj.id      ,
-            obj.obj_id  ,
+            obj.GUID    ,
             obj.class   ,
             r.num       ,
             NULLIF(obj.attributes ->> 'revision','')::uuid 
                 as revision,
-            obj.attributes as attrs,
+            obj.attributes,
             obj.status  ,
             obj.created_time ,
             obj.created_by   
@@ -17,31 +17,31 @@ with t as (
         left join 
         (
             select  (r.attributes->'num')::bigint num,
-                    r.obj_id
+                    r.GUID 
                 from reclada.object r
                     where class in (select reclada_object.get_GUID_for_class('revision'))
         ) r
-            on r.obj_id = NULLIF(obj.attributes ->> 'revision','')::uuid
+            on r.GUID = NULLIF(obj.attributes ->> 'revision','')::uuid
 )
     SELECT  
             t.id                 ,
-            t.obj_id             ,
+            t.GUID as obj_id     ,
             t.class              ,
             t.num       as revision_num     ,
             os.caption  as status_caption   ,
             t.revision           ,
             t.created_time       ,
-            t.attrs              ,
+            t.attributes as attrs,
             cl.for_class as class_name,
             (
                 select json_agg(tmp)->0
                     FROM 
                     (
-                        SELECT  t.obj_id   as id        ,
-                                t.class    as class     ,
-                                t.revision as revision  ,
-                                os.caption as status    ,
-                                t.attrs    as attributes
+                        SELECT  t.GUID       as "GUID"    ,
+                                t.class      as class     ,
+                                t.revision   as revision  ,
+                                os.caption   as status    ,
+                                t.attributes as attributes
                     ) as tmp
             )::jsonb as data,
             u.login as login_created_by,

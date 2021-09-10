@@ -36,9 +36,9 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
     class_uuid := public.try_cast_uuid(class_name);
-    v_obj_id := data->>'id';
+    v_obj_id := data->>'GUID';
     IF (v_obj_id IS NULL) THEN
-        RAISE EXCEPTION 'Could not update object with no id';
+        RAISE EXCEPTION 'Could not update object with no GUID';
     END IF;
 
     v_attrs := data->'attributes';
@@ -84,17 +84,17 @@ BEGIN
     (
         update reclada.object o
             set status = reclada_object.get_archive_status_obj_id()
-                where o.obj_id = v_obj_id
+                where o.GUID = v_obj_id
                     and status != reclada_object.get_archive_status_obj_id()
                         RETURNING id
     )
-    INSERT INTO reclada.object( obj_id,
+    INSERT INTO reclada.object( GUID,
                                 class,
                                 status,
                                 attributes
                               )
         select  v.obj_id,
-                (schema->>'id')::uuid,
+                (schema->>'GUID')::uuid,
                 reclada_object.get_active_status_obj_id(),--status 
                 v_attrs || format('{"revision":"%s"}',revid)::jsonb
             FROM reclada.v_object v

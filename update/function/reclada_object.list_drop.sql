@@ -31,9 +31,9 @@ BEGIN
 		RAISE EXCEPTION 'The reclada object class is not specified';
 	END IF;
 
-	objid := (data->>'id')::uuid;
+	objid := (data->>'GUID')::uuid;
 	IF (objid IS NULL) THEN
-		RAISE EXCEPTION 'The is no id';
+		RAISE EXCEPTION 'The is no GUID';
 	END IF;
 
     SELECT v.data

@@ -2,7 +2,7 @@ drop VIEW if EXISTS reclada.v_user;
 CREATE OR REPLACE VIEW reclada.v_user
 AS
     SELECT  obj.id            ,
-            obj.obj_id        ,
+            obj.GUID as obj_id,
             obj.attributes->>'login' as login,
             obj.created_time  ,
             obj.attributes as attrs
