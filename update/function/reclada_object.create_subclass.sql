@@ -37,7 +37,7 @@ BEGIN
     END IF;
 
     SELECT max(version) + 1
-    FROM reclada.v_class_lite v
+    FROM reclada.v_class v
     WHERE v.for_class = new_class
     INTO version;
 

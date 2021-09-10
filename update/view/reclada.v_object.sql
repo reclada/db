@@ -16,7 +16,7 @@ with t as (
         FROM reclada.object obj
         left join 
         (
-            select  (r.attributes->'num')::bigint num,
+            select  (r.attributes->>'num')::bigint num,
                     r.GUID 
                 from reclada.object r
                     where class in (select reclada_object.get_GUID_for_class('revision'))
@@ -32,7 +32,7 @@ with t as (
             t.revision           ,
             t.created_time       ,
             t.attributes as attrs,
-            cl.for_class as class_name,
+            c.for_class as class_name,
             (
                 select json_agg(tmp)->0
                     FROM 
@@ -52,8 +52,8 @@ with t as (
             on t.status = os.obj_id
         left join reclada.v_user u
             on u.obj_id = t.created_by
-        left join reclada.v_class_lite cl
-            on cl.obj_id = t.class
+        left join reclada.v_class c
+            on c.obj_id = t.class
             ;
 
 -- select * from reclada.v_object where revision is not null

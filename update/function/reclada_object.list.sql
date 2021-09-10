@@ -83,7 +83,7 @@ BEGIN
 
     if class_uuid is not null then
         select v.for_class 
-            from reclada.v_class_lite v
+            from reclada.v_class v
                 where class_uuid = v.obj_id
         into class;
 
