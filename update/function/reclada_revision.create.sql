@@ -14,7 +14,7 @@ RETURNS uuid AS $$
                
         VALUES
         (
-            'revision'               ,-- class,
+            (reclada_object.get_schema('revision')->>'id')::uuid,-- class,
             format                    -- attributes
             (                         
                 '{

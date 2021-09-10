@@ -36,7 +36,6 @@ SELECT reclada_object.create('{
         }
     }
 }'::jsonb);
-
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {
@@ -98,7 +97,6 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attrs": {

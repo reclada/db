@@ -16,5 +16,5 @@ AS
             obj.status        ,
             obj.data
 	FROM reclada.v_active_object obj
-   	WHERE class = 'revision';
+   	WHERE class_name = 'revision';
 --select * from reclada.v_revision
