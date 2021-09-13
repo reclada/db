@@ -8,7 +8,7 @@ DECLARE
     message         jsonb;
     msg             jsonb;
     object_class    uuid;
-    class_name     varchar;
+    class_text      varchar;
     attrs           jsonb;
     query           text;
 
@@ -22,7 +22,7 @@ BEGIN
         select for_class
             from reclada.v_class c
                 where c.obj_id = object_class
-            into class_name;
+            into class_text;
 
         if event is null or object_class is null then
             return;
@@ -32,10 +32,10 @@ BEGIN
             FROM reclada.v_active_object v
                 WHERE v.class_name = 'Message'
                     AND v.attrs->>'event' = event
-                    AND v.attrs->>'class' = class_name
+                    AND v.attrs->>'class' = class_text
         INTO message;
 
-        -- raise notice '%', event || ' ' || class_name;
+        -- raise notice '%', event || ' ' || class_text;
 
         IF message IS NULL THEN
             RETURN;
