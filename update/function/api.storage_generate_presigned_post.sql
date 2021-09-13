@@ -1,4 +1,4 @@
-DROP FUNCTION IF EXISTS api.storage_generate_presigned_post;
+
 /*
  * Function api.storage_generate_presigned_post creates File object and returns this object with url.
  * Output is jsonb like this: {
@@ -14,6 +14,7 @@ DROP FUNCTION IF EXISTS api.storage_generate_presigned_post;
  *  accessToken - jwt token to authorize
  *
 */
+DROP FUNCTION IF EXISTS api.storage_generate_presigned_post;
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
@@ -55,7 +56,7 @@ BEGIN
     SELECT payload::jsonb
     FROM aws_lambda.invoke(
         aws_commons.create_lambda_function_arn(
-            's3_get_presigned_url_test',
+            's3_get_presigned_url_dev2',
             'eu-west-1'
             ),
         format('{

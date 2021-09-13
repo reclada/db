@@ -205,7 +205,7 @@ BEGIN
     --             ' ORDER BY ' || order_by ||
     --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
     query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
-    raise notice 'query: %', query;
+    --raise notice 'query: %', query;
     EXECUTE E'SELECT to_jsonb(array_agg(T.data))
         FROM (
             SELECT obj.data

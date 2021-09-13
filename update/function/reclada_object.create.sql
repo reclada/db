@@ -80,7 +80,7 @@ BEGIN
         ) then
             RAISE EXCEPTION 'GUID: % is duplicate', obj_GUID;
         end if;
-        raise notice 'schema: %',schema;
+        --raise notice 'schema: %',schema;
         with inserted as 
         (
             INSERT INTO reclada.object(GUID,class,attributes)
