@@ -61,12 +61,12 @@ BEGIN
             ),
         format('{
             "type": "post",
-            "bucketName": "%s",
+            "bucketName": "dev2-reclada-bucket",
             "fileName": "%s",
             "fileType": "%s",
             "fileSize": "%s",
             "expiration": 3600}',
-            bucket_name,
+            --bucket_name,
             object_name,
             file_type,
             data->>'fileSize'
