@@ -9,15 +9,6 @@ DROP VIEW IF EXISTS reclada.v_revision;
 DROP VIEW IF EXISTS reclada.v_active_object;
 DROP VIEW IF EXISTS reclada.v_object;
 
---drop VIEW reclada.v_class_lite;
---drop VIEW reclada.v_object_status;
---drop VIEW reclada.v_user;
-
-
---\i 'view/reclada.v_class_lite.sql'
---\i 'view/reclada.v_object_status.sql'
---\i 'view/reclada.v_user.sql'
-
 \i 'view/reclada.v_object.sql'
 \i 'view/reclada.v_active_object.sql'
 \i 'view/reclada.v_class.sql'
