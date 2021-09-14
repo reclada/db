@@ -1,6 +1,6 @@
 {
     "forClass": "DataSet",
-    "revision": "5d14b8cc-61a9-42f4-8ca4-c9213a89df91",
+    "revision": "6807b202-814f-4b9f-9cb5-ad9f88e2a648",
     "schema": {
         "properties": {
             "dataSources": {

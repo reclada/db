@@ -1,6 +1,6 @@
 {
     "forClass": "S3Config",
-    "revision": "338561e5-f0f5-41c1-b6fe-a6692ea5a79b",
+    "revision": "1177fed9-bd5f-47c9-871f-11ed7a497b83",
     "schema": {
         "properties": {
             "accessKeyId": {
