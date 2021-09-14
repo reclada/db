@@ -4,6 +4,8 @@
     to run text script of functions
 */
 
+\i 'function/reclada_object.create_subclass.sql'
+
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -14,7 +16,6 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-
 \i 'function/api.storage_generate_presigned_post.sql'
 \i 'function/reclada.datasource_insert_trigger_fnc.sql'
 
