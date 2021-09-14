@@ -7,6 +7,7 @@
 
 \i 'function/reclada_object.create_subclass.sql'
 \i 'function/reclada_object.list_related.sql'
+\i 'function/api.storage_generate_presigned_post.sql'
 
 update v_class_lite
 	set attributes = attributes || '{"version":1}'
