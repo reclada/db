@@ -29,7 +29,7 @@ BEGIN
                 "attributes": {
                     "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
                     "status": "new",
-                    "type": "K8S",
+                    "type": "DOMINO",
                     "command": "./run_pipeline.sh",
                     "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
                     }
