@@ -5,6 +5,7 @@
 */
 
 \i 'function/reclada_object.list_related.sql'
+\i 'function/api.storage_generate_presigned_post.sql'
 
 
 
