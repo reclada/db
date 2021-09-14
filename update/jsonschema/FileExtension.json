@@ -1,0 +1,25 @@
+{
+    "forClass": "FileExtension",
+    "schema": {
+        "properties": {
+            "extension": {
+                "type": "string"
+            },
+            "mimeType": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "extension",
+            "mimeType"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

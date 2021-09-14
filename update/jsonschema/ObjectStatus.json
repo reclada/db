@@ -1,0 +1,22 @@
+{
+    "forClass": "ObjectStatus",
+    "revision": "ed671059-ad02-489c-92d5-ec7676ace6c4",
+    "schema": {
+        "properties": {
+            "caption": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "caption"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

@@ -1,0 +1,32 @@
+{
+    "forClass": "Relationship",
+    "schema": {
+        "properties": {
+            "object": {
+                "type": "string"
+            },
+            "subject": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "type": {
+                "enum ": [
+                    "params"
+                ],
+                "type": "string"
+            }
+        },
+        "required": [
+            "subject",
+            "type",
+            "object"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

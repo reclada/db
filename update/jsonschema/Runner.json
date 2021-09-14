@@ -1,0 +1,60 @@
+{
+    "forClass": "Runner",
+    "schema": {
+        "properties": {
+            "command": {
+                "type": "string"
+            },
+            "environment": {
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                "type": "string"
+            },
+            "inputParameters": {
+                "items": {
+                    "type": "object"
+                },
+                "type": "array"
+            },
+            "outputParameters": {
+                "items": {
+                    "type": "object"
+                },
+                "type": "array"
+            },
+            "runner": {
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                "type": "string"
+            },
+            "status": {
+                "enum ": [
+                    "up",
+                    "down",
+                    "idle"
+                ],
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "task": {
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                "type": "string"
+            },
+            "type": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "command",
+            "status",
+            "type",
+            "task",
+            "environment"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

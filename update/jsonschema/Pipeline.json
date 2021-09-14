@@ -1,0 +1,44 @@
+{
+    "forClass": "Pipeline",
+    "schema": {
+        "properties": {
+            "command": {
+                "type": "string"
+            },
+            "inputParameters": {
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                "type": "string"
+            },
+            "outputParameters": {
+                "items": {
+                    "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "triggers": {
+                "items": {
+                    "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "type": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "command",
+            "triggers",
+            "type"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}
