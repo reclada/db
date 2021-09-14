@@ -1,0 +1,17 @@
+{
+    "forClass": "RecladaObject",
+    "revision": "7af5265f-29a2-44ae-98ba-4f9c32ae946a",
+    "schema": {
+        "properties": {
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [],
+        "type": "object"
+    },
+    "version": 1
+}

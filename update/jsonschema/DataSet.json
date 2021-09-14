@@ -1,0 +1,28 @@
+{
+    "forClass": "DataSet",
+    "revision": "5d14b8cc-61a9-42f4-8ca4-c9213a89df91",
+    "schema": {
+        "properties": {
+            "dataSources": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "name"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

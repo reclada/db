@@ -1,0 +1,36 @@
+{
+    "forClass": "S3Config",
+    "revision": "338561e5-f0f5-41c1-b6fe-a6692ea5a79b",
+    "schema": {
+        "properties": {
+            "accessKeyId": {
+                "type": "string"
+            },
+            "bucketName": {
+                "type": "string"
+            },
+            "endpointURL": {
+                "type": "string"
+            },
+            "regionName": {
+                "type": "string"
+            },
+            "secretAccessKey": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "accessKeyId",
+            "secretAccessKey",
+            "bucketName"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

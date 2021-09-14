@@ -1,0 +1,26 @@
+{
+    "forClass": "DataRow",
+    "revision": "76cce809-a7d0-4f05-807b-9569eaf6688a",
+    "schema": {
+        "properties": {
+            "row": {
+                "type": "number"
+            },
+            "table": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "row",
+            "table"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

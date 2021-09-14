@@ -1,0 +1,24 @@
+{
+    "forClass": "Environment",
+    "schema": {
+        "properties": {
+            "description": {
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "name"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

@@ -1,0 +1,25 @@
+{
+    "forClass": "DataSource",
+    "revision": "ff73214b-91de-4d01-96d8-cccf82c93413",
+    "schema": {
+        "properties": {
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "uri": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "name"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

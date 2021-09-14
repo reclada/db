@@ -1,0 +1,22 @@
+{
+    "forClass": "tag",
+    "revision": "bdb8a277-f115-4e86-84a3-5b5f2399a835",
+    "schema": {
+        "properties": {
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "name"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

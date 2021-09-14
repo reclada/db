@@ -1,0 +1,50 @@
+{
+    "forClass": "Cell",
+    "revision": "3a40113b-d5c4-4370-a7fe-80b42a4fec4f",
+    "schema": {
+        "properties": {
+            "bbox": {
+                "type": "string"
+            },
+            "cellType": {
+                "type": "string"
+            },
+            "colspan": {
+                "type": "number"
+            },
+            "column": {
+                "type": "number"
+            },
+            "row": {
+                "type": "number"
+            },
+            "rowspan": {
+                "type": "number"
+            },
+            "table": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "text": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "colspan",
+            "row",
+            "text",
+            "bbox",
+            "table",
+            "cellType",
+            "rowspan",
+            "column"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

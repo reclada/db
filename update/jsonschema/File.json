@@ -1,0 +1,33 @@
+{
+    "forClass": "File",
+    "revision": "be0bd8b6-3644-4fc8-bef5-802b26dfaa97",
+    "schema": {
+        "properties": {
+            "checksum": {
+                "type": "string"
+            },
+            "mimeType": {
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "uri": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "checksum",
+            "name",
+            "mimeType"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

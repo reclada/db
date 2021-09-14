@@ -1,0 +1,22 @@
+{
+    "forClass": "User",
+    "revision": "03f2be65-0f1b-438b-978f-4d3a10f11f44",
+    "schema": {
+        "properties": {
+            "login": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "login"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

@@ -1,0 +1,30 @@
+{
+    "forClass": "TextBlock",
+    "revision": "07df31ca-2ae6-4f7f-9475-9fe172b37cf6",
+    "schema": {
+        "properties": {
+            "bbox": {
+                "type": "string"
+            },
+            "page": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "text": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "text",
+            "bbox",
+            "page"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

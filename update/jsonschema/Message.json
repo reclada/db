@@ -1,0 +1,42 @@
+{
+    "forClass": "Message",
+    "revision": "57785ba7-d8da-45b7-8ad6-4058ea8f8c72",
+    "schema": {
+        "properties": {
+            "attrs": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "channelName": {
+                "type": "string"
+            },
+            "class": {
+                "type": "string"
+            },
+            "event": {
+                "enum": [
+                    "create",
+                    "update",
+                    "list",
+                    "delete"
+                ],
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "channelName",
+            "event",
+            "class"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

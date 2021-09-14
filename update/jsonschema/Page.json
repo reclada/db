@@ -1,0 +1,30 @@
+{
+    "forClass": "Page",
+    "revision": "955669ec-2d36-4c6d-8371-323a1f716b38",
+    "schema": {
+        "properties": {
+            "bbox": {
+                "type": "string"
+            },
+            "document": {
+                "type": "string"
+            },
+            "number": {
+                "type": "number"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "number",
+            "bbox",
+            "document"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}
