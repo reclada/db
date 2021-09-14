@@ -1,0 +1,20 @@
+{
+    "forClass": "jsonschema",
+    "revision": "7e485fa4-493b-450e-8bf9-d620db894c83",
+    "schema": {
+        "properties": {
+            "forClass": {
+                "type": "string"
+            },
+            "schema": {
+                "type": "object"
+            }
+        },
+        "required": [
+            "forClass",
+            "schema"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

@@ -1,0 +1,33 @@
+{
+    "forClass": "Trigger",
+    "schema": {
+        "properties": {
+            "nextTask": {
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                "type": "string"
+            },
+            "paramsRelationships": {
+                "items": {
+                    "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "previousJobCode": {
+                "type": "integer"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "nextTask",
+            "previousJobCode"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

@@ -1,0 +1,34 @@
+{
+    "forClass": "Parameter",
+    "schema": {
+        "properties": {
+            "file": {
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "type": {
+                "enum": [
+                    "code",
+                    "stdout",
+                    "stderr",
+                    "file"
+                ],
+                "type": "string"
+            }
+        },
+        "required": [
+            "name",
+            "type"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

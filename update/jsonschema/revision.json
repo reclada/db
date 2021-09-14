@@ -1,0 +1,30 @@
+{
+    "forClass": "revision",
+    "schema": {
+        "properties": {
+            "branch": {
+                "type": "string"
+            },
+            "dateTime": {
+                "type": "string"
+            },
+            "num": {
+                "type": "number"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "user": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "dateTime"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}
