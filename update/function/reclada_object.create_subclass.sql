@@ -14,7 +14,7 @@ DECLARE
     new_class       text;
     attrs           jsonb;
     class_schema    jsonb;
-    version         integer;
+    version_         integer;
 
 BEGIN
 
@@ -39,9 +39,9 @@ BEGIN
     SELECT max(version) + 1
     FROM reclada.v_class_lite v
     WHERE v.for_class = new_class
-    INTO version;
+    INTO version_;
 
-    version := coalesce(version,1);
+    version_ := coalesce(version_,1);
     class_schema := class_schema->'attributes'->'schema';
 
     PERFORM reclada_object.create(format('{
@@ -57,7 +57,7 @@ BEGIN
         }
     }',
     new_class,
-    version,
+    version_,
     (class_schema->'properties') || (attrs->'properties'),
     (SELECT jsonb_agg(el) FROM (
         SELECT DISTINCT pg_catalog.jsonb_array_elements(

@@ -1,12 +1,8 @@
 {
-    "forClass": "DataRow",
-    "revision": "b329362a-1f24-4551-88cf-8747106a37f7",
+    "forClass": "Lambda",
     "schema": {
         "properties": {
-            "row": {
-                "type": "number"
-            },
-            "table": {
+            "name": {
                 "type": "string"
             },
             "tags": {
@@ -17,10 +13,9 @@
             }
         },
         "required": [
-            "row",
-            "table"
+            "name"
         ],
         "type": "object"
     },
-    "version": 1
+    "version": "1"
 }
