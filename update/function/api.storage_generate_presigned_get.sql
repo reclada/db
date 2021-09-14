@@ -27,14 +27,14 @@ BEGIN
     -- TODO: check user's permissions for reclada object access?
     object_id := data->>'objectId';
     SELECT reclada_object.list(format(
-        '{"class": "File", "attributes": {}, "id": "%s"}',
+        '{"class": "File", "attributes": {}, "GUID": "%s"}',
         object_id
     )::jsonb) -> 0 INTO object_data;
 
     SELECT payload
     FROM aws_lambda.invoke(
         aws_commons.create_lambda_function_arn(
-            's3_get_presigned_url_test',
+            's3_get_presigned_url_dev2',
             'eu-west-1'
             ),
         format('{
