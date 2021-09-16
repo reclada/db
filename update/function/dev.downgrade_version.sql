@@ -35,7 +35,7 @@ BEGIN
             where v.ver = current_ver;
 
     v_msg = 'OK, curren version: ' || (current_ver-1)::text;
-    perform public.raise_notice(v_msg);
+    perform reclada.raise_notice(v_msg);
     return v_msg;
 EXCEPTION when OTHERS then 
 	get stacked diagnostics

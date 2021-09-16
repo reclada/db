@@ -35,7 +35,7 @@ BEGIN
     IF (class_name IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
-    class_uuid := public.try_cast_uuid(class_name);
+    class_uuid := reclada.try_cast_uuid(class_name);
     v_obj_id := data->>'GUID';
     IF (v_obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no GUID';
