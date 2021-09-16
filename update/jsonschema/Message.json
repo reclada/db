@@ -1,6 +1,6 @@
 {
     "forClass": "Message",
-    "revision": "2594ec58-aafe-4bba-9fe9-1d56ee23e831",
+    "revision": "6fae47de-b9b2-4cb1-8125-281148d1c9d9",
     "schema": {
         "properties": {
             "attrs": {

@@ -1,6 +1,6 @@
 {
     "forClass": "User",
-    "revision": "c7ff174d-31b6-44ab-9778-e6563d5848bd",
+    "revision": "b716abd8-2a8a-4b69-9370-02ff0fbeb5fb",
     "schema": {
         "properties": {
             "login": {
