@@ -66,7 +66,7 @@ BEGIN
             RAISE EXCEPTION 'No json schema available for %', class_name;
         END IF;
 
-        IF (NOT(validate_json_schema(schema->'attributes'->'schema', attrs))) THEN
+        IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', attrs))) THEN
             RAISE EXCEPTION 'JSON invalid: %', attrs;
         END IF;
         

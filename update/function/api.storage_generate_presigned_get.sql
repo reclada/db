@@ -15,6 +15,7 @@ DECLARE
     object_id    uuid;
     result       jsonb;
     user_info    jsonb;
+    lambda_name  varchar;
 
 BEGIN
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
@@ -31,10 +32,17 @@ BEGIN
         object_id
     )::jsonb) -> 0 INTO object_data;
 
+    SELECT attrs->>'Lambda'
+    FROM reclada.v_active_object
+    WHERE class_name = 'Context'
+    ORDER BY created_time DESC
+    LIMIT 1
+    INTO lambda_name;
+
     SELECT payload
     FROM aws_lambda.invoke(
         aws_commons.create_lambda_function_arn(
-            's3_get_presigned_url_dev2',
+            format('%s', lambda_name),
             'eu-west-1'
             ),
         format('{
