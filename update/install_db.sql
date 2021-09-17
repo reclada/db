@@ -1,5 +1,5 @@
--- version = 23
--- 2021-09-16 17:59:25.017515
+-- version = 24
+-- 2021-09-17 12:42:11.013173
 /*
 update_config.json:
 
@@ -8,7 +8,7 @@ update_config.json:
     "branch_runtime" : "for_domino",
     "branch_SciNLP" : "main",
     "server" : "dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com",  
-    "db" : "dev3_reclada_k8s",
+    "db" : "dev7_reclada_k8s",
     "db_user" : "reclada",
     "quick_install" : true,
     "version": "latest"
@@ -19,7 +19,7 @@ update_config.json:
 --
 
 -- Dumped from database version 13.3
--- Dumped by pg_dump version 13.3
+-- Dumped by pg_dump version 13.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1375,157 +1375,43 @@ ALTER FUNCTION api.reclada_object_update(data jsonb) OWNER TO reclada;
 CREATE FUNCTION api.storage_generate_presigned_get(data jsonb) RETURNS jsonb
     LANGUAGE plpgsql
     AS $$
-
-
-
 DECLARE
-
-
-
     object_data  jsonb;
-
-
-
     object_id    uuid;
-
-
-
     result       jsonb;
-
-
-
     user_info    jsonb;
 
-
-
-
-
-
-
 BEGIN
-
-
-
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
-
-
-
     data := data - 'accessToken';
 
-
-
-
-
-
-
-    IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned post', '{}'))) THEN
-
-
-
-        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';
-
-
-
+    IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned get', '{}'))) THEN
+        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned get';
     END IF;
 
-
-
-
-
-
-
     -- TODO: check user's permissions for reclada object access?
-
-
-
     object_id := data->>'objectId';
-
-
-
     SELECT reclada_object.list(format(
-
-
-
         '{"class": "File", "attributes": {}, "GUID": "%s"}',
-
-
-
         object_id
-
-
-
     )::jsonb) -> 0 INTO object_data;
 
-
-
-
-
-
-
     SELECT payload
-
-
-
     FROM aws_lambda.invoke(
-
-
-
         aws_commons.create_lambda_function_arn(
-
-
-
             's3_get_presigned_url_dev2',
-
-
-
             'eu-west-1'
-
-
-
             ),
-
-
-
         format('{
-
-
-
             "type": "get",
-
-
-
             "uri": "%s",
-
-
-
             "expiration": 3600}',
-
-
-
             object_data->'attributes'->>'uri'
-
-
-
             )::jsonb)
-
-
-
     INTO result;
 
-
-
-
-
-
-
     RETURN result;
-
-
-
 END;
-
-
-
 $$;
 
 
@@ -1538,301 +1424,79 @@ ALTER FUNCTION api.storage_generate_presigned_get(data jsonb) OWNER TO reclada;
 CREATE FUNCTION api.storage_generate_presigned_post(data jsonb) RETURNS jsonb
     LANGUAGE plpgsql
     AS $$
-
-
-
 DECLARE
-
-
-
     --bucket_name  varchar;
-
-
-
     lambda_name  varchar;
-
-
-
     file_type    varchar;
-
-
-
     object       jsonb;
-
-
-
     object_id    uuid;
-
-
-
     object_name  varchar;
-
-
-
     object_path  varchar;
-
-
-
     result       jsonb;
-
-
-
     user_info    jsonb;
-
-
-
     uri          varchar;
-
-
-
     url          varchar;
 
-
-
-
-
-
-
 BEGIN
-
-
-
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
-
-
-
     data := data - 'accessToken';
 
-
-
-
-
-
-
     IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned post', '{}'))) THEN
-
-
-
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';
-
-
-
     END IF;
 
-
-
-
-
-
-
     object_name := data->>'objectName';
-
-
-
     file_type := data->>'fileType';
-
-
-
     --bucket_name := data->>'bucketName';
 
-
-
-
-
-
-
-    SELECT attrs->>'name'
-
-
-
+    SELECT attrs->>'Lambda'
     FROM reclada.v_active_object
-
-
-
-    WHERE class_name = 'Lambda'
-
-
-
+    WHERE class_name = 'Context'
     ORDER BY created_time DESC
-
-
-
     LIMIT 1
-
-
-
     INTO lambda_name;
 
-
-
-
-
-
-
     /*
-
-
-
     SELECT uuid_generate_v4() INTO object_id;
-
-
-
     object_path := object_id;
-
-
-
     uri := 's3://' || bucket_name || '/' || object_path;
 
-
-
-
-
-
-
     -- TODO: remove checksum from required attrs for File class?
-
-
-
     SELECT reclada_object.create(format(
-
-
-
         '{"class": "File", "attributes": {"name": "%s", "mimeType": "%s", "uri": "%s", "checksum": "tempChecksum"}}',
-
-
-
         object_name,
-
-
-
         file_type,
-
-
-
         uri
-
-
-
     )::jsonb)->0 INTO object;
-
-
-
     */
 
-
-
-
-
-
-
     SELECT payload::jsonb
-
-
-
     FROM aws_lambda.invoke(
-
-
-
         aws_commons.create_lambda_function_arn(
-
-
-
                 format('%s', lambda_name),
-
-
-
                 'eu-west-1'
-
-
-
         ),
-
-
-
         format('{
-
-
-
             "type": "post",
-
-
-
             "fileName": "%s",
-
-
-
             "fileType": "%s",
-
-
-
             "fileSize": "%s",
-
-
-
             "expiration": 3600}',
-
-
-
             object_name,
-
-
-
             file_type,
-
-
-
             data->>'fileSize'
-
-
-
             )::jsonb)
-
-
-
     INTO url;
 
-
-
-
-
-
-
     result = format(
-
-
-
         --'{"object": %s, "uploadUrl": %s}',
-
-
-
         --object,
-
-
-
         '{"uploadUrl": %s}',
-
-
-
         url
-
-
-
     )::jsonb;
 
-
-
-
-
-
-
     RETURN result;
-
-
-
 END;
-
-
-
 $$;
 
 
@@ -1976,29 +1640,11 @@ ALTER FUNCTION dev.downgrade_version() OWNER TO reclada;
 CREATE FUNCTION dev.reg_notice(msg text) RETURNS void
     LANGUAGE plpgsql
     AS $$
-
-
-
 BEGIN
-
-
-
     insert into dev.t_dbg(msg)
-
-
-
 		select msg;
-
-
-
-    perform public.raise_notice(msg);
-
-
-
+    perform reclada.raise_notice(msg);
 END
-
-
-
 $$;
 
 
@@ -2543,165 +2189,52 @@ ALTER FUNCTION public.validate_json_schema(schema jsonb, data jsonb, root_schema
 CREATE FUNCTION reclada.datasource_insert_trigger_fnc() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
-
-
-
 DECLARE
-
-
-
     obj_id         uuid;
-
-
-
     dataset       jsonb;
-
-
-
     uri           text;
-
-
-
-
-
-
-
+    environment   varchar;
 BEGIN
-
-
-
     IF NEW.class in 
-
-
-
             (select reclada_object.get_GUID_for_class('DataSource'))
-
-
-
         OR NEW.class in (select reclada_object.get_GUID_for_class('File')) THEN
-
-
-
-
-
-
 
         obj_id := NEW.GUID;
 
-
-
-
-
-
-
         SELECT v.data
-
-
-
         FROM reclada.v_active_object v
-
-
-
 	    WHERE v.attrs->>'name' = 'defaultDataSet'
-
-
-
 	    INTO dataset;
-
-
-
-
-
-
 
         dataset := jsonb_set(dataset, '{attributes, dataSources}', dataset->'attributes'->'dataSources' || format('["%s"]', obj_id)::jsonb);
 
-
-
-
-
-
-
         PERFORM reclada_object.update(dataset);
-
-
-
-
-
-
 
         uri := NEW.attributes->>'uri';
 
-
-
-
-
-
+        SELECT attrs->>'Environment'
+        FROM reclada.v_active_object
+        WHERE class_name = 'Context'
+        ORDER BY created_time DESC
+        LIMIT 1
+        INTO environment;
 
         PERFORM reclada_object.create(
-
-
-
             format('{
-
-
-
                 "class": "Job",
-
-
-
                 "attributes": {
-
-
-
                     "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
-
-
-
                     "status": "new",
-
-
-
-                    "type": "DOMINO",
-
-
-
+                    "type": "%s",
                     "command": "./run_pipeline.sh",
-
-
-
                     "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
-
-
-
                     }
-
-
-
-                }', uri, obj_id)::jsonb);
-
-
-
-
-
-
+                }', environment, uri, obj_id)::jsonb);
 
     END IF;
 
-
-
-
-
-
-
 RETURN NEW;
-
-
-
 END;
-
-
-
 $$;
 
 
@@ -6396,6 +5929,7 @@ COPY dev.ver (id, ver, ver_str, upgrade_script, downgrade_script, run_at) FROM s
 22	21	\N	begin;\nSET CLIENT_ENCODING TO 'utf8';\nCREATE TEMP TABLE var_table\n    (\n        ver int,\n\t\tupgrade_script text,\n\t\tdowngrade_script text\n    );\n\t\ninsert into var_table(ver)\t\n\tselect max(ver) + 1\n        from dev.VER;\n\t\t\nselect public.raise_exception('Can not apply this version!') \n\twhere not exists\n\t(\n\t\tselect ver from var_table where ver = 21 --!!! write current version HERE !!!\n\t);\n\nCREATE TEMP TABLE tmp\n(\n\tid int GENERATED ALWAYS AS IDENTITY,\n\tstr text\n);\n--{ logging upgrade script\nCOPY tmp(str) FROM  'up.sql' delimiter E'';\nupdate var_table set upgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\ndelete from tmp;\n--} logging upgrade script\t\n\n--{ create downgrade script\nCOPY tmp(str) FROM  'down.sql' delimiter E'';\nupdate tmp set str = drp.v || scr.v\n\tfrom tmp ttt\n\tinner JOIN LATERAL\n    (\n        select substring(ttt.str from 4 for length(ttt.str)-4) as v\n    )  obj_file_name ON TRUE\n\tinner JOIN LATERAL\n    (\n        select \tsplit_part(obj_file_name.v,'/',1) typ,\n        \t\tsplit_part(obj_file_name.v,'/',2) nam\n    )  obj ON TRUE\n\t\tinner JOIN LATERAL\n    (\n        select case\n\t\t\t\twhen obj.typ = 'trigger'\n\t\t\t\t\tthen\n\t\t\t\t\t    (select 'DROP '|| obj.typ || ' IF EXISTS '|| obj.nam ||' ON ' || schm||'.'||tbl ||';' || E'\n'\n                        from (\n                            select n.nspname as schm,\n                                   c.relname as tbl\n                            from pg_trigger t\n                                join pg_class c on c.oid = t.tgrelid\n                                join pg_namespace n on n.oid = c.relnamespace\n                            where t.tgname = 'datasource_insert_trigger') o)\n                else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'\n                end as v\n    )  drp ON TRUE\n\tinner JOIN LATERAL\n    (\n        select case \n\t\t\t\twhen obj.typ in ('function', 'procedure')\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase \n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tSELECT 1 a\n\t\t\t\t\t\t\t\t\t\tFROM pg_proc p \n\t\t\t\t\t\t\t\t\t\tjoin pg_namespace n \n\t\t\t\t\t\t\t\t\t\t\ton p.pronamespace = n.oid \n\t\t\t\t\t\t\t\t\t\t\twhere n.nspname||'.'||p.proname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t) \n\t\t\t\t\t\t\t\tthen (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))||';'\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\twhen obj.typ = 'view'\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase \n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tselect 1 a \n\t\t\t\t\t\t\t\t\t\tfrom pg_views v \n\t\t\t\t\t\t\t\t\t\t\twhere v.schemaname||'.'||v.viewname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t) \n\t\t\t\t\t\t\t\tthen E'CREATE OR REPLACE VIEW '\n                                        || obj.nam\n                                        || E'\nAS\n'\n                                        || (select pg_get_viewdef(obj.nam, true))\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\twhen obj.typ = 'trigger'\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase\n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tselect 1 a\n\t\t\t\t\t\t\t\t\t\tfrom pg_trigger v\n                                            where v.tgname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\tthen (select pg_catalog.pg_get_triggerdef(oid, true)\n\t\t\t\t\t\t\t\t        from pg_trigger\n\t\t\t\t\t\t\t\t        where tgname = obj.nam)||';'\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\telse \n\t\t\t\t\tttt.str\n\t\t\tend as v\n    )  scr ON TRUE\n\twhere ttt.id = tmp.id\n\t\tand tmp.str like '--{%/%}';\n\t\nupdate var_table set downgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\t\n--} create downgrade script\ndrop table tmp;\n\n\n--{!!! write upgrare script HERE !!!\n\n--\tyou can use "i 'function/reclada_object.get_schema.sql'"\n--\tto run text script of functions\n \n/*\n    you can use "i 'function/reclada_object.get_schema.sql'"\n    to run text script of functions\n*/\n\n\ni 'function/reclada_object.create_subclass.sql'\ni 'function/reclada_object.list_related.sql'\ni 'function/api.storage_generate_presigned_post.sql'\n\nupdate v_class_lite\n\tset attributes = attributes || '{"version":1}'\n\t\twhere attributes->>'version' is null;\n\n\n\n\n\n--}!!! write upgrare script HERE !!!\n\ninsert into dev.ver(ver,upgrade_script,downgrade_script)\n\tselect ver, upgrade_script, downgrade_script\n\t\tfrom var_table;\n\n--{ testing downgrade script\nSAVEPOINT sp;\n    select dev.downgrade_version();\nROLLBACK TO sp;\n--} testing downgrade script\n\nselect public.raise_notice('OK, curren version: ' \n\t\t\t\t\t\t\t|| (select ver from var_table)::text\n\t\t\t\t\t\t  );\ndrop table var_table;\n\ncommit;	-- you you can use "--{function/reclada_object.get_schema}"\n-- to add current version of object to downgrade script\n\nselect public.raise_exception('Downgrade script not support');	2021-09-14 16:33:27.139964+00
 23	22	\N	begin;\nSET CLIENT_ENCODING TO 'utf8';\nCREATE TEMP TABLE var_table\n    (\n        ver int,\n\t\tupgrade_script text,\n\t\tdowngrade_script text\n    );\n\t\ninsert into var_table(ver)\t\n\tselect max(ver) + 1\n        from dev.VER;\n\t\t\nselect public.raise_exception('Can not apply this version!') \n\twhere not exists\n\t(\n\t\tselect ver from var_table where ver = 22 --!!! write current version HERE !!!\n\t);\n\nCREATE TEMP TABLE tmp\n(\n\tid int GENERATED ALWAYS AS IDENTITY,\n\tstr text\n);\n--{ logging upgrade script\nCOPY tmp(str) FROM  'up.sql' delimiter E'';\nupdate var_table set upgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\ndelete from tmp;\n--} logging upgrade script\t\n\n--{ create downgrade script\nCOPY tmp(str) FROM  'down.sql' delimiter E'';\nupdate tmp set str = drp.v || scr.v\n\tfrom tmp ttt\n\tinner JOIN LATERAL\n    (\n        select substring(ttt.str from 4 for length(ttt.str)-4) as v\n    )  obj_file_name ON TRUE\n\tinner JOIN LATERAL\n    (\n        select \tsplit_part(obj_file_name.v,'/',1) typ,\n        \t\tsplit_part(obj_file_name.v,'/',2) nam\n    )  obj ON TRUE\n\t\tinner JOIN LATERAL\n    (\n        select case\n\t\t\t\twhen obj.typ = 'trigger'\n\t\t\t\t\tthen\n\t\t\t\t\t    (select 'DROP '|| obj.typ || ' IF EXISTS '|| obj.nam ||' ON ' || schm||'.'||tbl ||';' || E'\n'\n                        from (\n                            select n.nspname as schm,\n                                   c.relname as tbl\n                            from pg_trigger t\n                                join pg_class c on c.oid = t.tgrelid\n                                join pg_namespace n on n.oid = c.relnamespace\n                            where t.tgname = 'datasource_insert_trigger') o)\n                else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'\n                end as v\n    )  drp ON TRUE\n\tinner JOIN LATERAL\n    (\n        select case \n\t\t\t\twhen obj.typ in ('function', 'procedure')\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase \n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tSELECT 1 a\n\t\t\t\t\t\t\t\t\t\tFROM pg_proc p \n\t\t\t\t\t\t\t\t\t\tjoin pg_namespace n \n\t\t\t\t\t\t\t\t\t\t\ton p.pronamespace = n.oid \n\t\t\t\t\t\t\t\t\t\t\twhere n.nspname||'.'||p.proname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t) \n\t\t\t\t\t\t\t\tthen (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))||';'\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\twhen obj.typ = 'view'\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase \n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tselect 1 a \n\t\t\t\t\t\t\t\t\t\tfrom pg_views v \n\t\t\t\t\t\t\t\t\t\t\twhere v.schemaname||'.'||v.viewname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t) \n\t\t\t\t\t\t\t\tthen E'CREATE OR REPLACE VIEW '\n                                        || obj.nam\n                                        || E'\nAS\n'\n                                        || (select pg_get_viewdef(obj.nam, true))\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\twhen obj.typ = 'trigger'\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase\n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tselect 1 a\n\t\t\t\t\t\t\t\t\t\tfrom pg_trigger v\n                                            where v.tgname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\tthen (select pg_catalog.pg_get_triggerdef(oid, true)\n\t\t\t\t\t\t\t\t        from pg_trigger\n\t\t\t\t\t\t\t\t        where tgname = obj.nam)||';'\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\telse \n\t\t\t\t\tttt.str\n\t\t\tend as v\n    )  scr ON TRUE\n\twhere ttt.id = tmp.id\n\t\tand tmp.str like '--{%/%}';\n\t\nupdate var_table set downgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\t\n--} create downgrade script\ndrop table tmp;\n\n\n--{!!! write upgrare script HERE !!!\n\n--\tyou can use "i 'function/reclada_object.get_schema.sql'"\n--\tto run text script of functions\n \n/*\n    you can use "i 'function/reclada_object.get_schema.sql'"\n    to run text script of functions\n*/\n\ni 'function/reclada_object.create_subclass.sql'\n\nSELECT reclada_object.create_subclass('{\n    "class": "RecladaObject",\n    "attributes": {\n        "newClass": "Lambda",\n        "properties": {\n            "name": {"type": "string"}\n        },\n        "required": ["name"]\n    }\n}'::jsonb);\ni 'function/api.storage_generate_presigned_post.sql'\ni 'function/reclada.datasource_insert_trigger_fnc.sql'\n\n\n\n\n\n--}!!! write upgrare script HERE !!!\n\ninsert into dev.ver(ver,upgrade_script,downgrade_script)\n\tselect ver, upgrade_script, downgrade_script\n\t\tfrom var_table;\n\n--{ testing downgrade script\nSAVEPOINT sp;\n    select dev.downgrade_version();\nROLLBACK TO sp;\n--} testing downgrade script\n\nselect public.raise_notice('OK, curren version: ' \n\t\t\t\t\t\t\t|| (select ver from var_table)::text\n\t\t\t\t\t\t  );\ndrop table var_table;\n\ncommit;	-- you you can use "--{function/reclada_object.get_schema}"\n-- to add current version of object to downgrade script\n\nselect public.raise_exception('Downgrade script not support');	2021-09-14 16:33:42.168472+00
 24	23	\N	begin;\nSET CLIENT_ENCODING TO 'utf8';\nCREATE TEMP TABLE var_table\n    (\n        ver int,\n\t\tupgrade_script text,\n\t\tdowngrade_script text\n    );\n\t\ninsert into var_table(ver)\t\n\tselect max(ver) + 1\n        from dev.VER;\n\t\t\nselect public.raise_exception('Can not apply this version!') \n\twhere not exists\n\t(\n\t\tselect ver from var_table where ver = 23 --!!! write current version HERE !!!\n\t);\n\nCREATE TEMP TABLE tmp\n(\n\tid int GENERATED ALWAYS AS IDENTITY,\n\tstr text\n);\n--{ logging upgrade script\nCOPY tmp(str) FROM  'up.sql' delimiter E'';\nupdate var_table set upgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\ndelete from tmp;\n--} logging upgrade script\t\n\n--{ create downgrade script\nCOPY tmp(str) FROM  'down.sql' delimiter E'';\nupdate tmp set str = drp.v || scr.v\n\tfrom tmp ttt\n\tinner JOIN LATERAL\n    (\n        select substring(ttt.str from 4 for length(ttt.str)-4) as v\n    )  obj_file_name ON TRUE\n\tinner JOIN LATERAL\n    (\n        select \tsplit_part(obj_file_name.v,'/',1) typ,\n        \t\tsplit_part(obj_file_name.v,'/',2) nam\n    )  obj ON TRUE\n\t\tinner JOIN LATERAL\n    (\n        select case\n\t\t\t\twhen obj.typ = 'trigger'\n\t\t\t\t\tthen\n\t\t\t\t\t    (select 'DROP '|| obj.typ || ' IF EXISTS '|| obj.nam ||' ON ' || schm||'.'||tbl ||';' || E'\n'\n                        from (\n                            select n.nspname as schm,\n                                   c.relname as tbl\n                            from pg_trigger t\n                                join pg_class c on c.oid = t.tgrelid\n                                join pg_namespace n on n.oid = c.relnamespace\n                            where t.tgname = 'datasource_insert_trigger') o)\n                else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'\n                end as v\n    )  drp ON TRUE\n\tinner JOIN LATERAL\n    (\n        select case \n\t\t\t\twhen obj.typ in ('function', 'procedure')\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase \n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tSELECT 1 a\n\t\t\t\t\t\t\t\t\t\tFROM pg_proc p \n\t\t\t\t\t\t\t\t\t\tjoin pg_namespace n \n\t\t\t\t\t\t\t\t\t\t\ton p.pronamespace = n.oid \n\t\t\t\t\t\t\t\t\t\t\twhere n.nspname||'.'||p.proname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t) \n\t\t\t\t\t\t\t\tthen (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))||';'\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\twhen obj.typ = 'view'\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase \n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tselect 1 a \n\t\t\t\t\t\t\t\t\t\tfrom pg_views v \n\t\t\t\t\t\t\t\t\t\t\twhere v.schemaname||'.'||v.viewname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t) \n\t\t\t\t\t\t\t\tthen E'CREATE OR REPLACE VIEW '\n                                        || obj.nam\n                                        || E'\nAS\n'\n                                        || (select pg_get_viewdef(obj.nam, true))\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\twhen obj.typ = 'trigger'\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase\n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tselect 1 a\n\t\t\t\t\t\t\t\t\t\tfrom pg_trigger v\n                                            where v.tgname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\tthen (select pg_catalog.pg_get_triggerdef(oid, true)\n\t\t\t\t\t\t\t\t        from pg_trigger\n\t\t\t\t\t\t\t\t        where tgname = obj.nam)||';'\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\telse \n\t\t\t\t\tttt.str\n\t\t\tend as v\n    )  scr ON TRUE\n\twhere ttt.id = tmp.id\n\t\tand tmp.str like '--{%/%}';\n\t\nupdate var_table set downgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\t\n--} create downgrade script\ndrop table tmp;\n\n\n--{!!! write upgrare script HERE !!!\n\n--\tyou can use "i 'function/reclada_object.get_schema.sql'"\n--\tto run text script of functions\n \n/*\n    you can use "i 'function/reclada_object.get_schema.sql'"\n    to run text script of functions\n*/\n\nDROP FUNCTION IF EXISTS public.raise_exception;\nDROP FUNCTION IF EXISTS public.raise_notice;\nDROP FUNCTION IF EXISTS public.try_cast_uuid;\nDROP FUNCTION IF EXISTS public.try_cast_int;\n\ni 'function/reclada.raise_exception.sql'\ni 'function/reclada.raise_notice.sql'\ni 'function/reclada.try_cast_uuid.sql'\ni 'function/reclada.try_cast_int.sql'\ni 'function/dev.downgrade_version.sql'\ni 'function/reclada_object.create.sql'\ni 'function/reclada_object.list.sql'\ni 'function/reclada_object.update.sql'\n\n\n--}!!! write upgrare script HERE !!!\n\ninsert into dev.ver(ver,upgrade_script,downgrade_script)\n\tselect ver, upgrade_script, downgrade_script\n\t\tfrom var_table;\n\n--{ testing downgrade script\nSAVEPOINT sp;\n    select dev.downgrade_version();\nROLLBACK TO sp;\n--} testing downgrade script\n\nselect reclada.raise_notice('OK, curren version: ' \n\t\t\t\t\t\t\t|| (select ver from var_table)::text\n\t\t\t\t\t\t  );\ndrop table var_table;\n\ncommit;	-- you you can use "--{function/reclada_object.get_schema}"\n-- to add current version of object to downgrade script\n\nselect reclada.raise_exception('Downgrade script not support');	2021-09-16 14:59:52.308459+00
+25	24	\N	begin;\nSET CLIENT_ENCODING TO 'utf8';\nCREATE TEMP TABLE var_table\n    (\n        ver int,\n\t\tupgrade_script text,\n\t\tdowngrade_script text\n    );\n\t\ninsert into var_table(ver)\t\n\tselect max(ver) + 1\n        from dev.VER;\n\t\t\nselect reclada.raise_exception('Can not apply this version!') \n\twhere not exists\n\t(\n\t\tselect ver from var_table where ver = 24 --!!! write current version HERE !!!\n\t);\n\nCREATE TEMP TABLE tmp\n(\n\tid int GENERATED ALWAYS AS IDENTITY,\n\tstr text\n);\n--{ logging upgrade script\nCOPY tmp(str) FROM  'up.sql' delimiter E'';\nupdate var_table set upgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\ndelete from tmp;\n--} logging upgrade script\t\n\n--{ create downgrade script\nCOPY tmp(str) FROM  'down.sql' delimiter E'';\nupdate tmp set str = drp.v || scr.v\n\tfrom tmp ttt\n\tinner JOIN LATERAL\n    (\n        select substring(ttt.str from 4 for length(ttt.str)-4) as v\n    )  obj_file_name ON TRUE\n\tinner JOIN LATERAL\n    (\n        select \tsplit_part(obj_file_name.v,'/',1) typ,\n        \t\tsplit_part(obj_file_name.v,'/',2) nam\n    )  obj ON TRUE\n\t\tinner JOIN LATERAL\n    (\n        select case\n\t\t\t\twhen obj.typ = 'trigger'\n\t\t\t\t\tthen\n\t\t\t\t\t    (select 'DROP '|| obj.typ || ' IF EXISTS '|| obj.nam ||' ON ' || schm||'.'||tbl ||';' || E'\n'\n                        from (\n                            select n.nspname as schm,\n                                   c.relname as tbl\n                            from pg_trigger t\n                                join pg_class c on c.oid = t.tgrelid\n                                join pg_namespace n on n.oid = c.relnamespace\n                            where t.tgname = 'datasource_insert_trigger') o)\n                else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'\n                end as v\n    )  drp ON TRUE\n\tinner JOIN LATERAL\n    (\n        select case \n\t\t\t\twhen obj.typ in ('function', 'procedure')\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase \n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tSELECT 1 a\n\t\t\t\t\t\t\t\t\t\tFROM pg_proc p \n\t\t\t\t\t\t\t\t\t\tjoin pg_namespace n \n\t\t\t\t\t\t\t\t\t\t\ton p.pronamespace = n.oid \n\t\t\t\t\t\t\t\t\t\t\twhere n.nspname||'.'||p.proname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t) \n\t\t\t\t\t\t\t\tthen (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))||';'\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\twhen obj.typ = 'view'\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase \n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tselect 1 a \n\t\t\t\t\t\t\t\t\t\tfrom pg_views v \n\t\t\t\t\t\t\t\t\t\t\twhere v.schemaname||'.'||v.viewname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t) \n\t\t\t\t\t\t\t\tthen E'CREATE OR REPLACE VIEW '\n                                        || obj.nam\n                                        || E'\nAS\n'\n                                        || (select pg_get_viewdef(obj.nam, true))\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\twhen obj.typ = 'trigger'\n\t\t\t\t\tthen\n\t\t\t\t\t\tcase\n\t\t\t\t\t\t\twhen EXISTS\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\tselect 1 a\n\t\t\t\t\t\t\t\t\t\tfrom pg_trigger v\n                                            where v.tgname = obj.nam\n\t\t\t\t\t\t\t\t\t\tLIMIT 1\n\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\tthen (select pg_catalog.pg_get_triggerdef(oid, true)\n\t\t\t\t\t\t\t\t        from pg_trigger\n\t\t\t\t\t\t\t\t        where tgname = obj.nam)||';'\n\t\t\t\t\t\t\telse ''\n\t\t\t\t\t\tend\n\t\t\t\telse \n\t\t\t\t\tttt.str\n\t\t\tend as v\n    )  scr ON TRUE\n\twhere ttt.id = tmp.id\n\t\tand tmp.str like '--{%/%}';\n\t\nupdate var_table set downgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\t\n--} create downgrade script\ndrop table tmp;\n\n\n--{!!! write upgrare script HERE !!!\n\n--\tyou can use "i 'function/reclada_object.get_schema.sql'"\n--\tto run text script of functions\n \n/*\n    you can use "i 'function/reclada_object.get_schema.sql'"\n    to run text script of functions\n*/\n\ni 'function/dev.reg_notice.sql'\n\nSELECT reclada_object.create_subclass('{\n    "class": "RecladaObject",\n    "attributes": {\n        "newClass": "Context",\n        "properties": {\n            "Lambda": {"type": "string"}\n\t\t\t,"Environment": {"type": "string"}\n        },\n        "required": ["Environment"]\n    }\n}'::jsonb);\n\n\nDELETE\nFROM reclada.object\nWHERE class = reclada_object.get_jsonschema_GUID() and attributes->>'forClass'='Lambda';\n\ni 'function/api.storage_generate_presigned_get.sql'\ni 'function/api.storage_generate_presigned_post.sql'\ni 'function/reclada.datasource_insert_trigger_fnc.sql'\n\n--}!!! write upgrare script HERE !!!\n\ninsert into dev.ver(ver,upgrade_script,downgrade_script)\n\tselect ver, upgrade_script, downgrade_script\n\t\tfrom var_table;\n\n--{ testing downgrade script\nSAVEPOINT sp;\n    select dev.downgrade_version();\nROLLBACK TO sp;\n--} testing downgrade script\n\nselect reclada.raise_notice('OK, curren version: ' \n\t\t\t\t\t\t\t|| (select ver from var_table)::text\n\t\t\t\t\t\t  );\ndrop table var_table;\n\ncommit;	-- you you can use "--{function/reclada_object.get_schema}"\n-- to add current version of object to downgrade script\n\nselect reclada.raise_exception('Downgrade script not support');	2021-09-17 09:42:33.220341+00
 \.
 
 
@@ -6426,7 +5960,6 @@ COPY reclada.object (id, status, attributes, transaction_id, created_time, creat
 4	579e4982-794e-4315-a327-82c1c7e7a000	{"schema": {"type": "object", "required": [], "properties": {"tags": {"type": "array", "items": {"type": "string"}}}}, "version": 1, "forClass": "RecladaObject", "revision": "97852c93-bb51-44ff-8848-927eaf4fcaf4"}	\N	2021-09-14 16:32:04.460639+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	3c8da818-5515-4a13-b48f-b02a7d8438c0	041d2241-fcde-407b-add4-93a0e61a2221
 6	579e4982-794e-4315-a327-82c1c7e7a000	{"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": 1, "forClass": "tag", "revision": "c71b60a1-2a9a-486f-b4fc-eaaf229e6be1"}	\N	2021-09-14 16:32:04.460639+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	3c8da818-5515-4a13-b48f-b02a7d8438c0	712b36ef-2260-4f4b-b8c3-7d12f05e738d
 8	579e4982-794e-4315-a327-82c1c7e7a000	{"schema": {"type": "object", "required": ["name"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": 1, "forClass": "DataSource", "revision": "f9f497e7-2a73-4c16-99a1-a698db63e30f"}	\N	2021-09-14 16:32:04.460639+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	3c8da818-5515-4a13-b48f-b02a7d8438c0	87532044-921f-497b-961f-93f454509898
-44	579e4982-794e-4315-a327-82c1c7e7a000	{"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": "1", "forClass": "Lambda"}	\N	2021-09-14 16:33:42.168472+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	3c8da818-5515-4a13-b48f-b02a7d8438c0	2f92cc9f-cb05-41ba-80c9-1ed117826d37
 36	579e4982-794e-4315-a327-82c1c7e7a000	{"caption": "active", "revision": "6ed14f17-05e6-4dbc-aec4-a4a3c69da590"}	\N	2021-09-14 16:32:04.460639+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	6ff08520-acd8-4a85-89ea-59eaaccba394	579e4982-794e-4315-a327-82c1c7e7a000
 38	579e4982-794e-4315-a327-82c1c7e7a000	{"caption": "archive", "revision": "9b2cf6c2-491b-4964-91bd-a7232c22732e"}	\N	2021-09-14 16:32:04.460639+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	6ff08520-acd8-4a85-89ea-59eaaccba394	3e74539c-b7b1-436a-b003-248ce54f7dc4
 33	579e4982-794e-4315-a327-82c1c7e7a000	{"num": 1, "user": "", "branch": "", "old_num": 17, "dateTime": "2021-09-14 16:32:04.460639+00"}	\N	2021-09-14 16:32:04.460639+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	429f0121-a7de-4b8b-91e1-aca8153a4e4a	0d543f3a-e6ab-406f-b392-3997bf4a631e
@@ -6475,6 +6008,7 @@ COPY reclada.object (id, status, attributes, transaction_id, created_time, creat
 19	579e4982-794e-4315-a327-82c1c7e7a000	{"num": 1, "user": "", "branch": "", "old_num": 10, "dateTime": "2021-09-14 16:31:45.641202+00"}	\N	2021-09-14 16:32:04.460639+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	429f0121-a7de-4b8b-91e1-aca8153a4e4a	1a102328-4ed7-4345-98b4-8ec61451bf76
 42	579e4982-794e-4315-a327-82c1c7e7a000	{"login": "dev", "revision": "c67721e2-2e9e-48b0-a3a3-54f2ce79d3f8"}	\N	2021-09-14 16:32:04.460639+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	6627f1db-a3d5-4a2a-b543-749889644c70	724c2313-844c-4343-b48b-0b5b9b2e2ab3
 18	579e4982-794e-4315-a327-82c1c7e7a000	{"name": "defaultDataSet", "revision": "71039753-063a-4bab-8871-81ef956fddf2", "dataSources": []}	\N	2021-09-14 16:32:04.460639+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	e71f0ab6-5d72-4465-8e69-12bf67371d09	dabac4ef-43f7-4780-988a-00f3560d9978
+64	579e4982-794e-4315-a327-82c1c7e7a000	{"schema": {"type": "object", "required": ["Environment"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "Lambda": {"type": "string"}, "Environment": {"type": "string"}}}, "version": "1", "forClass": "Context"}	\N	2021-09-17 09:42:33.220341+00	724c2313-844c-4343-b48b-0b5b9b2e2ab3	3c8da818-5515-4a13-b48f-b02a7d8438c0	21812d92-b8d9-48d8-882f-2340b59f2581
 \.
 
 
@@ -6482,21 +6016,21 @@ COPY reclada.object (id, status, attributes, transaction_id, created_time, creat
 -- Name: t_dbg_id_seq; Type: SEQUENCE SET; Schema: dev; Owner: reclada
 --
 
-SELECT pg_catalog.setval('dev.t_dbg_id_seq', 11, true);
+SELECT pg_catalog.setval('dev.t_dbg_id_seq', 12, true);
 
 
 --
 -- Name: ver_id_seq; Type: SEQUENCE SET; Schema: dev; Owner: reclada
 --
 
-SELECT pg_catalog.setval('dev.ver_id_seq', 24, true);
+SELECT pg_catalog.setval('dev.ver_id_seq', 25, true);
 
 
 --
 -- Name: object_id_seq; Type: SEQUENCE SET; Schema: reclada; Owner: reclada
 --
 
-SELECT pg_catalog.setval('reclada.object_id_seq', 63, true);
+SELECT pg_catalog.setval('reclada.object_id_seq', 64, true);
 
 
 --

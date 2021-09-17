@@ -41,9 +41,9 @@ BEGIN
     file_type := data->>'fileType';
     --bucket_name := data->>'bucketName';
 
-    SELECT attrs->>'name'
+    SELECT attrs->>'Lambda'
     FROM reclada.v_active_object
-    WHERE class_name = 'Lambda'
+    WHERE class_name = 'Context'
     ORDER BY created_time DESC
     LIMIT 1
     INTO lambda_name;
