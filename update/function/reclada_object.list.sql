@@ -3,7 +3,7 @@
  * Also it is possible to get the number of objects. For that two arguments are required for input:
  * 1. the jsonb object with information about specified fields with the following parameters is required
  * 2. boolean argument is optional
- *    If it is true then output is jsonb like this {"objects": [<list of objects>], "number": <number of objects>}.
+ *    If it is true then output is jsonb like this {"objects": [<list of objects>], "number": <number of objects>, "last_change": <greatest timestamp of selection>}.
  *    If it is false (default value) then output is jsonb like this [<list of objects>].
  * Required parameters for the jsonb object:
  *  class - the class of objects
@@ -58,7 +58,7 @@
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list;
-CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, with_number boolean default false)
+CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, gui boolean default false)
 RETURNS jsonb AS $$
 DECLARE
     class               text;
@@ -215,13 +215,25 @@ BEGIN
             ' ORDER BY ' || order_by ||
             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
     INTO objects;
-    IF with_number THEN
+    IF gui THEN
 
         EXECUTE E'SELECT count(1)
         '|| query
         INTO number_of_objects;
 
+        EXECUTE E'SELECT TO_CHAR(
+	MAX(
+		GREATEST(obj.created_time, (
+			SELECT TO_TIMESTAMP(MAX(date_time),\'YYYY-MM-DD hh24:mi:ss.US TZH\')
+			FROM reclada.v_revision vr
+			WHERE vr.obj_id = UUID(obj.attrs ->>\'revision\'))
+		)
+	),\'YYYY-MM-DD hh24:mi:ss.MS TZH\')
+        '|| query
+        INTO last_change;
+
         res := jsonb_build_object(
+        'last_change', last_change,    
         'number', number_of_objects,
         'objects', objects);
     ELSE
