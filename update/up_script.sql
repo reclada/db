@@ -11,3 +11,5 @@ ALTER TABLE reclada.object
     ALTER COLUMN GUID SET NOT NULL;
 ALTER TABLE reclada.object
     ALTER GUID SET DEFAULT public.uuid_generate_v4();
+
+\i 'function/reclada_object.list.sql'

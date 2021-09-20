@@ -73,6 +73,7 @@ DECLARE
     res                 jsonb;
     query               text;
     class_uuid          uuid;
+    last_change         text;
 BEGIN
 
     class := data->>'class';
