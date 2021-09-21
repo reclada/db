@@ -1,8 +1,13 @@
--- version = 26
+-- version = 27
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
-\i 'function/api.storage_generate_presigned_get.sql'
-\i 'function/reclada_object.create.sql'
-\i 'function/reclada_object.update.sql'
+
+DELETE FROM reclada.object
+WHERE GUID IS NULL;
+
+ALTER TABLE reclada.object
+    ALTER COLUMN GUID SET NOT NULL;
+ALTER TABLE reclada.object
+    ALTER GUID SET DEFAULT public.uuid_generate_v4();
