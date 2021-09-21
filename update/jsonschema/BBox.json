@@ -1,0 +1,34 @@
+{
+    "forClass": "BBox",
+    "revision": "277acac0-1429-4d8b-9c8e-652c49df9851",
+    "schema": {
+        "properties": {
+            "height": {
+                "type": "number"
+            },
+            "left": {
+                "type": "number"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "top": {
+                "type": "number"
+            },
+            "width": {
+                "type": "number"
+            }
+        },
+        "required": [
+            "top",
+            "left",
+            "height",
+            "width"
+        ],
+        "type": "object"
+    },
+    "version": 1
+}

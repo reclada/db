@@ -41,6 +41,7 @@ BEGIN
     WHERE v.for_class = new_class
     INTO version;
 
+    version := coalesce(version,1);
     class_schema := class_schema->'attributes'->'schema';
 
     PERFORM reclada_object.create(format('{

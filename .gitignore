@@ -11,3 +11,8 @@ update/up.sql
 draft.sql
 update/run_test.bat
 pg_dump.bat
+update/commit_prepare.py
+update/install_db.py
+update/update_config.json
+update/update_db.py
+update/__pycache__/

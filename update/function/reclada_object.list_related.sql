@@ -65,6 +65,9 @@ BEGIN
     IF (list_of_ids IS NULL) THEN
         RAISE EXCEPTION 'The object does not have this field';
     END IF;
+    IF (jsonb_typeof(list_of_ids) != 'array') THEN
+        list_of_ids := '[]'::jsonb || list_of_ids;
+    END IF;
 
     order_by := data->'orderBy';
     IF (order_by IS NOT NULL) THEN
