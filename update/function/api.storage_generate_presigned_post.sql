@@ -18,6 +18,7 @@ CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
     --bucket_name  varchar;
+    lambda_name  varchar;
     file_type    varchar;
     object       jsonb;
     object_id    uuid;
@@ -39,6 +40,14 @@ BEGIN
     object_name := data->>'objectName';
     file_type := data->>'fileType';
     --bucket_name := data->>'bucketName';
+
+    SELECT attrs->>'name'
+    FROM reclada.v_active_object
+    WHERE class_name = 'Lambda'
+    ORDER BY created_time DESC
+    LIMIT 1
+    INTO lambda_name;
+
     /*
     SELECT uuid_generate_v4() INTO object_id;
     object_path := object_id;
@@ -52,12 +61,13 @@ BEGIN
         uri
     )::jsonb)->0 INTO object;
     */
+
     SELECT payload::jsonb
     FROM aws_lambda.invoke(
         aws_commons.create_lambda_function_arn(
-            's3_get_presigned_url_dev2',
-            'eu-west-1'
-            ),
+                format('%s', lambda_name),
+                'eu-west-1'
+        ),
         format('{
             "type": "post",
             "fileName": "%s",
