@@ -11,7 +11,7 @@
  *  branch - object's branch
  */
 
-DROP FUNCTION IF EXISTS api.reclada_object_create(jsonb);
+DROP FUNCTION IF EXISTS api.reclada_object_create;
 CREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb)
 RETURNS jsonb AS $$
 DECLARE

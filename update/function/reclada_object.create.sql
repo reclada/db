@@ -11,18 +11,20 @@
  *  branch - object's branch
  */
 
-DROP FUNCTION IF EXISTS reclada_object.create(jsonb, jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.create(data_jsonb jsonb, user_info jsonb default '{}'::jsonb)
+DROP FUNCTION IF EXISTS reclada_object.create;
+CREATE OR REPLACE FUNCTION reclada_object.create
+(
+    data_jsonb jsonb, 
+    user_info jsonb default '{}'::jsonb
+)
 RETURNS jsonb AS $$
 DECLARE
     branch     uuid;
-    revid      integer;
     data       jsonb;
     class      text;
     attrs      jsonb;
     schema     jsonb;
-    obj_id     uuid;
-    res        jsonb[];
+    res        jsonb;
 
 BEGIN
 
@@ -31,12 +33,11 @@ BEGIN
     END IF;
     /*TODO: check if some objects have revision and others do not */
     branch:= data_jsonb->0->'branch';
-
-    IF (data_jsonb->0->'revision' IS NULL) THEN
-        SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
-    END IF;
-
-    FOR data IN SELECT jsonb_array_elements(data_jsonb) LOOP
+    create temp table IF NOT EXISTS tmp(id uuid)
+    ON COMMIT drop;
+    delete from tmp;
+    FOR data IN SELECT jsonb_array_elements(data_jsonb) 
+    LOOP
 
         class := data->>'class';
         IF (class IS NULL) THEN
@@ -48,7 +49,8 @@ BEGIN
             RAISE EXCEPTION 'The reclada object must have attrs';
         END IF;
 
-        SELECT reclada_object.get_schema(class) INTO schema;
+        SELECT reclada_object.get_schema(class) 
+            INTO schema;
 
         IF (schema IS NULL) THEN
             RAISE EXCEPTION 'No json schema available for %', class;
@@ -58,27 +60,34 @@ BEGIN
             RAISE EXCEPTION 'JSON invalid: %', attrs;
         END IF;
 
-        SELECT uuid_generate_v4() INTO obj_id;
-
-        IF (data->'revision' IS NULL) THEN
-            data := data || format(
-                '{"id": "%s", "revision": %s, "isDeleted": false}',
-                obj_id, revid
-            )::jsonb;
-        ELSE
-            data := data || format(
-                '{"id": "%s", "isDeleted": false}',
-                obj_id
-            )::jsonb;
-        END IF;
-
-        res := res || data;
+        with inserted as 
+        (
+            INSERT INTO reclada.object(class,attributes)
+                select class, attrs
+                    RETURNING obj_id
+        ) 
+        insert into tmp(id)
+            select obj_id 
+                from inserted;
 
     END LOOP;
 
-    INSERT INTO reclada.object SELECT * FROM unnest(res);
-    PERFORM reclada_notification.send_object_notification('create', array_to_json(res)::jsonb);
-    RETURN array_to_json(res)::jsonb;
+    res := array_to_json
+            (
+                array
+                (
+                    select o.data 
+                        from reclada.v_active_object o
+                        join tmp t
+                            on t.id = o.obj_id
+                )
+            )::jsonb; 
+    PERFORM reclada_notification.send_object_notification
+        (
+            'create',
+            res
+        );
+    RETURN res;
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

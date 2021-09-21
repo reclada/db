@@ -1,5 +1,5 @@
 /*
- * Function api.reclada_object_list checks valid data and uses reclada_object.list to return the list of objects with specified fields.
+ * Function api.reclada_object_list checks valid data and uses reclada_object.list to return the list of objects with specified fields and the number of these objects.
  * A jsonb object with the following parameters is required.
  * Required parameters:
  *  class - the class of objects
@@ -15,29 +15,41 @@
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
  * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
+ * Output is jsonb like this {"objects": [<list of objects>], "number": <number of objects> }
+ * Function supports:
+ * 1. Comparison Operators
+ * elem1   >, <, <=, >=, =, !=   elem2
+ * elem1 < x < elem2 -- like two conditions
+ * 2. Pattern Matching
+ * str1   LIKE / NOT LIKE   str2
+ * str   SIMILAR TO   exp
+ * str   ~ ~* !~ !~*   exp
+ * 3. Array Operators
+ * elem   <@   list
+ * list1   =, !=, <, >, <=, >=, @>, <@  list2
  * Examples:
  *   1. Input:
  *   {
  *   "class": "class_name",
  *   "id": "id_1",
- *   "revision": {"operator": "!=", "object": 123},
- *   "isDeleted": false,
  *   "attrs":
- *      {
- *       "name": {"operator": "LIKE", "object": "%test%"}
+ *       {
+ *       "name": {"operator": "LIKE", "object": "%test%"},
+ *       "numericField": {"operator": "!=", "object": 123}
  *       },
- *   "accessToken":".."
+ *   "orderBy": [{"field": "attrs, name", "order": "ASC"}],
+ *   "accessToken":"..."
  *   }::jsonb
  *   2. Input:
  *   {
  *   "class": "class_name",
- *   "revision": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}],
- *   "id": {"operator": "inList", "object": ["id_1", "id_2", "id_3"]},
+ *   "id": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
  *   "attrs":
  *       {
  *       "tags":{"operator": "@>", "object": ["value1", "value2"]},
+ *       "numericField": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}]
  *       },
- *   "orderBy": [{"field": "revision", "order": "DESC"}],
+ *   "orderBy": [{"field": "id", "order": "DESC"}],
  *   "limit": 5,
  *   "offset": 2,
  *   "accessToken":"..."
@@ -51,6 +63,7 @@ RETURNS jsonb AS $$
 DECLARE
     class               jsonb;
     user_info           jsonb;
+    objects             jsonb;
     result              jsonb;
 
 BEGIN
@@ -67,9 +80,12 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;
     END IF;
 
-    SELECT reclada_object.list(data) INTO result;
+    SELECT reclada_object.list(data) INTO objects;
+
+    result := jsonb_build_object(
+        'number', jsonb_array_length(objects),
+        'objects', objects);
     RETURN result;
 
 END;
 $$ LANGUAGE PLPGSQL STABLE;
-

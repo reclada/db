@@ -10,68 +10,92 @@
  *
 */
 
-DROP FUNCTION IF EXISTS reclada_object.update(jsonb, jsonb);
-CREATE OR REPLACE FUNCTION reclada_object.update(data jsonb, user_info jsonb default '{}'::jsonb)
+DROP FUNCTION IF EXISTS reclada_object.update;
+CREATE OR REPLACE FUNCTION reclada_object.update
+(
+    data jsonb, 
+    user_info jsonb default '{}'::jsonb
+)
 RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $body$
 DECLARE
-    class         text;
-    obj_id        uuid;
-    attrs         jsonb;
+    v_class         text;
+    v_obj_id        uuid;
+    v_attrs         jsonb;
     schema        jsonb;
     old_obj       jsonb;
     branch        uuid;
-    revid         integer;
+    revid         uuid;
 
 BEGIN
 
-    class := data->>'class';
-    IF (class IS NULL) THEN
+    v_class := data->>'class';
+    IF (v_class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-    obj_id := data->>'id';
-    IF (obj_id IS NULL) THEN
+    v_obj_id := data->>'id';
+    IF (v_obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
-    attrs := data->'attrs';
-    IF (attrs IS NULL) THEN
+    v_attrs := data->'attrs';
+    IF (v_attrs IS NULL) THEN
         RAISE EXCEPTION 'The reclada object must have attrs';
     END IF;
 
-    SELECT reclada_object.get_schema(class) INTO schema;
+    SELECT reclada_object.get_schema(v_class) 
+        INTO schema;
 
     IF (schema IS NULL) THEN
-        RAISE EXCEPTION 'No json schema available for %', class;
+        RAISE EXCEPTION 'No json schema available for %', v_class;
     END IF;
 
-    IF (NOT(validate_json_schema(schema->'attrs'->'schema', attrs))) THEN
-        RAISE EXCEPTION 'JSON invalid: %', attrs;
+    IF (NOT(validate_json_schema(schema->'attrs'->'schema', v_attrs))) THEN
+        RAISE EXCEPTION 'JSON invalid: %', v_attrs;
     END IF;
 
     SELECT 	v.data
-    FROM reclada.v_object v
-	WHERE v.id = (obj_id::text)
-	INTO old_obj;
+        FROM reclada.v_active_object v
+	        WHERE v.obj_id = v_obj_id
+	    INTO old_obj;
 
     IF (old_obj IS NULL) THEN
         RAISE EXCEPTION 'Could not update object, no such id';
     END IF;
 
     branch := data->'branch';
-    SELECT reclada_revision.create(user_info->>'sub', branch) INTO revid;
-
-    data := data || format(
-        '{"revision": %s, "isDeleted": false}',
-        revid
-        )::jsonb; --TODO replace isDeleted with status attr
-    --TODO compare old and data to avoid unnecessery inserts
-
-    INSERT INTO reclada.object VALUES(data);
+    SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) 
+        INTO revid;
+    
+    with t as 
+    (
+        update reclada.object o
+            set status = reclada_object.get_archive_status_obj_id()
+                where o.obj_id = v_obj_id
+                    and status != reclada_object.get_archive_status_obj_id()
+                        RETURNING id
+    )
+    INSERT INTO reclada.object( obj_id,
+                                class,
+                                status,
+                                attributes
+                              )
+        select  v.obj_id,
+                v_class,
+                reclada_object.get_active_status_obj_id(),--status 
+                v_attrs || format('{"revision":"%s"}',revid)::jsonb
+            FROM reclada.v_object v
+            JOIN t 
+                on t.id = v.id
+	            WHERE v.obj_id = v_obj_id;
+                    
+    select v.data 
+        FROM reclada.v_active_object v
+            WHERE v.obj_id = v_obj_id
+        into data;
     PERFORM reclada_notification.send_object_notification('update', data);
     RETURN data;
-
 END;
 $body$;

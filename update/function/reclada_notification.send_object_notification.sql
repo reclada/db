@@ -23,10 +23,11 @@ BEGIN
             return;
         end if;
         
-        SELECT v.data FROM reclada.v_object v
-        WHERE (v.data->>'class' = 'Message')
-            AND (v.data->'attrs'->>'event' = event)
-            AND (v.data->'attrs'->>'class' = object_class)
+        SELECT v.data 
+            FROM reclada.v_active_object v
+                WHERE v.class = 'Message'
+                    AND v.attrs->>'event' = event
+                    AND v.attrs->>'class' = object_class
         INTO message;
 
         IF message IS NULL THEN
