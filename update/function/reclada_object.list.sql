@@ -8,7 +8,7 @@
  * Required parameters for the jsonb object:
  *  class - the class of objects
  * Optional parameters:
- *  attrs - the attributes of objects (can be empty)
+ *  attributes - the attributes of objects (can be empty)
  *  id - identifier of the objects. All ids are taken by default.
  *  revision - object's revision. returns object with max revision by default.
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
@@ -34,19 +34,18 @@
  *   {
  *   "class": "class_name",
  *   "id": "id_1",
- *   "isDeleted": false,
- *   "attrs":
+ *   "attributes":
  *       {
  *       "name": {"operator": "LIKE", "object": "%test%"},
  *       "numericField": {"operator": "!=", "object": 123}
  *       },
- *   "orderBy": [{"field": "attrs, name", "order": "ASC"}],
+ *   "orderBy": [{"field": "attributes, name", "order": "ASC"}],
  *   }::jsonb
  *   2. Input:
  *   {
  *   "class": "class_name",
  *   "id": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
- *   "attrs":
+ *   "attributes":
  *       {
  *       "tags":{"operator": "@>", "object": ["value1", "value2"]},
  *       "numericField": [{"operator": ">", "object": num1}, {"operator": "<", "object": num2}]

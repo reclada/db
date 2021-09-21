@@ -5,7 +5,7 @@
  *  class - the class of object
  *  id - identifier of the object
  * Optional parameters:
- *  attrs - the attributes of object
+ *  attributes - the attributes of object
  *  branch - object's branch
  *
 */

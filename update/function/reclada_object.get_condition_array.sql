@@ -8,8 +8,8 @@
              key_path = data->'revision'
  *    Output: data->'revision' <@ '[60, 64, 65]'::jsonb
  * 2. Input: data = {"object": ["value1", "value2", "value3"]}::jsonb,
-             key_path = data->'attrs'->'tags'
- *    Output: data->'attrs'->'tags' = '["value1", "value2", "value3"]'::jsonb
+             key_path = data->'attributes'->'tags'
+ *    Output: data->'attributes'->'tags' = '["value1", "value2", "value3"]'::jsonb
   * Only valid input is expected.
 */
 
