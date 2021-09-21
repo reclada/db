@@ -1,5 +1,5 @@
-DROP FUNCTION IF EXISTS public.try_cast_uuid;
-CREATE OR REPLACE FUNCTION public.try_cast_uuid(p_in text, p_default int default null)
+DROP FUNCTION IF EXISTS reclada.try_cast_uuid;
+CREATE OR REPLACE FUNCTION reclada.try_cast_uuid(p_in text, p_default int default null)
    returns uuid
 as
 $$

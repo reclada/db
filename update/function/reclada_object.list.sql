@@ -79,7 +79,7 @@ BEGIN
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
-    class_uuid := public.try_cast_uuid(class);
+    class_uuid := reclada.try_cast_uuid(class);
 
     if class_uuid is not null then
         select v.for_class 

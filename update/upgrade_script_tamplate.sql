@@ -137,7 +137,7 @@ SAVEPOINT sp;
 ROLLBACK TO sp;
 --} testing downgrade script
 
-select public.raise_notice('OK, curren version: ' 
+select reclada.raise_notice('OK, curren version: ' 
 							|| (select ver from var_table)::text
 						  );
 drop table var_table;

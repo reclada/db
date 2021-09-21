@@ -46,7 +46,7 @@ BEGIN
         IF (class_name IS NULL) THEN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;
-        class_uuid := public.try_cast_uuid(class_name);
+        class_uuid := reclada.try_cast_uuid(class_name);
 
         attrs := data->'attributes';
         IF (attrs IS NULL) THEN
