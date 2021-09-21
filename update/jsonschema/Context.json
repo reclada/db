@@ -1,12 +1,11 @@
 {
-    "forClass": "TextBlock",
-    "revision": "965413b0-035c-4b20-a481-296fe899dae7",
+    "forClass": "Context",
     "schema": {
         "properties": {
-            "bbox": {
+            "Environment": {
                 "type": "string"
             },
-            "page": {
+            "Lambda": {
                 "type": "string"
             },
             "tags": {
@@ -14,17 +13,12 @@
                     "type": "string"
                 },
                 "type": "array"
-            },
-            "text": {
-                "type": "string"
             }
         },
         "required": [
-            "text",
-            "bbox",
-            "page"
+            "Environment"
         ],
         "type": "object"
     },
-    "version": 1
+    "version": "1"
 }

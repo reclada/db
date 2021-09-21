@@ -11,7 +11,7 @@ insert into var_table(ver)
 	select max(ver) + 1
         from dev.VER;
 		
-select public.raise_exception('Can not apply this version!') 
+select reclada.raise_exception('Can not apply this version!') 
 	where not exists
 	(
 		select ver from var_table where ver = /*#@#@#version#@#@#*/ --!!! write current version HERE !!!
