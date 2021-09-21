@@ -37,7 +37,6 @@ def main(sbr,dbr):
     
     for commit in source:
         commit_v = get_version_from_commit(commit)
-        os.chdir('..')
 
         # validate commit_v
         if pre_valid_commit + 1 == commit_v:
