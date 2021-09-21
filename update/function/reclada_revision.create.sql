@@ -24,7 +24,7 @@ RETURNS uuid AS $$
                     "branch": "%s"
                 }',
                 (
-                    select count(*)
+                    select count(*) + 1
                         from reclada.object o
                             where o.obj_id = obj
                 ),
