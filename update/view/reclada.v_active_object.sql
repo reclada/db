@@ -10,6 +10,7 @@ AS
             t.status_caption    ,
             t.revision          ,
             t.created_time      ,
+            t.class_name        ,
             t.attrs             ,
             t.data 
         FROM reclada.v_object as t
@@ -17,5 +18,5 @@ AS
             where t.status = reclada_object.get_active_status_obj_id()
             ;
 
--- select * from reclada.v_object limit 300
+-- select * from reclada.v_active_object limit 300
 -- select * from reclada.object

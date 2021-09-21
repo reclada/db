@@ -72,12 +72,25 @@ DECLARE
     objects             jsonb;
     res                 jsonb;
     query               text;
+    class_uuid          uuid;
 BEGIN
 
     class := data->>'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
+    class_uuid := public.try_cast_uuid(class);
+
+    if class_uuid is not null then
+        select v.for_class 
+            from reclada.v_class_lite v
+                where class_uuid = v.obj_id
+        into class;
+
+        IF (class IS NULL) THEN
+            RAISE EXCEPTION 'Class not found by GUID: %', class_uuid::text;
+        END IF;
+    end if;
 
     attrs := data->'attributes' || '{}'::jsonb;
 
@@ -125,7 +138,8 @@ BEGIN
                 -- ((('"'||class||'"')::jsonb#>>'{}')::text = 'Job')
                 --reclada_object.get_query_condition(class, E'data->''class''') AS condition
                 --'class = data->>''class''' AS condition
-                format('obj.class = ''%s''', class) AS condition
+                -- TODO: replace for using GUID
+                format('obj.class_name = ''%s''', class) AS condition
             UNION
             SELECT  CASE
                         WHEN jsonb_typeof(data->'id') = 'array' THEN
@@ -134,13 +148,13 @@ BEGIN
                                 (
                                     format(
                                         E'(%s)',
-                                        reclada_object.get_query_condition(cond, E'data->''id''')
+                                        reclada_object.get_query_condition(cond, E'data->''id''') -- TODO: change data->'id' to obj_id(GUID)
                                     ),
                                     ' AND '
                                 )
                                 FROM jsonb_array_elements(data->'id') AS cond
                         )
-                        ELSE reclada_object.get_query_condition(data->'id', E'data->''id''')
+                        ELSE reclada_object.get_query_condition(data->'id', E'data->''id''') -- TODO: change data->'id' to obj_id(GUID)
                     END AS condition
                 WHERE coalesce(data->'id','null'::jsonb) != 'null'::jsonb
             -- UNION

@@ -9,3 +9,5 @@ src/1.sql
 update/up.sql
 .vscode/
 draft.sql
+update/run_test.bat
+pg_dump.bat
