@@ -49,7 +49,7 @@ BEGIN
         execute query into attrs using data -> 'attributes';
 
         msg := jsonb_build_object(
-            'objectId', data -> 'id',
+            'objectId', data -> 'GUID',
             'class', object_class,
             'event', event,
             'attributes', attrs

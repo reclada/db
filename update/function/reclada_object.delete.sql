@@ -19,16 +19,16 @@ DECLARE
     v_obj_id        uuid;
 BEGIN
 
-    v_obj_id := data->>'id';
+    v_obj_id := data->>'GUID';
     IF (v_obj_id IS NULL) THEN
-        RAISE EXCEPTION 'Could not delete object with no id';
+        RAISE EXCEPTION 'Could not delete object with no GUID';
     END IF;
 
     
     with t as (    
         update reclada.object o
             set status = reclada_object.get_archive_status_obj_id() 
-                WHERE o.obj_id = v_obj_id
+                WHERE o.GUID = v_obj_id
                     and status != reclada_object.get_archive_status_obj_id()
                     RETURNING id
     ) 
@@ -39,7 +39,7 @@ BEGIN
             into data;
     
     IF (data IS NULL) THEN
-        RAISE EXCEPTION 'Could not delete object, no such id';
+        RAISE EXCEPTION 'Could not delete object, no such GUID';
     END IF;
 
     PERFORM reclada_notification.send_object_notification('delete', data);

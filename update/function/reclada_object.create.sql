@@ -25,7 +25,7 @@ DECLARE
     class_uuid uuid;
     attrs      jsonb;
     schema     jsonb;
-    objid      uuid;
+    obj_GUID   uuid;
     res        jsonb;
 
 BEGIN
@@ -70,27 +70,31 @@ BEGIN
             RAISE EXCEPTION 'JSON invalid: %', attrs;
         END IF;
         
-        objid := (data->>'id')::uuid;
+        if data->>'id' is not null then
+            RAISE EXCEPTION '%','Field "id" not allow!!!';
+        end if;
+        obj_GUID := (data->>'GUID')::uuid;
         IF EXISTS (
             select 1 from reclada.object 
-                where obj_id = objid
+                where GUID = obj_GUID
         ) then
-            RAISE EXCEPTION 'id: % is duplicate', objid;
+            RAISE EXCEPTION 'GUID: % is duplicate', obj_GUID;
         end if;
+        raise notice 'schema: %',schema;
         with inserted as 
         (
-            INSERT INTO reclada.object(obj_id,class,attributes)
+            INSERT INTO reclada.object(GUID,class,attributes)
                 select  case
-                            when objid IS NULL
+                            when obj_GUID IS NULL
                                 then public.uuid_generate_v4()
-                            else objid
-                        end as obj_id,
-                        (schema->>'id')::uuid, 
+                            else obj_GUID
+                        end as GUID,
+                        (schema->>'GUID')::uuid, 
                         attrs                
-                RETURNING obj_id
+                RETURNING GUID
         ) 
         insert into tmp(id)
-            select obj_id 
+            select GUID 
                 from inserted;
 
     END LOOP;

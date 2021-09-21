@@ -37,9 +37,9 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-    objid := (data->>'id')::uuid;
+    objid := (data->>'GUID')::uuid;
     IF (objid IS NULL) THEN
-        RAISE EXCEPTION 'The object id is not specified';
+        RAISE EXCEPTION 'The object GUID is not specified';
     END IF;
 
     field := data->>'field';

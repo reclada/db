@@ -98,7 +98,7 @@ BEGIN
     IF ((order_by_jsonb IS NULL) OR
         (order_by_jsonb = 'null'::jsonb) OR
         (order_by_jsonb = '[]'::jsonb)) THEN
-        order_by_jsonb := '[{"field": "id", "order": "ASC"}]'::jsonb;
+        order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
     END IF;
     IF (jsonb_typeof(order_by_jsonb) != 'array') THEN
     		order_by_jsonb := format('[%s]', order_by_jsonb);
@@ -142,28 +142,28 @@ BEGIN
                 format('obj.class_name = ''%s''', class) AS condition
             UNION
             SELECT  CASE
-                        WHEN jsonb_typeof(data->'id') = 'array' THEN
+                        WHEN jsonb_typeof(data->'GUID') = 'array' THEN
                         (
                             SELECT string_agg
                                 (
                                     format(
                                         E'(%s)',
-                                        reclada_object.get_query_condition(cond, E'data->''id''') -- TODO: change data->'id' to obj_id(GUID)
+                                        reclada_object.get_query_condition(cond, E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)
                                     ),
                                     ' AND '
                                 )
-                                FROM jsonb_array_elements(data->'id') AS cond
+                                FROM jsonb_array_elements(data->'GUID') AS cond
                         )
-                        ELSE reclada_object.get_query_condition(data->'id', E'data->''id''') -- TODO: change data->'id' to obj_id(GUID)
+                        ELSE reclada_object.get_query_condition(data->'GUID', E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)
                     END AS condition
-                WHERE coalesce(data->'id','null'::jsonb) != 'null'::jsonb
+                WHERE coalesce(data->'GUID','null'::jsonb) != 'null'::jsonb
             -- UNION
             -- SELECT 'obj.data->>''status''=''active'''-- TODO: change working with revision
             -- UNION SELECT
             --     CASE WHEN data->'revision' IS NULL THEN
             --         E'(data->>''revision''):: numeric = (SELECT max((objrev.data -> ''revision'')::numeric)
             --         FROM reclada.v_object objrev WHERE
-            --         objrev.data -> ''id'' = obj.data -> ''id'')'
+            --         objrev.data -> ''GUID'' = obj.data -> ''GUID'')'
             --     WHEN jsonb_typeof(data->'revision') = 'array' THEN
             --         (SELECT string_agg(
             --             format(
