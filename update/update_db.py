@@ -94,9 +94,18 @@ def get_commit_history(branch:str = branch_db, need_comment:bool = False):
 
     return res
 
-def get_version_from_commit(commit, file_name = 'up_script.sql'):
-    checkout(commit)
-    os.chdir('update')
+def get_version_from_db():
+    # TODO: refactor for using key psql
+    res = os.popen(f'{psql_str} -c "select max(ver) from dev.ver;"').readlines()
+    cur_ver_db = int(res[2])
+    return cur_ver_db
+
+def get_version_from_commit(commit = '', file_name = 'up_script.sql'):
+    if commit != '':
+        checkout(commit)
+    cd = Path('update').exists()
+    if cd:
+        os.chdir('update')
     commit_v = -1
     if not Path(file_name).exists():
         return commit_v
@@ -106,7 +115,8 @@ def get_version_from_commit(commit, file_name = 'up_script.sql'):
             if line.startswith(p):
                 commit_v = int(line.replace(p,''))
                 break
-    os.chdir('..')
+    if cd:
+        os.chdir('..')
     return commit_v
 
 
@@ -125,22 +135,19 @@ def recreate_db():
     execute(f'''CREATE DATABASE {db};''')
 
 def run_test():
-    print('Run testing . . .')
     rmdir('QAAutotests')
     os.system(f'git clone https://github.com/reclada/QAAutotests')
     os.chdir('QAAutotests')
     os.system(f'git checkout {branch_QAAutotests}')
     os.system(f'pip install -r requirements.txt')
     os.system(f'pytest tests/components/database --alluredir results --log-file=test_output.log')
-    input("Press Enter to continue . . .")
     os.chdir('..')
     rmdir('QAAutotests')
 
 if __name__ == "__main__":
         
     clone_db()
-    res = os.popen(f'{psql_str} -c "select max(ver) from dev.ver;"').readlines()
-    cur_ver_db = int(res[2])
+    cur_ver_db = get_version_from_db()
     print(f'current version database: {cur_ver_db}')
 
     res = get_commit_history(branch_db)
