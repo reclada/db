@@ -1,4 +1,4 @@
-DROP FUNCTION IF EXISTS reclada_storage.s3_generate_presigned_post(jsonb, jsonb);
+DROP FUNCTION IF EXISTS reclada_storage.s3_generate_presigned_post;
 CREATE OR REPLACE FUNCTION reclada_storage.s3_generate_presigned_post(data JSONB, credentials JSONB)
 RETURNS JSONB AS $$
     import json
