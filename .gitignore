@@ -11,9 +11,7 @@ update/up.sql
 draft.sql
 update/run_test.bat
 pg_dump.bat
-update/commit_prepare.py
-update/install_db.py
 update/update_config.json
-update/update_db.py
+update/publish_config.json
 update/__pycache__/
 update/update_to_dev7_reclada_k8s.bat
