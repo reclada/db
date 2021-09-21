@@ -80,7 +80,7 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
 
-    attrs := data->'attrs' || '{}'::jsonb;
+    attrs := data->'attributes' || '{}'::jsonb;
 
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
@@ -172,16 +172,16 @@ BEGIN
                                         format
                                         (
                                             E'(%s)',
-                                            reclada_object.get_query_condition(cond, format(E'data->''attrs''->%L', key))
+                                            reclada_object.get_query_condition(cond, format(E'data->''attributes''->%L', key))
                                         ),
                                         ' AND '
                                     )
                                     FROM jsonb_array_elements(value) AS cond
                             )
-                    ELSE reclada_object.get_query_condition(value, format(E'data->''attrs''->%L', key))
+                    ELSE reclada_object.get_query_condition(value, format(E'data->''attributes''->%L', key))
                 END AS condition
             FROM jsonb_each(attrs)
-            WHERE data->'attrs' != ('{}'::jsonb)
+            WHERE data->'attributes' != ('{}'::jsonb)
         ) conds
     INTO query_conditions;
 

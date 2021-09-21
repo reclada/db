@@ -4,7 +4,7 @@
  * An array of jsonb objects with the following parameters is required to create a bunch of objects.
  * Required parameters:
  *  class - the class of objects
- *  attrs - the attributes of objects
+ *  attributes - the attributes of objects
  *  accessToken - jwt token to authorize
  * Optional parameters:
  *  revision - object's revision. If a revision already exists, new revision will not be created. One revision is used to create a bunch of objects.
@@ -42,9 +42,9 @@ BEGIN
             RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
         END IF;
 
-        attrs := data_jsonb->'attrs';
+        attrs := data_jsonb->'attributes';
         IF (attrs IS NULL) THEN
-            RAISE EXCEPTION 'The reclada object must have attrs';
+            RAISE EXCEPTION 'The reclada object must have attributes';
         END IF;
 
         data_to_create := data_to_create || data_jsonb;

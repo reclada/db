@@ -39,7 +39,7 @@ with t as (
                     "class": "%s",
                     "revision": %s, 
                     "status": "%s",
-                    "attrs": %s
+                    "attributes": %s
                 }',
                 t.obj_id    ,
                 t.class     ,

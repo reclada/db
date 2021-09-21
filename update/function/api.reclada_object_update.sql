@@ -5,14 +5,14 @@
  * Required parameters:
  *  class - the class of object
  *  id - identifier of the object
- *  attrs - the attributes of object
+ *  attributes - the attributes of object
  *  accessToken - jwt token to authorize
  * Optional parameters:
  *  branch - object's branch
  *
 */
 
-DROP FUNCTION IF EXISTS api.reclada_object_update(jsonb);
+DROP FUNCTION IF EXISTS api.reclada_object_update;
 CREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
@@ -34,9 +34,9 @@ BEGIN
         RAISE EXCEPTION 'Could not update object with no id';
     END IF;
 
-    attrs := data->'attrs';
+    attrs := data->'attributes';
     IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'reclada object must have attrs';
+        RAISE EXCEPTION 'reclada object must have attributes';
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
