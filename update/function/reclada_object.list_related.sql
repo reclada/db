@@ -80,14 +80,18 @@ BEGIN
     IF (offset_ IS NOT NULL) THEN
         cond := cond || (format('{"offset": "%s"}', offset_)::jsonb);
     END IF;
-
-    SELECT reclada_object.list(format(
-        '{"class": "%s", "attributes": {}, "id": {"operator": "<@", "object": %s}}',
-        related_class,
-        list_of_ids
-        )::jsonb || cond,
-        true)
-    INTO res;
+    
+    IF (list_of_ids = '[]'::jsonb) THEN
+        res := '{"number": 0, "objects": []}'::jsonb;
+    ELSE
+        SELECT reclada_object.list(format(
+            '{"class": "%s", "attributes": {}, "GUID": {"operator": "<@", "object": %s}}',
+            related_class,
+            list_of_ids
+            )::jsonb || cond,
+            true)
+        INTO res;
+    END IF;
 
     RETURN res;
 

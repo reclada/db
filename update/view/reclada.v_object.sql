@@ -16,7 +16,7 @@ with t as (
         FROM reclada.object obj
         left join 
         (
-            select  (r.attributes->'num')::bigint num,
+            select  (r.attributes->>'num')::bigint num,
                     r.GUID 
                 from reclada.object r
                     where class in (select reclada_object.get_GUID_for_class('revision'))
