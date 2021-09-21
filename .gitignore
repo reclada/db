@@ -8,3 +8,4 @@ output_tmtagg.csv
 src/1.sql
 update/up.sql
 .vscode/
+draft.sql

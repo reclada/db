@@ -1,5 +1,6 @@
+DROP FUNCTION IF EXISTS dev.downgrade_version;
 CREATE or replace function dev.downgrade_version()
-returns void
+returns text
 LANGUAGE PLPGSQL VOLATILE
 as
 $do$
@@ -35,6 +36,7 @@ BEGIN
 
     v_msg = 'OK, curren version: ' || (current_ver-1)::text;
     perform public.raise_notice(v_msg);
+    return v_msg;
 EXCEPTION when OTHERS then 
 	get stacked diagnostics
         v_state   = returned_sqlstate,
@@ -59,5 +61,6 @@ SQLERRM : %s',
                 SQLSTATE,
                 SQLERRM);
     perform dev.reg_notice(v_state);
+    return v_state;
 END
 $do$;
