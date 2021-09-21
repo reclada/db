@@ -27,7 +27,7 @@ DECLARE
     schema     jsonb;
     obj_GUID   uuid;
     res        jsonb;
-
+    affected   uuid[];
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -35,9 +35,7 @@ BEGIN
     END IF;
     /*TODO: check if some objects have revision and others do not */
     branch:= data_jsonb->0->'branch';
-    create temp table IF NOT EXISTS tmp(id uuid)
-        ON COMMIT drop;
-    delete from tmp;
+
     FOR data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
 
@@ -53,15 +51,15 @@ BEGIN
             RAISE EXCEPTION 'The reclada object must have attributes';
         END IF;
 
-        if class_uuid is null then
+        IF class_uuid IS NULL THEN
             SELECT reclada_object.get_schema(class_name) 
-                INTO schema;
-        else
-            select v.data 
-                from reclada.v_class v
-                    where class_uuid = v.obj_id
-                INTO schema;
-        end if;
+            INTO schema;
+        ELSE
+            SELECT v.data 
+            FROM reclada.v_class v
+            WHERE class_uuid = v.obj_id
+            INTO schema;
+        END IF;
         IF (schema IS NULL) THEN
             RAISE EXCEPTION 'No json schema available for %', class_name;
         END IF;
@@ -70,32 +68,29 @@ BEGIN
             RAISE EXCEPTION 'JSON invalid: %', attrs;
         END IF;
         
-        if data->>'id' is not null then
+        IF data->>'id' IS NOT NULL THEN
             RAISE EXCEPTION '%','Field "id" not allow!!!';
-        end if;
+        END IF;
         obj_GUID := (data->>'GUID')::uuid;
         IF EXISTS (
-            select 1 from reclada.object 
-                where GUID = obj_GUID
-        ) then
+            SELECT 1
+            FROM reclada.object 
+            WHERE GUID = obj_GUID
+        ) THEN
             RAISE EXCEPTION 'GUID: % is duplicate', obj_GUID;
-        end if;
+        END IF;
         --raise notice 'schema: %',schema;
-        with inserted as 
-        (
-            INSERT INTO reclada.object(GUID,class,attributes)
-                select  case
-                            when obj_GUID IS NULL
-                                then public.uuid_generate_v4()
-                            else obj_GUID
-                        end as GUID,
-                        (schema->>'GUID')::uuid, 
-                        attrs                
-                RETURNING GUID
-        ) 
-        insert into tmp(id)
-            select GUID 
-                from inserted;
+
+        INSERT INTO reclada.object(GUID,class,attributes)
+            SELECT  CASE
+                        WHEN obj_GUID IS NULL
+                            THEN public.uuid_generate_v4()
+                        ELSE obj_GUID
+                    END AS GUID,
+                    (schema->>'GUID')::uuid, 
+                    attrs                
+        RETURNING GUID INTO obj_GUID;
+        affected := array_append( affected, obj_GUID);
 
     END LOOP;
 
@@ -103,10 +98,9 @@ BEGIN
             (
                 array
                 (
-                    select o.data 
-                        from reclada.v_active_object o
-                        join tmp t
-                            on t.id = o.obj_id
+                    SELECT o.data 
+                    FROM reclada.v_active_object o
+                    WHERE o.obj_id = ANY (affected)
                 )
             )::jsonb; 
     PERFORM reclada_notification.send_object_notification
