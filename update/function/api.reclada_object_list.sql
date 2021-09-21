@@ -15,7 +15,7 @@
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
  * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
- * Output is jsonb like this {"objects": [<list of objects>], "number": <number of objects> }
+ * Output is jsonb like this {"objects": [<list of objects>], "number": <number of objects>, "last_change": <greatest timestamp of selection>}.
  * Function supports:
  * 1. Comparison Operators
  * elem1   >, <, <=, >=, =, !=   elem2
