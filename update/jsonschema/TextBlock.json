@@ -1,6 +1,5 @@
 {
     "forClass": "TextBlock",
-    "revision": "965413b0-035c-4b20-a481-296fe899dae7",
     "schema": {
         "properties": {
             "bbox": {
@@ -26,5 +25,5 @@
         ],
         "type": "object"
     },
-    "version": 1
+    "version": "1"
 }

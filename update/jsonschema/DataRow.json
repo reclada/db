@@ -1,6 +1,5 @@
 {
     "forClass": "DataRow",
-    "revision": "b329362a-1f24-4551-88cf-8747106a37f7",
     "schema": {
         "properties": {
             "row": {
@@ -22,5 +21,5 @@
         ],
         "type": "object"
     },
-    "version": 1
+    "version": "1"
 }

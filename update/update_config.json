@@ -1,0 +1,11 @@
+{
+    "branch_db" : "main",
+    "branch_runtime" : "for_domino",
+    "branch_SciNLP" : "main",
+    "branch_QAAutotests" : "master",
+    "server" : "server_name",
+    "db" : "database_name",
+    "db_user" : "database_user",
+    "quick_install" : true,
+    "version": "latest"
+}
