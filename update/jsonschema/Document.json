@@ -1,6 +1,5 @@
 {
     "forClass": "Document",
-    "revision": "1a102328-4ed7-4345-98b4-8ec61451bf76",
     "schema": {
         "properties": {
             "name": {
@@ -18,5 +17,5 @@
         ],
         "type": "object"
     },
-    "version": 1
+    "version": "1"
 }

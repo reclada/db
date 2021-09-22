@@ -1,6 +1,5 @@
 {
     "forClass": "BBox",
-    "revision": "ee0713cf-eb67-4ce0-8f64-50a19b79a4a7",
     "schema": {
         "properties": {
             "height": {
@@ -30,5 +29,5 @@
         ],
         "type": "object"
     },
-    "version": 1
+    "version": "1"
 }
