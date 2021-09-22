@@ -1,51 +1,18 @@
--- version = 28
+-- version = 29
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
 
-\i 'function/reclada_object.list.sql'
+drop SEQUENCE IF EXISTS reclada.reclada_revisions;
 
+CREATE SEQUENCE IF not EXISTS reclada.transaction_id
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
-\i 'function/api.auth_get_login_url copy.sql'
-\i 'function/api.auth_get_login_url.sql'
-\i 'function/api.hello_world.sql'
-\i 'function/api.reclada_object_create.sql'
-\i 'function/api.reclada_object_delete.sql'
-\i 'function/api.reclada_object_list.sql'
-\i 'function/api.reclada_object_list_add.sql'
-\i 'function/api.reclada_object_list_drop.sql'
-\i 'function/api.reclada_object_list_related.sql'
-\i 'function/api.reclada_object_update.sql'
-\i 'function/api.storage_generate_presigned_get.sql'
-\i 'function/api.storage_generate_presigned_post.sql'
-\i 'function/dev.downgrade_version.sql'
-\i 'function/dev.reg_notice.sql'
-\i 'function/reclada.datasource_insert_trigger_fnc.sql'
-\i 'function/reclada.load_staging.sql'
-\i 'function/reclada.raise_exception.sql'
-\i 'function/reclada.raise_notice.sql'
-\i 'function/reclada.try_cast_int.sql'
-\i 'function/reclada.try_cast_uuid.sql'
-\i 'function/reclada_notification.listen.sql'
-\i 'function/reclada_notification.send.sql'
-\i 'function/reclada_notification.send_object_notification.sql'
-\i 'function/reclada_object.cast_jsonb_to_postgres.sql'
-\i 'function/reclada_object.create.sql'
-\i 'function/reclada_object.create_subclass.sql'
+\i 'function/reclada.get_transaction_id.sql' 
+\i 'function/reclada_object.create.sql' 
 \i 'function/reclada_object.delete.sql'
-\i 'function/reclada_object.get_archive_status_obj_id.sql'
-\i 'function/reclada_object.get_condition_array.sql'
-\i 'function/reclada_object.get_query_condition.sql'
-\i 'function/reclada_object.get_schema.sql'
-\i 'function/reclada_object.jsonb_to_text.sql'
-\i 'function/reclada_object.list.sql'
-\i 'function/reclada_object.list_add.sql'
-\i 'function/reclada_object.list_drop.sql'
-\i 'function/reclada_object.list_related.sql'
-\i 'function/reclada_object.update.sql'
-\i 'function/reclada_revision.create.sql'
-\i 'function/reclada_user.auth_by_token.sql'
-\i 'function/reclada_user.disable_auth.sql'
-\i 'function/reclada_user.is_allowed.sql'
-\i 'function/reclada_user.setup_keycloak.sql'
