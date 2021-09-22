@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     if install_db:
         print('pg_dump...')
-        os.system(f'pg_dump -U {db_user} -p 5432 -h {server} -d {db} -N public -f install_db.sql')
+        os.system(f'pg_dump -U {db_user} -p 5432 -h {server} -d {db} -N public -f install_db.sql -O')
 
         with open('up_script.sql') as f:
             ver_str = f.readline()
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         with open('install_db.sql','w',encoding='utf8') as f:
             f.write(ver_str)
             f.write(f'-- {t}')
-            f.write(f'\n/*\nupdate_config.json:\n{config_str}\n*/\n')
+            #f.write(f'\n/*\nupdate_config.json:\n{config_str}\n*/\n')
             f.write(scr_str)
 
 
