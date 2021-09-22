@@ -1,6 +1,5 @@
 {
     "forClass": "Table",
-    "revision": "4533a39d-a4b3-4ec6-af21-5d07e041a349",
     "schema": {
         "properties": {
             "bbox": {
@@ -22,5 +21,5 @@
         ],
         "type": "object"
     },
-    "version": 1
+    "version": "1"
 }

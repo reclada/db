@@ -1,6 +1,5 @@
 {
     "forClass": "Page",
-    "revision": "79c6dfe1-cd98-4dff-ab30-5320702a4b19",
     "schema": {
         "properties": {
             "bbox": {
@@ -26,5 +25,5 @@
         ],
         "type": "object"
     },
-    "version": 1
+    "version": "1"
 }

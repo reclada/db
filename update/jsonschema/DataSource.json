@@ -1,6 +1,6 @@
 {
     "forClass": "DataSource",
-    "revision": "f9f497e7-2a73-4c16-99a1-a698db63e30f",
+    "revision": "559af2a2-371c-432f-92a7-e567da60565d",
     "schema": {
         "properties": {
             "name": {
