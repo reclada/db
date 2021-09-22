@@ -53,8 +53,8 @@ BEGIN
             )::jsonb
             into data;
     
-    if (jsonb_array_length(data) == 1) then
-        data := data->1
+    if (jsonb_array_length(data) = 1) then
+        data := data->1;
     end if;
     
     IF (data IS NULL) THEN
