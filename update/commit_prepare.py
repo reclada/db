@@ -46,13 +46,15 @@ if __name__ == "__main__":
             config_str = f.read()
         
         with open('install_db.sql',encoding='utf8') as f:
-            scr_str = f.read()
+            scr_str = f.readlines()
 
         with open('install_db.sql','w',encoding='utf8') as f:
             f.write(ver_str)
             f.write(f'-- {t}')
             #f.write(f'\n/*\nupdate_config.json:\n{config_str}\n*/\n')
-            f.write(scr_str)
+            for line in scr_str:
+                if line.find('GRANT') != 0 and line.find('REVOKE') != 0:
+                    f.write(line)
 
 
         print('loading jsonschemas..')
