@@ -2,7 +2,7 @@
  * Function api.storage_generate_presigned_get returns url for the object.
  * A jsonb object with the following parameters is required.
  * Required parameters:
- *  objectId - id of the object
+ *  objectId - the identifier of the object
  *  accessToken - jwt token to authorize
  *
 */

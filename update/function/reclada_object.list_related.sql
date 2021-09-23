@@ -3,7 +3,7 @@
  * A jsonb object with the following parameters is required.
  * Required parameters:
  *  class - the class of the object
- *  id - identifier of the object
+ *  GUID - the identifier of the object
  *  field - the name of the field containing the related object references (for multiple attributes separate fields by comma)
  *  relatedClass - the class of the related objects
  * Optional parameters:

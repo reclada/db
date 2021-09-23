@@ -3,11 +3,12 @@
  * A jsonb object with the following parameters is required to create one object.
  * An array of jsonb objects with the following parameters is required to create a bunch of objects.
  * Required parameters:
- *  class - the class of objects
- *  attributes - the attributes of objects
+ *  class - the class of object
+ *  attributes - the attributes of object
  *  accessToken - jwt token to authorize
  * Optional parameters:
- *  revision - object's revision. If a revision already exists, new revision will not be created. One revision is used to create a bunch of objects.
+ *  GUID - the identifier of the object
+ *  transactionID - object's transaction number. One transactionID is used to create a bunch of objects.
  *  branch - object's branch
  */
 

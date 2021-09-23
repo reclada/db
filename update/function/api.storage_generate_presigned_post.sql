@@ -9,7 +9,6 @@
  *  objectName - name of the object
  *  fileType - id of the object
  *  fileSize - size of the object
- *  bucketName - name of Amazon S3 bucket
  *  accessToken - jwt token to authorize
  *
 */

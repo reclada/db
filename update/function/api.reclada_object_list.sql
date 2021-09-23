@@ -6,24 +6,23 @@
  *  accessToken - jwt token to authorize
  * Optional parameters:
  *  attributes - the attributes of objects (can be empty)
- *  id - identifier of the objects. All ids are taken by default.
- *  revision - object's revision. returns object with max revision by default.
+ *  GUID - the identifier of the object. All object's GUID of the class are taken by default.
+ *  transactionID - object's transaction number
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
  *      field - required value with name of property to order by
  *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
  *  limit - the number or string "ALL", no more than this many objects will be returned. Default limit value is 500.
  *  offset - the number to skip this many objects before beginning to return objects. Default offset value is 0.
  * It is possible to pass a certain operator and object for each field. Also it is possible to pass several conditions for one field.
- * Function reclada_object.list uses auxiliary functions get_query_condition, cast_jsonb_to_postgres, jsonb_to_text, get_condition_array.
  * Output is jsonb like this {"objects": [<list of objects>], "number": <number of objects>, "last_change": <greatest timestamp of selection>}.
  * Function supports:
  * 1. Comparison Operators
  * elem1   >, <, <=, >=, =, !=   elem2
  * elem1 < x < elem2 -- like two conditions
  * 2. Pattern Matching
- * str1   LIKE / NOT LIKE   str2
- * str   SIMILAR TO   exp
- * str   ~ ~* !~ !~*   exp
+ * str1   LIKE / NOT LIKE    str2
+ * str    SIMILAR TO         exp
+ * str    ~ ~* !~ !~*        exp
  * 3. Array Operators
  * elem   <@   list
  * list1   =, !=, <, >, <=, >=, @>, <@  list2
@@ -31,7 +30,7 @@
  *   1. Input:
  *   {
  *   "class": "class_name",
- *   "id": "id_1",
+ *   "GUID": "id_1",
  *   "attributes":
  *       {
  *       "name": {"operator": "LIKE", "object": "%test%"},
@@ -43,7 +42,7 @@
  *   2. Input:
  *   {
  *   "class": "class_name",
- *   "id": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
+ *   "GUID": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
  *   "attributes":
  *       {
  *       "tags":{"operator": "@>", "object": ["value1", "value2"]},

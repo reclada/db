@@ -7,7 +7,8 @@
  *  class - the class of objects
  *  attributes - the attributes of objects
  * Optional parameters:
- *  revision - object's revision. If a revision already exists, new revision will not be created. One revision is used to create a bunch of objects.
+ *  GUID - the identifier of the object
+ *  transactionID - object's transaction number. One transactionID is used to create a bunch of objects.
  *  branch - object's branch
  */
 
@@ -23,6 +24,7 @@ DECLARE
     data       jsonb;
     class_name text;
     class_uuid uuid;
+    tran_id    bigint;
     attrs      jsonb;
     schema     jsonb;
     obj_GUID   uuid;
@@ -50,6 +52,8 @@ BEGIN
         IF (attrs IS NULL) THEN
             RAISE EXCEPTION 'The reclada object must have attributes';
         END IF;
+
+        tran_id := (data->>'transactionID')::bigint;
 
         IF class_uuid IS NULL THEN
             SELECT reclada_object.get_schema(class_name) 
@@ -81,14 +85,15 @@ BEGIN
         END IF;
         --raise notice 'schema: %',schema;
 
-        INSERT INTO reclada.object(GUID,class,attributes)
+        INSERT INTO reclada.object(GUID,class,attributes,transaction_id)
             SELECT  CASE
                         WHEN obj_GUID IS NULL
                             THEN public.uuid_generate_v4()
                         ELSE obj_GUID
                     END AS GUID,
                     (schema->>'GUID')::uuid, 
-                    attrs                
+                    attrs,
+                    tran_id
         RETURNING GUID INTO obj_GUID;
         affected := array_append( affected, obj_GUID);
 

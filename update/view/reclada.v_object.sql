@@ -1,4 +1,4 @@
-drop VIEW if EXISTS reclada.v_object;
+-- drop VIEW if EXISTS reclada.v_object;
 CREATE OR REPLACE VIEW reclada.v_object
 AS
 with t as (
@@ -12,7 +12,8 @@ with t as (
             obj.attributes,
             obj.status  ,
             obj.created_time ,
-            obj.created_by   
+            obj.created_by   ,
+            obj.transaction_id
         FROM reclada.object obj
         left join 
         (
@@ -41,12 +42,14 @@ with t as (
                                 t.class      as class     ,
                                 t.revision   as revision  ,
                                 os.caption   as status    ,
-                                t.attributes as attributes
+                                t.attributes as attributes,
+                                t.transaction_id as transactionID
                     ) as tmp
             )::jsonb as data,
             u.login as login_created_by,
             t.created_by as created_by,
-            t.status             
+            t.status,
+            t.transaction_id
         FROM t
         left join reclada.v_object_status os
             on t.status = os.obj_id

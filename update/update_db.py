@@ -32,7 +32,7 @@ def run_file(file_name):
 
 def checkout(to:str = branch_db):
     cmd = f'git checkout {to} -q'
-    print(cmd)
+    #print(cmd)
     r = os.popen(cmd).read()
     return r
 
