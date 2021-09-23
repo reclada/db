@@ -3,8 +3,8 @@
  * Function api.reclada_object_delete checks valid data and uses reclada_object.delete to update object with field "isDeleted": true.
  * A jsonb with the following parameters is required.
  * Required parameters:
- *  class - the class of object and GUID - the identifier of the object
- *  or transactionID - object's transaction number. One transactionID is used for a bunch of objects.
+ *  class - the class of object and
+ *  GUID - the identifier of the object or transactionID - object's transaction number. One transactionID is used for a bunch of objects.
  *  accessToken - jwt token to authorize
  * Optional parameters:
  *  attributes - the attributes of object
