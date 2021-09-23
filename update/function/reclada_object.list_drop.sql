@@ -3,7 +3,7 @@
  * A jsonb object with the following parameters is required.
  * Required parameters:
  *  class - the class of the object
- *  id - id of the object
+ *  GUID - the identifier of the object
  *  field - the name of the field to drop the value from
  *  value - one scalar value or array of values
  *

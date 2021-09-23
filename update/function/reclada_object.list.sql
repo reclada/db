@@ -9,8 +9,8 @@
  *  class - the class of objects
  * Optional parameters:
  *  attributes - the attributes of objects (can be empty)
- *  id - identifier of the objects. All ids are taken by default.
- *  revision - object's revision. returns object with max revision by default.
+ *  GUID - the identifier of the objects. All object's GUID of the class are taken by default.
+ *  transactionID - object's transaction number
  *  orderBy - list of jsons in the form of {"field": "field_name", "order": <"ASC"/"DESC">}.
  *      field - required value with name of property to order by
  *      order - optional value of the order; default is "ASC". Sorted by id in ascending order by default
@@ -23,9 +23,9 @@
  * elem1   >, <, <=, >=, =, !=   elem2
  * elem1 < x < elem2 -- like two conditions
  * 2. Pattern Matching
- * str1   LIKE / NOT LIKE   str2
- * str   SIMILAR TO   exp
- * str   ~ ~* !~ !~*   exp
+ * str1   LIKE / NOT LIKE    str2
+ * str    SIMILAR TO         exp
+ * str    ~ ~* !~ !~*        exp
  * 3. Array Operators
  * elem   <@   list
  * list1   =, !=, <, >, <=, >=, @>, <@  list2
@@ -33,7 +33,7 @@
  *   1. Input:
  *   {
  *   "class": "class_name",
- *   "id": "id_1",
+ *   "GUID": "id_1",
  *   "attributes":
  *       {
  *       "name": {"operator": "LIKE", "object": "%test%"},
@@ -44,7 +44,7 @@
  *   2. Input:
  *   {
  *   "class": "class_name",
- *   "id": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
+ *   "GUID": {"operator": "<@", "object": ["id_1", "id_2", "id_3"]},
  *   "attributes":
  *       {
  *       "tags":{"operator": "@>", "object": ["value1", "value2"]},

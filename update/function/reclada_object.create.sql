@@ -7,7 +7,8 @@
  *  class - the class of objects
  *  attributes - the attributes of objects
  * Optional parameters:
- *  revision - object's revision. If a revision already exists, new revision will not be created. One revision is used to create a bunch of objects.
+ *  GUID - the identifier of the object
+ *  transactionID - object's transaction number. One transactionID is used to create a bunch of objects.
  *  branch - object's branch
  */
 

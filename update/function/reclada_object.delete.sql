@@ -2,8 +2,8 @@
 * Function reclada_object.delete updates object with field "isDeleted": true.
  * A jsonb with the following parameters is required.
  * Required parameters:
- *  class - the class of object
- *  id - identifier of the object
+ *  class - the class of object and GUID - the identifier of the object
+ *  or transactionID - object's transaction number. One transactionID is used for a bunch of objects.
  * Optional parameters:
  *  attributes - the attributes of object
  *  branch - object's branch

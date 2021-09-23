@@ -2,8 +2,10 @@
  * Function reclada_object.create_subclass creates subclass.
  * A jsonb object with the following parameters is required.
  * Required parameters:
- *  class - the name of class to create
- *  attributes - the attributes of objects of the class
+ *  class - the name of parent class
+ *  attributes - the attributes of objects of the class. The field contains:
+ *      forClass - the name of class to create
+ *      schema - the schema for the class
  */
 
 DROP FUNCTION IF EXISTS reclada_object.create_subclass;

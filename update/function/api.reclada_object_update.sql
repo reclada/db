@@ -4,7 +4,7 @@
  * A jsonb with the following parameters is required.
  * Required parameters:
  *  class - the class of object
- *  id - identifier of the object
+ *  GUID - the identifier of the object
  *  attributes - the attributes of object
  *  accessToken - jwt token to authorize
  * Optional parameters:
