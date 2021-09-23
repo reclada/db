@@ -54,7 +54,7 @@ BEGIN
             into data;
     
     if (jsonb_array_length(data) = 1) then
-        data := data->1;
+        data := data->0;
     end if;
     
     IF (data IS NULL) THEN

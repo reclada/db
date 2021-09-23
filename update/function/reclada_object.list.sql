@@ -74,11 +74,13 @@ DECLARE
     query               text;
     class_uuid          uuid;
     last_change         text;
+    tran_id             bigint;
 BEGIN
 
+    tran_id := (data->>'transactionID')::bigint;
     class := data->>'class';
-    IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class is not specified';
+    IF (class IS NULL and tran_id IS NULL) THEN
+        RAISE EXCEPTION 'The reclada object class and transactionID are not specified';
     END IF;
     class_uuid := reclada.try_cast_uuid(class);
 
@@ -141,8 +143,12 @@ BEGIN
                 --'class = data->>''class''' AS condition
                 -- TODO: replace for using GUID
                 format('obj.class_name = ''%s''', class) AS condition
+                    where class is not null
             UNION
-            SELECT  CASE
+                SELECT format('obj.transaction_id = %s', tran_id) AS condition
+                    where tran_id is not null
+            UNION 
+                SELECT CASE
                         WHEN jsonb_typeof(data->'GUID') = 'array' THEN
                         (
                             SELECT string_agg

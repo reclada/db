@@ -1,4 +1,4 @@
-drop VIEW if EXISTS reclada.v_active_object;
+-- drop VIEW if EXISTS reclada.v_active_object;
 CREATE OR REPLACE VIEW reclada.v_active_object
 AS
     SELECT  
@@ -12,7 +12,8 @@ AS
             t.created_time      ,
             t.class_name        ,
             t.attrs             ,
-            t.data 
+            t.data              ,
+            t.transaction_id
         FROM reclada.v_object as t
             -- объект не удален
             where t.status = reclada_object.get_active_status_obj_id()
