@@ -4,6 +4,6 @@
     to run text script of functions
 */
 
-\i 'function/reclada_object.delete.sql'
+\i 'function/reclada_object.is_equal.sql'
 
 
