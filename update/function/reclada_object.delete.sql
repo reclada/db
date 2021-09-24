@@ -21,6 +21,7 @@ DECLARE
     tran_id             bigint;
     class               text;
     class_uuid          uuid;
+    list_id             bigint[];
 
 BEGIN
 
@@ -33,41 +34,49 @@ BEGIN
     END IF;
 
     class_uuid := reclada.try_cast_uuid(class);
-    IF class_uuid IS NULL AND class IS NOT NULL THEN
-        class_uuid:= reclada_object.get_GUID_for_class(class);
-    END IF;
 
     WITH t AS
     (    
-        UPDATE reclada.object o
+        UPDATE reclada.object u
             SET status = reclada_object.get_archive_status_obj_id()
-                WHERE 
+            FROM reclada.object o
+                LEFT JOIN
+                (   SELECT obj_id FROM reclada_object.get_GUID_for_class(class)
+                    UNION SELECT class_uuid WHERE class_uuid IS NOT NULL
+                ) c ON o.class = c.obj_id
+                WHERE u.id = o.id AND
                 (
-                    (v_obj_id = o.GUID AND class_uuid = o.class AND tran_id = o.transaction_id)
+                    (v_obj_id = o.GUID AND c.obj_id = o.class AND tran_id = o.transaction_id)
 
-                    OR (v_obj_id = o.GUID AND class_uuid = o.class AND tran_id IS NULL)
-                    OR (v_obj_id = o.GUID AND class_uuid IS NULL AND tran_id = o.transaction_id)
-                    OR (v_obj_id IS NULL AND class_uuid = o.class AND tran_id = o.transaction_id)
+                    OR (v_obj_id = o.GUID AND c.obj_id = o.class AND tran_id IS NULL)
+                    OR (v_obj_id = o.GUID AND c.obj_id IS NULL AND tran_id = o.transaction_id)
+                    OR (v_obj_id IS NULL AND c.obj_id = o.class AND tran_id = o.transaction_id)
 
-                    OR (v_obj_id = o.GUID AND class_uuid IS NULL AND tran_id IS NULL)
-                    OR (v_obj_id IS NULL AND class_uuid = o.class AND tran_id IS NULL)
-                    OR (v_obj_id IS NULL AND class_uuid IS NULL AND tran_id = o.transaction_id)
+                    OR (v_obj_id = o.GUID AND c.obj_id IS NULL AND tran_id IS NULL)
+                    OR (v_obj_id IS NULL AND c.obj_id = o.class AND tran_id IS NULL)
+                    OR (v_obj_id IS NULL AND c.obj_id IS NULL AND tran_id = o.transaction_id)
                 )
-                    AND status != reclada_object.get_archive_status_obj_id()
-                    RETURNING id
+                    AND o.status != reclada_object.get_archive_status_obj_id()
+                    RETURNING o.id
     ) 
-        SELECT array_to_json
+        SELECT
+            array
             (
-                array
-                (
-                    SELECT o.data
-                        FROM t
-                        join reclada.v_object o
-                            on o.id = t.id
-                )
-            )::jsonb
-            INTO data;
-    
+                SELECT t.id FROM t
+            )
+        INTO list_id;
+
+    SELECT array_to_json
+    (
+        array
+        (
+            SELECT o.data
+            FROM reclada.v_object o
+            WHERE o.id IN (SELECT unnest(list_id))
+        )
+    )::jsonb
+    INTO data;
+
     IF (jsonb_array_length(data) = 1) THEN
         data := data->0;
     END IF;
