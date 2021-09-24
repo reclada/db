@@ -30,3 +30,7 @@ SELECT reclada_object.create_subclass('{
 \i 'function/reclada_object.is_equal.sql'
 \i 'function/reclada.rollback_import.sql'
 
+
+CREATE INDEX IF NOT EXISTS revision_index ON reclada.object ((attributes->>'revision'));
+CREATE INDEX IF NOT EXISTS job_status_index ON reclada.object ((attributes->>'status'));
+CREATE INDEX IF NOT EXISTS runner_type_index  ON reclada.object ((attributes->>'type'));
