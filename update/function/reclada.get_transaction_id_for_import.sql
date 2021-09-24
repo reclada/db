@@ -5,23 +5,33 @@ CREATE OR REPLACE FUNCTION reclada.get_transaction_id_for_import(import_name tex
 AS
 $func$
 DECLARE
-    tran_id     bigint;
-    json_data   bigint;
+    tran_id_    bigint;
+    json_data   jsonb;
+    tmp         jsonb;
 BEGIN
-    select i.transaction_id, data
+    select i.tran_id, data
         from reclada.v_import_info i
             where i.name = import_name
-        into tran_id, json_data;
+        into tran_id_, json_data;
 
-    if tran_id is not null then
-        select reclada_object.delete(format('{"transactionID":%s}',tran_id)::jsonb);
+    if tran_id_ is not null then
+        PERFORM reclada_object.delete(format('{"transactionID":%s}',tran_id_)::jsonb);
     end if;
+    tran_id_ := reclada.get_transaction_id();
 
-    select reclada.get_transaction_id() 
-        into tran_id;
 
-    json_data := json_data || format('{"attributes":{"transactionID":%s}}',tran_id)::jsonb;
-    select reclada_object.update(json_data);
-    return tran_id;
+    tmp := format(
+                '{"class":"ImportInfo","attributes":{"tranID":%s,"name":"%s"}}',
+                tran_id_,
+                import_name
+            )::jsonb;
+    if json_data is null then
+        json_data := reclada_object.create(tmp);
+    else
+        json_data = json_data || tmp;
+        PERFORM reclada_object.update(json_data);
+    end if;
+    
+    return tran_id_;
 END
 $func$;

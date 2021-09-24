@@ -12,25 +12,21 @@ SELECT reclada_object.create_subclass('{
             "name": {
                 "type": "string"
             },
-            "transactionID": {
+            "tranID": {
                 "type": "number"
             }
         },
-        "required": ["name","transactionID"]
+        "required": ["name","tranID"]
     }
 }'::jsonb);
 
--- TODO: create object
 
+\i 'function/reclada.raise_exception.sql'
 \i 'function/reclada_object.create.sql' 
 \i 'view/reclada.v_import_info.sql'
+\i 'view/reclada.v_object.sql'
 \i 'function/reclada.get_transaction_id_for_import.sql'
 \i 'function/reclada_object.delete.sql'
 \i 'function/reclada_object.is_equal.sql'
-
-
-
-
-
-
+\i 'function/reclada.rollback_import.sql'
 

@@ -43,7 +43,7 @@ with t as (
                                 t.revision   as revision  ,
                                 os.caption   as status    ,
                                 t.attributes as attributes,
-                                t.transaction_id as transactionID
+                                t.transaction_id as "transactionID"
                     ) as tmp
             )::jsonb as data,
             u.login as login_created_by,

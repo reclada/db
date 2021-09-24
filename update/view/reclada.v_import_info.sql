@@ -2,8 +2,8 @@ drop VIEW if EXISTS reclada.v_import_info;
 CREATE OR REPLACE VIEW reclada.v_import_info
 AS
     SELECT  obj.id            ,
-            obj.obj_id        ,
-            (obj.attrs->>'transactionID')::bigint as transaction_id,
+            obj.obj_id        as guid,
+            (obj.attrs->>'tranID')::bigint as tran_id,
             obj.attrs->>'name'        as name   ,
             obj.revision_num  ,
             obj.status_caption,
