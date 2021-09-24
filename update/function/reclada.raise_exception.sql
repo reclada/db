@@ -1,11 +1,12 @@
 DROP FUNCTION IF EXISTS reclada.raise_exception;
-CREATE or replace FUNCTION reclada.raise_exception(msg text)
+CREATE or replace FUNCTION reclada.raise_exception(msg text, func_name text = '<unknown>')
   RETURNS void
   LANGUAGE plpgsql VOLATILE
 AS
 $func$
 BEGIN
     -- 
-    RAISE EXCEPTION '%', msg;
+    RAISE EXCEPTION '% 
+    from: %', msg, func_name;
 END
 $func$;

@@ -1,0 +1,25 @@
+{
+    "forClass": "ImportInfo",
+    "schema": {
+        "properties": {
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "tranID": {
+                "type": "number"
+            }
+        },
+        "required": [
+            "tranID",
+            "name"
+        ],
+        "type": "object"
+    },
+    "version": "1"
+}

@@ -1,23 +1,36 @@
--- version = 30
+-- version = 31
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
 
-drop SEQUENCE IF EXISTS reclada.reclada_revisions;
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "ImportInfo",
+        "properties": {
+            "name": {
+                "type": "string"
+            },
+            "tranID": {
+                "type": "number"
+            }
+        },
+        "required": ["name","tranID"]
+    }
+}'::jsonb);
 
-CREATE SEQUENCE IF not EXISTS reclada.transaction_id
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
 
-\i 'function/reclada.get_transaction_id.sql' 
+\i 'function/reclada.raise_exception.sql'
 \i 'function/reclada_object.create.sql' 
-\i 'function/reclada_object.delete.sql'
+\i 'view/reclada.v_import_info.sql'
 \i 'view/reclada.v_object.sql'
-\i 'view/reclada.v_active_object.sql'
-\i 'function/reclada_object.list.sql'
+\i 'function/reclada.get_transaction_id_for_import.sql'
+\i 'function/reclada_object.delete.sql'
+\i 'function/reclada_object.is_equal.sql'
+\i 'function/reclada.rollback_import.sql'
 
 
+CREATE INDEX IF NOT EXISTS revision_index ON reclada.object ((attributes->>'revision'));
+CREATE INDEX IF NOT EXISTS job_status_index ON reclada.object ((attributes->>'status'));
+CREATE INDEX IF NOT EXISTS runner_type_index  ON reclada.object ((attributes->>'type'));

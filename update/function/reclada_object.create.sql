@@ -54,7 +54,9 @@ BEGIN
         END IF;
 
         tran_id := (data->>'transactionID')::bigint;
-
+        if tran_id is null then
+            tran_id := reclada.get_transaction_id();
+        end if;
         IF class_uuid IS NULL THEN
             SELECT reclada_object.get_schema(class_name) 
             INTO schema;
