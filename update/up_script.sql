@@ -26,6 +26,7 @@ SELECT reclada_object.create_subclass('{
 \i 'view/reclada.v_import_info.sql'
 \i 'function/reclada.get_transaction_id_for_import.sql'
 \i 'function/reclada_object.delete.sql'
+\i 'function/reclada_object.is_equal.sql'
 
 
 
