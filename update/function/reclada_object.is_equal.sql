@@ -2,6 +2,7 @@ DROP FUNCTION IF EXISTS reclada_object.is_equal;
 CREATE OR REPLACE FUNCTION reclada_object.is_equal(lobj jsonb, robj jsonb)
 	RETURNS bool
 	LANGUAGE plpgsql
+	IMMUTABLE
 AS $function$
 	DECLARE
 		cnt 	int;
