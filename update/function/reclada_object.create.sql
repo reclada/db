@@ -20,16 +20,18 @@ CREATE OR REPLACE FUNCTION reclada_object.create
 )
 RETURNS jsonb AS $$
 DECLARE
-    branch     uuid;
-    data       jsonb;
-    class_name text;
-    class_uuid uuid;
-    tran_id    bigint;
-    attrs      jsonb;
-    schema     jsonb;
-    obj_GUID   uuid;
-    res        jsonb;
-    affected   uuid[];
+    branch        uuid;
+    data          jsonb;
+    class_name    text;
+    class_uuid    uuid;
+    tran_id       bigint;
+    attrs         jsonb;
+    schema        jsonb;
+    obj_GUID      uuid;
+    res           jsonb;
+    affected      uuid[];
+    file_id       uuid;
+    document_id   uuid;
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -48,6 +50,34 @@ BEGIN
         END IF;
         class_uuid := reclada.try_cast_uuid(class_name);
 
+        IF class_name = 'File' OR class_uuid IN (SELECT reclada_object.get_GUID_for_class('File')) THEN
+            SELECT GUID
+            FROM reclada.object
+            WHERE attributes->>'uri' = data->'attributes'->>'uri'
+            LIMIT 1
+            INTO file_id;
+
+            IF file_id IS NOT NULL THEN
+                    SELECT reclada_object.update(data || format('{"GUID": "%s"}', file_id)::jsonb)
+                    INTO res;
+                    RETURN res;
+            END IF;
+        END IF;
+
+        IF class_name = 'Document' OR class_uuid IN (SELECT reclada_object.get_GUID_for_class('Document')) THEN
+            SELECT GUID
+            FROM reclada.object
+            WHERE attributes->>'fileGUID' = data->'attributes'->>'fileGUID'
+            LIMIT 1
+            INTO document_id;
+
+            IF document_id IS NOT NULL THEN
+                    SELECT reclada_object.update(data || format('{"GUID": "%s"}', document_id)::jsonb)
+                    INTO res;
+                    RETURN res;
+            END IF;
+        END IF;
+
         attrs := data->'attributes';
         IF (attrs IS NULL) THEN
             RAISE EXCEPTION 'The reclada object must have attributes';
@@ -57,6 +87,7 @@ BEGIN
         if tran_id is null then
             tran_id := reclada.get_transaction_id();
         end if;
+
         IF class_uuid IS NULL THEN
             SELECT reclada_object.get_schema(class_name) 
             INTO schema;
