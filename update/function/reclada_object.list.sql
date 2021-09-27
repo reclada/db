@@ -143,7 +143,12 @@ BEGIN
                 --'class = data->>''class''' AS condition
                 -- TODO: replace for using GUID
                 format('obj.class_name = ''%s''', class) AS condition
-                    where class is not null
+                    where class is not null 
+                        and class_uuid is null
+            UNION
+                SELECT format('obj.class = ''%s''', class_uuid) AS condition
+                    where class is null 
+                        and class_uuid is not null
             UNION
                 SELECT format('obj.transaction_id = %s', tran_id) AS condition
                     where tran_id is not null

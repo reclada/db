@@ -3,13 +3,15 @@ CREATE OR REPLACE FUNCTION reclada_revision.create
 (
     userid varchar, 
     branch uuid, 
-    obj uuid
+    obj uuid,
+    tran_id bigint default reclada.get_transaction_id()
 )
 RETURNS uuid AS $$
     INSERT INTO reclada.object
         (
             class,
-            attributes
+            attributes,
+            transaction_id
         )
                
         VALUES
@@ -31,7 +33,8 @@ RETURNS uuid AS $$
                 userid,
                 now(),
                 branch
-            )::jsonb
+            )::jsonb,
+            tran_id
         ) RETURNING (GUID)::uuid;
     --nextval('reclada.reclada_revisions'),
 $$ LANGUAGE SQL VOLATILE;
