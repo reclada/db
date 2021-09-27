@@ -1,3 +1,4 @@
+drop FUNCTION if exists api.auth_get_login_url;
 CREATE OR REPLACE FUNCTION api.auth_get_login_url(data JSONB)
 RETURNS JSONB AS $$
 DECLARE

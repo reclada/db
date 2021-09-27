@@ -1,36 +1,25 @@
--- version = 31
+-- version = 32
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
 
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attributes": {
-        "newClass": "ImportInfo",
-        "properties": {
-            "name": {
-                "type": "string"
-            },
-            "tranID": {
-                "type": "number"
-            }
-        },
-        "required": ["name","tranID"]
-    }
-}'::jsonb);
-
-
-\i 'function/reclada.raise_exception.sql'
-\i 'function/reclada_object.create.sql' 
-\i 'view/reclada.v_import_info.sql'
+-- remove revision from object
 \i 'view/reclada.v_object.sql'
-\i 'function/reclada.get_transaction_id_for_import.sql'
-\i 'function/reclada_object.delete.sql'
-\i 'function/reclada_object.is_equal.sql'
-\i 'function/reclada.rollback_import.sql'
 
+update reclada.object
+set transaction_id = reclada.get_transaction_id()
+	where transaction_id is null;
 
-CREATE INDEX IF NOT EXISTS revision_index ON reclada.object ((attributes->>'revision'));
-CREATE INDEX IF NOT EXISTS job_status_index ON reclada.object ((attributes->>'status'));
-CREATE INDEX IF NOT EXISTS runner_type_index  ON reclada.object ((attributes->>'type'));
+alter table reclada.object
+    alter COLUMN transaction_id set not null;
+
+-- improve for {"class": "609ed4a4-f73a-4c05-9057-57bd212ef8ff"} 
+\i 'function/reclada_object.list.sql'
+
+\i 'function/reclada_object.get_transaction_id.sql'
+\i 'function/api.reclada_object_get_transaction_id.sql'
+\i 'function/reclada_revision.create.sql'
+\i 'function/reclada_object.update.sql'
+
+CREATE INDEX transaction_id_index ON reclada.object (transaction_id);

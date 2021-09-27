@@ -91,12 +91,14 @@ BEGIN
     INSERT INTO reclada.object( GUID,
                                 class,
                                 status,
-                                attributes
+                                attributes,
+                                transaction_id
                               )
         select  v.obj_id,
                 (schema->>'GUID')::uuid,
                 reclada_object.get_active_status_obj_id(),--status 
-                v_attrs || format('{"revision":"%s"}',revid)::jsonb
+                v_attrs || format('{"revision":"%s"}',revid)::jsonb,
+                transaction_id
             FROM reclada.v_object v
             JOIN t 
                 on t.id = v.id
