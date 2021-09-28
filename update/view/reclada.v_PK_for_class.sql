@@ -13,6 +13,6 @@ AS
             select  'Document',
                     'fileGUID'
         ) pk
-            on pk.class_name = obj.for_class
+            on pk.class_name = obj.for_class;
     
 
