@@ -25,13 +25,11 @@ DECLARE
     class_name    text;
     class_uuid    uuid;
     tran_id       bigint;
-    attrs         jsonb;
+    _attrs         jsonb;
     schema        jsonb;
     obj_GUID      uuid;
     res           jsonb;
     affected      uuid[];
-    file_id       uuid;
-    document_id   uuid;
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -50,36 +48,8 @@ BEGIN
         END IF;
         class_uuid := reclada.try_cast_uuid(class_name);
 
-        IF class_name = 'File' OR class_uuid IN (SELECT reclada_object.get_GUID_for_class('File')) THEN
-            SELECT GUID
-            FROM reclada.object
-            WHERE attributes->>'uri' = data->'attributes'->>'uri'
-            LIMIT 1
-            INTO file_id;
-
-            IF file_id IS NOT NULL THEN
-                    SELECT reclada_object.update(data || format('{"GUID": "%s"}', file_id)::jsonb)
-                    INTO res;
-                    RETURN res;
-            END IF;
-        END IF;
-
-        IF class_name = 'Document' OR class_uuid IN (SELECT reclada_object.get_GUID_for_class('Document')) THEN
-            SELECT GUID
-            FROM reclada.object
-            WHERE attributes->>'fileGUID' = data->'attributes'->>'fileGUID'
-            LIMIT 1
-            INTO document_id;
-
-            IF document_id IS NOT NULL THEN
-                    SELECT reclada_object.update(data || format('{"GUID": "%s"}', document_id)::jsonb)
-                    INTO res;
-                    RETURN res;
-            END IF;
-        END IF;
-
-        attrs := data->'attributes';
-        IF (attrs IS NULL) THEN
+        _attrs := data->'attributes';
+        IF (_attrs IS NULL) THEN
             RAISE EXCEPTION 'The reclada object must have attributes';
         END IF;
 
@@ -91,6 +61,7 @@ BEGIN
         IF class_uuid IS NULL THEN
             SELECT reclada_object.get_schema(class_name) 
             INTO schema;
+            class_uuid := (schema->>'GUID')::uuid;
         ELSE
             SELECT v.data 
             FROM reclada.v_class v
@@ -101,13 +72,31 @@ BEGIN
             RAISE EXCEPTION 'No json schema available for %', class_name;
         END IF;
 
-        IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', attrs))) THEN
-            RAISE EXCEPTION 'JSON invalid: %', attrs;
+        IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', _attrs))) THEN
+            RAISE EXCEPTION 'JSON invalid: %', _attrs;
         END IF;
         
         IF data->>'id' IS NOT NULL THEN
             RAISE EXCEPTION '%','Field "id" not allow!!!';
         END IF;
+
+        IF class_uuid IN (SELECT guid FROM reclada.v_PK_for_class)
+        THEN
+            SELECT o.obj_id
+                FROM reclada.v_object o
+                JOIN reclada.v_PK_for_class pk
+                    on pk.guid = o.class
+                        and class_uuid = o.class
+                where o.attrs->>pk.pk = _attrs ->> pk.pk
+                LIMIT 1
+            INTO obj_GUID;
+            IF obj_GUID IS NOT NULL THEN
+                SELECT reclada_object.update(data || format('{"GUID": "%s"}', obj_GUID)::jsonb)
+                    INTO res;
+                    RETURN res;
+            END IF;
+        END IF;
+
         obj_GUID := (data->>'GUID')::uuid;
         IF EXISTS (
             SELECT 1
@@ -124,8 +113,8 @@ BEGIN
                             THEN public.uuid_generate_v4()
                         ELSE obj_GUID
                     END AS GUID,
-                    (schema->>'GUID')::uuid, 
-                    attrs,
+                    class_uuid, 
+                    _attrs,
                     tran_id
         RETURNING GUID INTO obj_GUID;
         affected := array_append( affected, obj_GUID);
