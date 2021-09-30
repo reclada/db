@@ -93,7 +93,7 @@ BEGIN
             IF obj_GUID IS NOT NULL THEN
                 SELECT reclada_object.update(data || format('{"GUID": "%s"}', obj_GUID)::jsonb)
                     INTO res;
-                    RETURN res;
+                    RETURN '[]'::jsonb || res;
             END IF;
         END IF;
 
