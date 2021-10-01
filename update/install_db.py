@@ -1,4 +1,4 @@
-from update_db import clone_db, get_commit_history, get_version_from_commit, rmdir, run_file, recreate_db, branch_runtime, branch_SciNLP,quick_install,version,config_version,db_user
+from update_db import clone_db, get_commit_history, get_version_from_commit, rmdir, run_file, recreate_db, branch_runtime, branch_SciNLP,quick_install,version,config_version,db_user,install_objects
 
 import os
 import os.path
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     recreate_db()
 
     need_update, use_dump = db_install()
-
+    install_objects()
     if need_update:
         os.system('python update_db.py')
         if not use_dump:
