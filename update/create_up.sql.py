@@ -13,7 +13,7 @@ if __name__ == "__main__":
         
         else:
             tamplate = ''
-            with open("upgrade_script_tamplate.sql",encoding = 'utf-8') as f:
+            with open("upgrade_script_template.sql",encoding = 'utf-8') as f:
                 tamplate = f.read()
 
             up = tamplate.replace('/*#@#@#upgrade_script#@#@#*/',upgrade_script)

@@ -9,9 +9,9 @@ AS
         (
             select  'File' as class_name,
                     'uri'  as pk
-            UNION 
-            select  'Document',
-                    'fileGUID'
+            --UNION 
+            --select  'Document',
+            --        'fileGUID'
         ) pk
             on pk.class_name = obj.for_class;
     
