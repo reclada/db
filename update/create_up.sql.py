@@ -12,11 +12,11 @@ if __name__ == "__main__":
             print('add first line "-- version = <number>" in "up_script.sql"')
         
         else:
-            tamplate = ''
+            template = ''
             with open("upgrade_script_template.sql",encoding = 'utf-8') as f:
-                tamplate = f.read()
+                template = f.read()
 
-            up = tamplate.replace('/*#@#@#upgrade_script#@#@#*/',upgrade_script)
+            up = template.replace('/*#@#@#upgrade_script#@#@#*/',upgrade_script)
             up = up.replace('/*#@#@#version#@#@#*/',str(version))
 
 

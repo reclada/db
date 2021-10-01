@@ -18,4 +18,28 @@
         "type": "object"
     },
     "version": "1"
+}{
+    "forClass": "Document",
+    "schema": {
+        "properties": {
+            "fileGUID": {
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "name",
+            "fileGUID"
+        ],
+        "type": "object"
+    },
+    "version": "2"
 }

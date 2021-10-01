@@ -1,4 +1,3 @@
-
 /*
  * Function api.storage_generate_presigned_post creates File object and returns this object with url.
  * Output is jsonb like this: {
@@ -16,7 +15,6 @@ DROP FUNCTION IF EXISTS api.storage_generate_presigned_post;
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    --bucket_name  varchar;
     lambda_name  varchar;
     file_type    varchar;
     object       jsonb;
@@ -32,13 +30,12 @@ BEGIN
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 
-    IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned post', '{}'))) THEN
+    IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned post', ''))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';
     END IF;
 
     object_name := data->>'objectName';
     file_type := data->>'fileType';
-    --bucket_name := data->>'bucketName';
 
     SELECT attrs->>'Lambda'
     FROM reclada.v_active_object
@@ -46,20 +43,6 @@ BEGIN
     ORDER BY created_time DESC
     LIMIT 1
     INTO lambda_name;
-
-    /*
-    SELECT uuid_generate_v4() INTO object_id;
-    object_path := object_id;
-    uri := 's3://' || bucket_name || '/' || object_path;
-
-    -- TODO: remove checksum from required attrs for File class?
-    SELECT reclada_object.create(format(
-        '{"class": "File", "attributes": {"name": "%s", "mimeType": "%s", "uri": "%s", "checksum": "tempChecksum"}}',
-        object_name,
-        file_type,
-        uri
-    )::jsonb)->0 INTO object;
-    */
 
     SELECT payload::jsonb
     FROM aws_lambda.invoke(
@@ -80,8 +63,6 @@ BEGIN
     INTO url;
 
     result = format(
-        --'{"object": %s, "uploadUrl": %s}',
-        --object,
         '{"uploadUrl": %s}',
         url
     )::jsonb;

@@ -30,4 +30,36 @@
         "type": "object"
     },
     "version": 1
+}{
+    "forClass": "File",
+    "schema": {
+        "properties": {
+            "checksum": {
+                "type": "string"
+            },
+            "mimeType": {
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "uri": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "checksum",
+            "name",
+            "uri",
+            "mimeType"
+        ],
+        "type": "object"
+    },
+    "version": "2"
 }
