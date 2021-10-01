@@ -13,12 +13,10 @@ DECLARE
     id_         bigint;
 BEGIN
     f_name := 'reclada.rollback_import';
-    select o.transaction_id
+    select max(o.transaction_id)
         from reclada.v_active_object o
             where o.class_name = 'Document'
                 and attrs->>'fileGUID' = fileGUID
-        ORDER BY ID DESC 
-        limit 1
         into tran_id_;
 
     if tran_id_ is null then
@@ -30,12 +28,10 @@ BEGIN
     delete from reclada.object where tran_id_ = transaction_id;
     
     with t as (
-        select o.transaction_id
+        select max(o.transaction_id) as transaction_id
             from reclada.v_object o
                 where o.class_name = 'Document'
                     and attrs->>'fileGUID' = fileGUID
-            ORDER BY ID DESC 
-            limit 1
     ) 
     update reclada.object o
         set status = reclada_object.get_active_status_obj_id()
