@@ -21,6 +21,11 @@
 \i 'function/api.storage_generate_presigned_post.sql'
 \i 'function/reclada_object.list.sql'
 
+DELETE FROM reclada.object
+WHERE attributes->>'forClass' = 'Document';
+DELETE FROM reclada.object
+WHERE attributes->>'forClass' = 'File';
+
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {

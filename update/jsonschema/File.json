@@ -1,37 +1,5 @@
 {
     "forClass": "File",
-    "revision": "49a01e01-8663-437e-b261-d77800518497",
-    "schema": {
-        "properties": {
-            "checksum": {
-                "type": "string"
-            },
-            "mimeType": {
-                "type": "string"
-            },
-            "name": {
-                "type": "string"
-            },
-            "tags": {
-                "items": {
-                    "type": "string"
-                },
-                "type": "array"
-            },
-            "uri": {
-                "type": "string"
-            }
-        },
-        "required": [
-            "checksum",
-            "name",
-            "mimeType"
-        ],
-        "type": "object"
-    },
-    "version": 1
-}{
-    "forClass": "File",
     "schema": {
         "properties": {
             "checksum": {
@@ -61,5 +29,5 @@
         ],
         "type": "object"
     },
-    "version": "2"
+    "version": "1"
 }
