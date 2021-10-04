@@ -2,6 +2,9 @@
     "forClass": "Document",
     "schema": {
         "properties": {
+            "fileGUID": {
+                "type": "string"
+            },
             "name": {
                 "type": "string"
             },

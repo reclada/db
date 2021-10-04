@@ -138,17 +138,12 @@ BEGIN
         )
         FROM (
             SELECT
-                -- ((('"'||class||'"')::jsonb#>>'{}')::text = 'Job')
-                --reclada_object.get_query_condition(class, E'data->''class''') AS condition
-                --'class = data->>''class''' AS condition
-                -- TODO: replace for using GUID
                 format('obj.class_name = ''%s''', class) AS condition
                     where class is not null 
                         and class_uuid is null
             UNION
                 SELECT format('obj.class = ''%s''', class_uuid) AS condition
-                    where class is null 
-                        and class_uuid is not null
+                    where class_uuid is not null
             UNION
                 SELECT format('obj.transaction_id = %s', tran_id) AS condition
                     where tran_id is not null
@@ -169,23 +164,6 @@ BEGIN
                         ELSE reclada_object.get_query_condition(data->'GUID', E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)
                     END AS condition
                 WHERE coalesce(data->'GUID','null'::jsonb) != 'null'::jsonb
-            -- UNION
-            -- SELECT 'obj.data->>''status''=''active'''-- TODO: change working with revision
-            -- UNION SELECT
-            --     CASE WHEN data->'revision' IS NULL THEN
-            --         E'(data->>''revision''):: numeric = (SELECT max((objrev.data -> ''revision'')::numeric)
-            --         FROM reclada.v_object objrev WHERE
-            --         objrev.data -> ''GUID'' = obj.data -> ''GUID'')'
-            --     WHEN jsonb_typeof(data->'revision') = 'array' THEN
-            --         (SELECT string_agg(
-            --             format(
-            --                 E'(%s)',
-            --                 reclada_object.get_query_condition(cond, E'data->''revision''')
-            --             ),
-            --             ' AND '
-            --         )
-            --         FROM jsonb_array_elements(data->'revision') AS cond)
-            --     ELSE reclada_object.get_query_condition(data->'revision', E'data->''revision''') END AS condition
             UNION
             SELECT
                 CASE

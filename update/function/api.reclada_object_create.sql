@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
     data_jsonb       jsonb;
-    class            jsonb;
+    class            text;
     user_info        jsonb;
     attrs            jsonb;
     data_to_create   jsonb = '[]'::jsonb;
@@ -31,7 +31,7 @@ BEGIN
 
     FOR data_jsonb IN SELECT jsonb_array_elements(data) LOOP
 
-        class := data_jsonb->'class';
+        class := data_jsonb->>'class';
         IF (class IS NULL) THEN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;

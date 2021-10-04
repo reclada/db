@@ -15,7 +15,10 @@ branch_SciNLP = j["branch_SciNLP"]
 branch_QAAutotests = j["branch_QAAutotests"]
 server = j["server"]
 db = j["db"]
+ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
+LAMBDA_NAME = j["LAMBDA_NAME"]
 db_user = j["db_user"]
+debug = j["debug"]
 version = j["version"]
 quick_install = j["quick_install"]
 if version == 'latest':
@@ -26,6 +29,18 @@ else:
 psql_str = f'psql -P pager=off -U {db_user} -p 5432 -h {server} -d {db} '
 
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
+
+def install_objects():
+    if not debug:
+        with open('object_create.sql') as f:
+            obj_cr = f.read()
+        with open('tmp.sql','w') as f:
+            obj_cr = obj_cr.replace('#@#lname#@#', LAMBDA_NAME)
+            obj_cr = obj_cr.replace('#@#ename#@#', ENVIRONMENT_NAME)
+            f.write(obj_cr)
+        cmd = f"{psql_str} -f tmp.sql"
+        os.system(cmd)
+        os.remove('tmp.sql')
 
 def run_file(file_name):
     os.system(f'{psql_str} -f {file_name}')

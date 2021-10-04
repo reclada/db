@@ -1,6 +1,5 @@
 {
     "forClass": "File",
-    "revision": "49a01e01-8663-437e-b261-d77800518497",
     "schema": {
         "properties": {
             "checksum": {
@@ -29,5 +28,5 @@
         ],
         "type": "object"
     },
-    "version": 1
+    "version": "1"
 }

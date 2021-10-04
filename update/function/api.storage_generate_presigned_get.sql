@@ -21,7 +21,7 @@ BEGIN
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 
-    IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned get', '{}'))) THEN
+    IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned get', ''))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned get';
     END IF;
 

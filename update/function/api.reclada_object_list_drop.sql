@@ -14,7 +14,7 @@ DROP FUNCTION IF EXISTS api.reclada_object_list_drop;
 CREATE OR REPLACE FUNCTION api.reclada_object_list_drop(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class           jsonb;
+    class           text;
     obj_id          uuid;
     user_info       jsonb;
     field_value     jsonb;
@@ -23,7 +23,7 @@ DECLARE
 
 BEGIN
 
-	class := data->'class';
+	class := data->>'class';
 	IF (class IS NULL) THEN
 		RAISE EXCEPTION 'The reclada object class is not specified';
 	END IF;

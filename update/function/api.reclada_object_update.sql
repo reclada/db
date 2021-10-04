@@ -16,7 +16,7 @@ DROP FUNCTION IF EXISTS api.reclada_object_update;
 CREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    class         jsonb;
+    class         text;
     objid         uuid;
     attrs         jsonb;
     user_info     jsonb;
@@ -24,7 +24,7 @@ DECLARE
 
 BEGIN
 
-    class := data->'class';
+    class := data->>'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
