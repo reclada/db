@@ -143,8 +143,7 @@ BEGIN
                         and class_uuid is null
             UNION
                 SELECT format('obj.class = ''%s''', class_uuid) AS condition
-                    where class is null 
-                        and class_uuid is not null
+                    where class_uuid is not null
             UNION
                 SELECT format('obj.transaction_id = %s', tran_id) AS condition
                     where tran_id is not null

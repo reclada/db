@@ -21,10 +21,33 @@
 \i 'function/api.storage_generate_presigned_post.sql'
 \i 'function/reclada_object.list.sql'
 
+
+
+update reclada.object 
+    set class = '00000000-0000-0000-0000-000000000d0c'
+    WHERE class = 
+    (
+        select guid 
+            from reclada.object 
+                where class = reclada_object.get_jsonschema_GUID()
+                    and attributes->>'forClass' = 'Document'
+    ); 
+update reclada.object 
+    set class = '00000000-0000-0000-0000-000000000f1e'
+    WHERE class = 
+    (
+        select guid 
+            from reclada.object 
+                where class = reclada_object.get_jsonschema_GUID()
+                    and attributes->>'forClass' = 'File'
+    ); 
+
 DELETE FROM reclada.object
-WHERE attributes->>'forClass' = 'Document';
+    WHERE class = reclada_object.get_jsonschema_GUID()
+        and attributes->>'forClass' = 'Document';
 DELETE FROM reclada.object
-WHERE attributes->>'forClass' = 'File';
+    WHERE class = reclada_object.get_jsonschema_GUID()
+        and attributes->>'forClass' = 'File';
 
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
@@ -34,7 +57,7 @@ SELECT reclada_object.create_subclass('{
             "name": {"type": "string"},
             "fileGUID": {"type": "string"}
         },
-        "required": ["name", "fileGUID"]
+        "required": ["name"]
     }
 }'::jsonb);
 
@@ -47,9 +70,29 @@ SELECT reclada_object.create_subclass('{
             "mimeType": {"type": "string"},
             "uri": {"type": "string"}
         },
-        "required": ["checksum", "mimeType", "uri"]
+        "required": ["checksum", "mimeType"]
     }
 }'::jsonb);
+
+update reclada.object 
+    set class = 
+    (
+        select guid 
+            from reclada.object 
+                where class = reclada_object.get_jsonschema_GUID()
+                    and attributes->>'forClass' = 'Document'
+    )
+    WHERE class = '00000000-0000-0000-0000-000000000d0c'; 
+
+update reclada.object 
+    set class = 
+    (
+        select guid 
+            from reclada.object 
+                where class = reclada_object.get_jsonschema_GUID()
+                    and attributes->>'forClass' = 'File'
+    )
+    WHERE class = '00000000-0000-0000-0000-000000000f1e'; 
 
 CREATE INDEX IF NOT EXISTS revision_index ON reclada.object ((attributes->>'revision'));
 CREATE INDEX IF NOT EXISTS job_status_index ON reclada.object ((attributes->>'status'));

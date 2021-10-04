@@ -24,7 +24,6 @@
         "required": [
             "checksum",
             "name",
-            "uri",
             "mimeType"
         ],
         "type": "object"

@@ -16,8 +16,7 @@
             }
         },
         "required": [
-            "name",
-            "fileGUID"
+            "name"
         ],
         "type": "object"
     },
