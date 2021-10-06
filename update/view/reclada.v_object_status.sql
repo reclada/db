@@ -1,4 +1,3 @@
-DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status CASCADE;
 CREATE MATERIALIZED VIEW reclada.v_object_status
 AS
     SELECT  obj.id            ,

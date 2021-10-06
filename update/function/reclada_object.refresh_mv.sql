@@ -1,15 +1,10 @@
 /*
- * Function reclada_object.create creates one or bunch of objects with specified fields.
- * A jsonb with user_info and a jsonb or an array of jsonb objects are required.
- * A jsonb object with the following parameters is required to create one object.
- * An array of jsonb objects with the following parameters is required to create a bunch of objects.
+ * Function reclada_object.refresh_mv refreshes materialized views.
+ * class_name is the name of class affected by other CRUD functions.
+ * Every materialized view here bazed on objects of the same class so it's necessary to refresh MV
+ *   when objects of some class changed.
  * Required parameters:
- *  class - the class of objects
- *  attributes - the attributes of objects
- * Optional parameters:
- *  GUID - the identifier of the object
- *  transactionID - object's transaction number. One transactionID is used to create a bunch of objects.
- *  branch - object's branch
+ *  class_name - the class of objects
  */
 
 DROP FUNCTION IF EXISTS reclada_object.refresh_mv;

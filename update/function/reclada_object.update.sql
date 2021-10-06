@@ -103,7 +103,12 @@ BEGIN
             JOIN t 
                 on t.id = v.id
 	            WHERE v.obj_id = v_obj_id;
-
+    PERFORM reclada_object.datasource_insert
+            (
+                class_name,
+                (schema->>'GUID')::uuid,
+                v_attrs
+            );
     PERFORM reclada_object.refresh_mv(class_name);  
                   
     select v.data 

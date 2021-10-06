@@ -119,6 +119,13 @@ BEGIN
         RETURNING GUID INTO obj_GUID;
         affected := array_append( affected, obj_GUID);
 
+        PERFORM reclada_object.datasource_insert
+            (
+                class_name,
+                obj_GUID,
+                _attrs
+            );
+
         PERFORM reclada_object.refresh_mv(class_name);
     END LOOP;
 
