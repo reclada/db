@@ -25,78 +25,61 @@ DECLARE
     v_obj_id       uuid;
     v_attrs        jsonb;
     schema        jsonb;
-    error         text;
     old_obj       jsonb;
     branch        uuid;
     revid         uuid;
+
 BEGIN
 
-    select  f1.v,
-            f2.v,
-            data->>'GUID' f3,
-            data->'attributes' f4,
-            f5.v,
-            data->'branch' 
-        from (select 1 a) as t
-        LEFT JOIN LATERAL
-        (
-            select data->>'class' v
-        )  f1 ON TRUE
-        LEFT JOIN LATERAL
-        (
-            select reclada.try_cast_uuid(f1.v) v
-        )  f2 ON TRUE
-        LEFT JOIN LATERAL
-        (
-            SELECT reclada_object.get_schema(class_name) as v
-                where f2.v is NULL 
-            UNION 
-            select v.data as v
-                from reclada.v_class v
-                    where f2.v is NOT NULL 
-                        and f2.v = v.obj_id 
-        )  f5 ON TRUE
-    into    class_name,
-            class_uuid,
-            v_obj_id,
-            v_attrs,
-            schema,
-            branch;
-   
-    select a 
-        from
-        (
-            select 0 as ID, 'The reclada object class is not specified' a
-                where class_name IS NULL
-            UNION 
-            select 1 as ID, 'Could not update object with no GUID' a
-                where v_obj_id IS NULL
-            UNION 
-            select 2, 'The reclada object must have attributes'
-                where v_attrs IS NULL
-            UNION 
-            -- TODO: don't allow update jsonschema
-            select 3, 'No json schema available for '||class_name
-                where schema IS NULL
-            UNION 
-            select 4, 'JSON invalid: ' || v_attrs::text
-                where NOT(public.validate_json_schema(schema->'attributes'->'schema', v_attrs))
-            UNION 
-            select 5, 'Could not update object, no such id'
-                where not EXISTS
-                (
-                    SELECT 
-                        FROM reclada.v_active_object v
-                            WHERE v.obj_id = v_obj_id
-                )
-        ) t
-        ORDER BY ID 
-            limit 1
-    into error;
-    if (error is not null) then
-        perform reclada.raise_exception(error, 'reclada_object.update');
+    class_name := data->>'class';
+    IF (class_name IS NULL) THEN
+        RAISE EXCEPTION 'The reclada object class is not specified';
+    END IF;
+    class_uuid := reclada.try_cast_uuid(class_name);
+    v_obj_id := data->>'GUID';
+    IF (v_obj_id IS NULL) THEN
+        RAISE EXCEPTION 'Could not update object with no GUID';
+    END IF;
+
+    v_attrs := data->'attributes';
+    IF (v_attrs IS NULL) THEN
+        RAISE EXCEPTION 'The reclada object must have attributes';
+    END IF;
+
+    SELECT reclada_object.get_schema(class_name) 
+        INTO schema;
+
+    if class_uuid is null then
+        SELECT reclada_object.get_schema(class_name) 
+            INTO schema;
+    else
+        select v.data 
+            from reclada.v_class v
+                where class_uuid = v.obj_id
+            INTO schema;
     end if;
-        
+    -- TODO: don't allow update jsonschema
+    IF (schema IS NULL) THEN
+        RAISE EXCEPTION 'No json schema available for %', class_name;
+    END IF;
+
+    IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', v_attrs))) THEN
+        RAISE EXCEPTION 'JSON invalid: %', v_attrs;
+    END IF;
+
+    SELECT 	v.data
+        FROM reclada.v_active_object v
+	        WHERE v.obj_id = v_obj_id
+	    INTO old_obj;
+
+    IF (old_obj IS NULL) THEN
+        RAISE EXCEPTION 'Could not update object, no such id';
+    END IF;
+
+    branch := data->'branch';
+    SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) 
+        INTO revid;
+    
     with t as 
     (
         update reclada.object o
@@ -104,10 +87,6 @@ BEGIN
                 where o.GUID = v_obj_id
                     and status != reclada_object.get_archive_status_obj_id()
                         RETURNING id
-    ),
-    revid as 
-    (
-        SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) as v
     )
     INSERT INTO reclada.object( GUID,
                                 class,
@@ -115,18 +94,18 @@ BEGIN
                                 attributes,
                                 transaction_id
                               )
-        SELECT  v.obj_id,
+        select  v.obj_id,
                 (schema->>'GUID')::uuid,
                 reclada_object.get_active_status_obj_id(),--status 
-                v_attrs || format('{"revision":"%s"}',revid.v)::jsonb,
+                v_attrs || format('{"revision":"%s"}',revid)::jsonb,
                 transaction_id
             FROM reclada.v_object v
-            JOIN revid 
-                ON true
             JOIN t 
                 on t.id = v.id
 	            WHERE v.obj_id = v_obj_id;
-                    
+
+    PERFORM reclada_object.refresh_mv(class_name);  
+                  
     select v.data 
         FROM reclada.v_active_object v
             WHERE v.obj_id = v_obj_id

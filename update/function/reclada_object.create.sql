@@ -119,6 +119,7 @@ BEGIN
         RETURNING GUID INTO obj_GUID;
         affected := array_append( affected, obj_GUID);
 
+        PERFORM reclada_object.refresh_mv(class_name);
     END LOOP;
 
     res := array_to_json
