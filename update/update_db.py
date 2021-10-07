@@ -33,7 +33,7 @@ def json_schema_install(DB_URI=None):
     os.system(f'git clone https://github.com/gavinwahl/postgres-json-schema.git')
     os.chdir('postgres-json-schema')
     with open('postgres-json-schema--0.1.1.sql') as s, open(file_name,'w') as d:
-        d.write(s.read().replace('@extschema@','public'))
+        d.write(s.read().replace('@extschema@','public').replace('CREATE OR REPLACE FUNCTION ','CREATE OR REPLACE FUNCTION public.'))
     if DB_URI == None:
         run_file(file_name)
     else:
