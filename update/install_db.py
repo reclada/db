@@ -1,25 +1,11 @@
-from update_db import clone_db, get_commit_history, get_version_from_commit, rmdir, run_file, recreate_db, branch_runtime, branch_SciNLP,quick_install,version,config_version,db_user
+from update_db import clone_db, get_commit_history, get_version_from_commit, rmdir, run_file, recreate_db, branch_runtime, branch_SciNLP,quick_install,version,config_version,db_user, json_schema_install
+
 
 import os
 import os.path
 
 reclada_user_name = 'reclada'
 
-
-def json_schema_install(DB_URI=None):
-    file_name = 'patched.sql'
-    rmdir('postgres-json-schema')
-    os.system(f'git clone https://github.com/gavinwahl/postgres-json-schema.git')
-    os.chdir('postgres-json-schema')
-    with open('postgres-json-schema--0.1.1.sql') as s, open(file_name,'w') as d:
-        d.write(s.read().replace('@extschema@','public'))
-    if DB_URI == None:
-        run_file(file_name)
-    else:
-        # for deployments
-        os.system(f'psql -P pager=off -f {file_name} {DB_URI}') 
-    os.chdir('..')
-    rmdir('postgres-json-schema')
 
 def db_install():
 

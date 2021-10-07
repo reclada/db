@@ -27,6 +27,21 @@ psql_str = f'psql -P pager=off -U {db_user} -p 5432 -h {server} -d {db} '
 
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
 
+def json_schema_install(DB_URI=None):
+    file_name = 'patched.sql'
+    rmdir('postgres-json-schema')
+    os.system(f'git clone https://github.com/gavinwahl/postgres-json-schema.git')
+    os.chdir('postgres-json-schema')
+    with open('postgres-json-schema--0.1.1.sql') as s, open(file_name,'w') as d:
+        d.write(s.read().replace('@extschema@','public'))
+    if DB_URI == None:
+        run_file(file_name)
+    else:
+        # for deployments
+        os.system(f'psql -P pager=off -f {file_name} {DB_URI}') 
+    os.chdir('..')
+    rmdir('postgres-json-schema')
+
 def run_file(file_name):
     os.system(f'{psql_str} -f {file_name}')
 
