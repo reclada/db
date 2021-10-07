@@ -5,15 +5,25 @@ import os.path
 
 reclada_user_name = 'reclada'
 
-def db_install():
+
+def json_schema_install(DB_URI=None):
+    file_name = 'patched.sql'
     rmdir('postgres-json-schema')
     os.system(f'git clone https://github.com/gavinwahl/postgres-json-schema.git')
     os.chdir('postgres-json-schema')
-    with open('postgres-json-schema--0.1.1.sql') as s, open('patched.sql','w') as d:
+    with open('postgres-json-schema--0.1.1.sql') as s, open(file_name,'w') as d:
         d.write(s.read().replace('@extschema@','public'))
-    run_file('patched.sql')
+    if DB_URI == None:
+        run_file(file_name)
+    else:
+        # for deployments
+        os.system(f'psql -P pager=off -f {file_name} {DB_URI}') 
     os.chdir('..')
     rmdir('postgres-json-schema')
+
+def db_install():
+
+    json_schema_install()
     rmdir('db')
     clone_db()
     
