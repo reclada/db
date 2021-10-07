@@ -1,6 +1,6 @@
 {
     "branch_db" : "main",
-    "branch_runtime" : "for_domino",
+    "branch_runtime" : "main",
     "branch_SciNLP" : "main",
     "branch_QAAutotests" : "master",
     "server" : "server_name",
