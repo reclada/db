@@ -7,8 +7,5 @@
     "db" : "database_name",
     "db_user" : "database_user",
     "quick_install" : true,
-    "LAMBDA_NAME" : "LAMBDA_NAME",
-    "ENVIRONMENT_NAME" : "ENVIRONMENT_NAME",
-    "debug" : false,
     "version": "latest"
 }

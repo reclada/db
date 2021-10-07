@@ -85,9 +85,7 @@ def scinlp_install():
 if __name__ == "__main__":
     
     recreate_db()
-
     need_update, use_dump = db_install()
-    install_objects()
     if need_update:
         os.system('python update_db.py')
         if not use_dump:
