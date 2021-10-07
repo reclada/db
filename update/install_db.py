@@ -1,4 +1,4 @@
-from update_db import clone_db, get_commit_history, get_version_from_commit, rmdir, run_file, recreate_db, branch_runtime, branch_SciNLP,quick_install,version,config_version,db_user,install_objects
+from update_db import clone_db, get_commit_history, get_version_from_commit, rmdir, run_file, recreate_db, branch_runtime, branch_SciNLP,quick_install,version,config_version,db_user
 
 import os
 import os.path
