@@ -30,7 +30,7 @@ psql_str = f'psql -P pager=off -U {db_user} -p 5432 -h {server} -d {db} '
 
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
 
-def install_objects():
+def install_objects(DB_URI=None):
     if not debug:
         with open('object_create.sql') as f:
             obj_cr = f.read()
@@ -38,7 +38,11 @@ def install_objects():
             obj_cr = obj_cr.replace('#@#lname#@#', LAMBDA_NAME)
             obj_cr = obj_cr.replace('#@#ename#@#', ENVIRONMENT_NAME)
             f.write(obj_cr)
-        cmd = f"{psql_str} -f tmp.sql"
+        if DB_URI == None:
+            cmd = f"{psql_str} -f tmp.sql"
+        else:
+            # for using from deploymens
+            cmd = f"psql -P pager=off -f tmp.sql {DB_URI}"
         os.system(cmd)
         os.remove('tmp.sql')
 
