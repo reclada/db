@@ -1,4 +1,4 @@
-from update_db import clone_db, get_commit_history, get_version_from_commit, rmdir, run_file, recreate_db, branch_runtime, branch_SciNLP,quick_install,version,config_version,db_user, json_schema_install
+from update_db import clone_db, get_commit_history,run_object_create,install_objects, get_version_from_commit, rmdir, run_file,run_cmd_scalar, recreate_db, branch_runtime, branch_SciNLP,quick_install,version,config_version,db_user, json_schema_install
 
 
 import os
@@ -14,10 +14,10 @@ def db_install():
     clone_db()
     
     if db_user != reclada_user_name:
-        if os.popen(f'psql -U {db_user} -t -P pager=off -c "SELECT rolname FROM pg_roles WHERE rolname=\'{reclada_user_name}\'"').read().strip() != reclada_user_name:
-            os.system(f'psql -U {db_user} -c "CREATE ROLE {reclada_user_name} NOINHERIT"')
-        if os.popen(f'psql -U {db_user} -t -P pager=off -c "SELECT CASE WHEN pg_has_role(\'{db_user}\',\'{reclada_user_name}\',\'member\') THEN 1 ELSE 0 END"').read().strip() == '0':
-            os.system(f'psql -U {db_user} -c "GRANT {reclada_user_name} TO {db_user}"')
+        if run_cmd_scalar(f"SELECT rolname FROM pg_roles WHERE rolname=\'{reclada_user_name}\'") != reclada_user_name:
+            run_cmd_scalar(f"CREATE ROLE {reclada_user_name} NOINHERIT")
+        if run_cmd_scalar(f"SELECT CASE WHEN pg_has_role(\'{db_user}\',\'{reclada_user_name}\',\'member\') THEN 1 ELSE 0 END") == '0':
+            run_cmd_scalar(f"GRANT {reclada_user_name} TO {db_user}")
 
     short_install = os.path.isfile(os.path.join('update','install_db.sql')) and quick_install
     use_dump = False
@@ -82,6 +82,8 @@ if __name__ == "__main__":
     
     recreate_db()
     need_update, use_dump = db_install()
+    if run_object_create:
+        install_objects()
     if need_update:
         os.system('python update_db.py')
         if not use_dump:
