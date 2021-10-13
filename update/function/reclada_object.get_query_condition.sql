@@ -8,7 +8,7 @@
  *            key_path = data->'revision'
  *    Output: (((data->'revision')::numeric >= 100) AND ((data->'revision')::numeric < 124))
  * 2. Input: data = {"operator": "LIKE", "object": "%test%"}::jsonb,
- *            key_path = data->'name'
+ *            key_path = data->'attributes'->'name'
  *    Output: ((data->'attributes'->'name'#>>'{}')::text LIKE '%test%')
 */
 
