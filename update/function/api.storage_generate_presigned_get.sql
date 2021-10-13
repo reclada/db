@@ -33,7 +33,7 @@ BEGIN
     )::jsonb) -> 0 INTO object_data;
 
     IF (object_data IS NULL) THEN
-		RAISE EXCEPTION 'The is no object with such id';
+		RAISE EXCEPTION 'There is no object with such id';
 	END IF;
 
     SELECT attrs->>'Lambda'
