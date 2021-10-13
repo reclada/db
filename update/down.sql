@@ -4,6 +4,9 @@
 
 --{function/api.storage_generate_presigned_post}
 --{function/api.storage_generate_presigned_get}
+--{function/reclada_object.list_drop}
+--{function/api.reclada_object_list_drop}
+
 --{function/reclada_object.list}
 --{function/reclada_object.get_query_condition_filter}
 
