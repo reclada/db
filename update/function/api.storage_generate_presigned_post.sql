@@ -46,7 +46,7 @@ BEGIN
     file_size := data->>'fileSize';
 
     IF (object_name IS NULL) OR (file_type IS NULL) OR (file_size IS NULL) THEN
-        RAISE EXCEPTION 'Parametrs objectName, fileType and fileSize must be present';
+        RAISE EXCEPTION 'Parameters objectName, fileType and fileSize must be present';
     END IF;
 
     SELECT attrs->>'Lambda'
