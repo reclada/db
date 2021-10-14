@@ -33,7 +33,7 @@ BEGIN
 
 	objid := (data->>'GUID')::uuid;
 	IF (objid IS NULL) THEN
-		RAISE EXCEPTION 'The is no GUID';
+		RAISE EXCEPTION 'There is no GUID';
 	END IF;
 
     SELECT v.data
@@ -42,7 +42,7 @@ BEGIN
     INTO obj;
 
 	IF (obj IS NULL) THEN
-		RAISE EXCEPTION 'The is no object with such id';
+		RAISE EXCEPTION 'There is no object with such id';
 	END IF;
 
 	values_to_drop := data->'value';

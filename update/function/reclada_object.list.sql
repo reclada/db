@@ -54,6 +54,41 @@
  *   "limit": 5,
  *   "offset": 2
  *   }::jsonb
+ *   3. SELECT reclada_object.list(
+ *       '{
+ *           "filter": {
+ *                   "operator":"or",
+ *                       "value":[
+ *                       {
+ *                           "operator":"in",
+ *                           "value":["{GUID}","(be193cf5-3156-4df4-8c9b-58b09524ce2f,67f37293-2dd6-469c-bc2d-923533991f77)"]
+ *                       },
+ *                       {
+ *                           "operator":"=",
+ *                           "value":["{class}","ObjectStatus"]
+ *                       }
+ *                   ]
+ *               },
+ *           "orderBy": [{"field": "id", "order": "DESC"}],
+ *           "limit": 5,
+ *           "offset": 0
+ *       }'::jsonb)
+ *   to make query:
+ *       SELECT obj.data
+ *           FROM reclada.v_active_object obj 
+ *           WHERE (
+ *                   (
+ *                       data #>> '{GUID}' in 
+ *                       (
+ *                           'be193cf5-3156-4df4-8c9b-58b09524ce2f',
+ *                           '67f37293-2dd6-469c-bc2d-923533991f77'
+ *                       )
+ *                   ) 
+ *                   or (class_name = 'ObjectStatus')
+ *               ) 
+ *               ORDER BY obj.data#>'{id}' DESC 
+ *               OFFSET 0 
+ *               LIMIT 5
  *
 */
 
@@ -75,27 +110,15 @@ DECLARE
     class_uuid          uuid;
     last_change         text;
     tran_id             bigint;
+    _filter             JSONB;
 BEGIN
 
     tran_id := (data->>'transactionID')::bigint;
     class := data->>'class';
-    IF (class IS NULL and tran_id IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class and transactionID are not specified';
+    _filter = data->'filter';
+    IF (class IS NULL and tran_id IS NULL and _filter IS NULL) THEN
+        RAISE EXCEPTION 'The reclada object class, transactionID and filter are not specified';
     END IF;
-    class_uuid := reclada.try_cast_uuid(class);
-
-    if class_uuid is not null then
-        select v.for_class 
-            from reclada.v_class_lite v
-                where class_uuid = v.obj_id
-        into class;
-
-        IF (class IS NULL) THEN
-            RAISE EXCEPTION 'Class not found by GUID: %', class_uuid::text;
-        END IF;
-    end if;
-
-    attrs := data->'attributes' || '{}'::jsonb;
 
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
@@ -128,74 +151,93 @@ BEGIN
     		RAISE EXCEPTION 'The offset must be an integer number';
     END IF;
 
-    SELECT
-        string_agg(
-            format(
-                E'(%s)',
-                condition
-            ),
-            ' AND '
-        )
-        FROM (
-            SELECT
-                format('obj.class_name = ''%s''', class) AS condition
-                    where class is not null 
-                        and class_uuid is null
-            UNION
-                SELECT format('obj.class = ''%s''', class_uuid) AS condition
-                    where class_uuid is not null
-            UNION
-                SELECT format('obj.transaction_id = %s', tran_id) AS condition
-                    where tran_id is not null
-            UNION 
-                SELECT CASE
-                        WHEN jsonb_typeof(data->'GUID') = 'array' THEN
-                        (
-                            SELECT string_agg
-                                (
-                                    format(
-                                        E'(%s)',
-                                        reclada_object.get_query_condition(cond, E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)
-                                    ),
-                                    ' AND '
-                                )
-                                FROM jsonb_array_elements(data->'GUID') AS cond
-                        )
-                        ELSE reclada_object.get_query_condition(data->'GUID', E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)
-                    END AS condition
-                WHERE coalesce(data->'GUID','null'::jsonb) != 'null'::jsonb
-            UNION
-            SELECT
-                CASE
-                    WHEN jsonb_typeof(value) = 'array'
-                        THEN
+    IF (_filter IS NOT NULL) THEN
+        query_conditions := reclada_object.get_query_condition_filter(_filter);
+    ELSE
+        class_uuid := reclada.try_cast_uuid(class);
+
+        if class_uuid is not null then
+            select v.for_class 
+                from reclada.v_class_lite v
+                    where class_uuid = v.obj_id
+            into class;
+
+            IF (class IS NULL) THEN
+                RAISE EXCEPTION 'Class not found by GUID: %', class_uuid::text;
+            END IF;
+        end if;
+
+        attrs := data->'attributes' || '{}'::jsonb;
+
+        SELECT
+            string_agg(
+                format(
+                    E'(%s)',
+                    condition
+                ),
+                ' AND '
+            )
+            FROM (
+                SELECT
+                    format('obj.class_name = ''%s''', class) AS condition
+                        where class is not null
+                            and class_uuid is null
+                UNION
+                    SELECT format('obj.class = ''%s''', class_uuid) AS condition
+                        where class_uuid is not null
+                UNION
+                    SELECT format('obj.transaction_id = %s', tran_id) AS condition
+                        where tran_id is not null
+                UNION
+                    SELECT CASE
+                            WHEN jsonb_typeof(data->'GUID') = 'array' THEN
                             (
                                 SELECT string_agg
                                     (
-                                        format
-                                        (
+                                        format(
                                             E'(%s)',
-                                            reclada_object.get_query_condition(cond, format(E'attrs->%L', key))
+                                            reclada_object.get_query_condition(cond, E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)
                                         ),
                                         ' AND '
                                     )
-                                    FROM jsonb_array_elements(value) AS cond
+                                    FROM jsonb_array_elements(data->'GUID') AS cond
                             )
-                    ELSE reclada_object.get_query_condition(value, format(E'attrs->%L', key))
-                END AS condition
-            FROM jsonb_each(attrs)
-            WHERE attrs != ('{}'::jsonb)
-        ) conds
-    INTO query_conditions;
+                            ELSE reclada_object.get_query_condition(data->'GUID', E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)
+                        END AS condition
+                    WHERE coalesce(data->'GUID','null'::jsonb) != 'null'::jsonb
+                UNION
+                SELECT
+                    CASE
+                        WHEN jsonb_typeof(value) = 'array'
+                            THEN
+                                (
+                                    SELECT string_agg
+                                        (
+                                            format
+                                            (
+                                                E'(%s)',
+                                                reclada_object.get_query_condition(cond, format(E'attrs->%L', key))
+                                            ),
+                                            ' AND '
+                                        )
+                                        FROM jsonb_array_elements(value) AS cond
+                                )
+                        ELSE reclada_object.get_query_condition(value, format(E'attrs->%L', key))
+                    END AS condition
+                FROM jsonb_each(attrs)
+                WHERE attrs != ('{}'::jsonb)
+            ) conds
+        INTO query_conditions;
+    END IF;
+    query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
 
     -- RAISE NOTICE 'conds: %', '
     --             SELECT obj.data
-    --             FROM reclada.v_object obj
-    --             WHERE ' || query_conditions ||
+    --             '
+    --             || query
+    --             ||
     --             ' ORDER BY ' || order_by ||
     --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
-    query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
-    --raise notice 'query: %', query;
     EXECUTE E'SELECT to_jsonb(array_agg(T.data))
         FROM (
             SELECT obj.data

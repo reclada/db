@@ -9,33 +9,45 @@
  *  fileType - id of the object
  *  fileSize - size of the object
  *  accessToken - jwt token to authorize
+ * Optional parameters:
+ *  bucketName - the name of S3 bucket
  *
 */
 DROP FUNCTION IF EXISTS api.storage_generate_presigned_post;
 CREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)
 RETURNS jsonb AS $$
 DECLARE
-    lambda_name  varchar;
+    user_info    jsonb;
+    object_name  varchar;
     file_type    varchar;
+    file_size    varchar;
+    lambda_name  varchar;
+    bucket_name  varchar;
+    url          varchar;
+    result       jsonb;
+
+
     object       jsonb;
     object_id    uuid;
-    object_name  varchar;
     object_path  varchar;
-    result       jsonb;
-    user_info    jsonb;
     uri          varchar;
-    url          varchar;
+
 
 BEGIN
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 
-    IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned post', ''))) THEN
+    IF (NOT(reclada_user.is_allowed(user_info, 'generate presigned post', ''))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';
     END IF;
 
     object_name := data->>'objectName';
     file_type := data->>'fileType';
+    file_size := data->>'fileSize';
+
+    IF (object_name IS NULL) OR (file_type IS NULL) OR (file_size IS NULL) THEN
+        RAISE EXCEPTION 'Parameters objectName, fileType and fileSize must be present';
+    END IF;
 
     SELECT attrs->>'Lambda'
     FROM reclada.v_active_object
@@ -43,6 +55,8 @@ BEGIN
     ORDER BY created_time DESC
     LIMIT 1
     INTO lambda_name;
+
+    bucket_name := data->>'bucketName';
 
     SELECT payload::jsonb
     FROM aws_lambda.invoke(
@@ -55,10 +69,12 @@ BEGIN
             "fileName": "%s",
             "fileType": "%s",
             "fileSize": "%s",
+            "bucketName": "%s",
             "expiration": 3600}',
             object_name,
             file_type,
-            data->>'fileSize'
+            file_size,
+            bucket_name
             )::jsonb)
     INTO url;
 

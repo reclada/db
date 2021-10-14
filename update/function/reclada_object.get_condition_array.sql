@@ -13,7 +13,7 @@
   * Only valid input is expected.
 */
 
-DROP FUNCTION IF EXISTS reclada_object.get_condition_array(jsonb, text);
+DROP FUNCTION IF EXISTS reclada_object.get_condition_array;
 CREATE OR REPLACE FUNCTION reclada_object.get_condition_array(data jsonb, key_path text)
 RETURNS text AS $$
     SELECT
