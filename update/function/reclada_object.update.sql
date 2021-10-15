@@ -109,7 +109,11 @@ BEGIN
                 (schema->>'GUID')::uuid,
                 v_attrs
             );
-    PERFORM reclada_object.refresh_mv(class_name);  
+    PERFORM reclada_object.refresh_mv(class_name);
+
+    IF ( class_name = 'jsonschema' AND jsonb_typeof(v_attrs->'dupChecking') = 'array') THEN
+        PERFORM reclada_object.refresh_mv('unifields');
+    END IF; 
                   
     select v.data 
         FROM reclada.v_active_object v

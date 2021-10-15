@@ -13,7 +13,8 @@ with t as (
             obj.status  ,
             obj.created_time ,
             obj.created_by   ,
-            obj.transaction_id
+            obj.transaction_id,
+            obj.parent_id
         FROM reclada.object obj
         left join 
         (
@@ -48,7 +49,8 @@ with t as (
             u.login as login_created_by,
             t.created_by as created_by,
             t.status,
-            t.transaction_id
+            t.transaction_id,
+            t.parent_id
         FROM t
         left join reclada.v_object_status os
             on t.status = os.obj_id
