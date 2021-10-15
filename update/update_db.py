@@ -21,7 +21,7 @@ db_URI = j["db_URI"]
 parsed = urllib.parse.urlparse(db_URI)
 db_URI = db_URI.replace(parsed.password, urllib.parse.quote(parsed.password))
 
-db_user = db_URI.replace('postgresql://','').split(':')[0]
+db_user = parsed.username
 db = db_URI.split('/')[-1]
 ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
 LAMBDA_NAME = j["LAMBDA_NAME"]
@@ -142,8 +142,8 @@ def get_commit_history(branch:str = branch_db, need_comment:bool = False):
 
     return res
 
-def get_version_from_db()->int:
-    return int(run_cmd_scalar("select max(ver) from dev.ver;"))
+def get_version_from_db(DB_URI=db_URI)->int:
+    return int(run_cmd_scalar("select max(ver) from dev.ver;",DB_URI))
 
 def get_version_from_commit(commit = '', file_name = 'up_script.sql')->int:
     if commit != '':
@@ -194,11 +194,12 @@ def run_test():
 
 if __name__ == "__main__":
         
+    DB_URI = db_URI
     if len(sys.argv) > 1:
-        db_uri = sys.argv[1]
+        DB_URI = sys.argv[1]
 
     clone_db()
-    cur_ver_db = get_version_from_db()
+    cur_ver_db = get_version_from_db(DB_URI)
     print(f'current version database: {cur_ver_db}')
 
     res = get_commit_history(branch_db)
@@ -215,7 +216,7 @@ if __name__ == "__main__":
             if commit_v == cur_ver_db + 1:
                 print('\trun')
                 os.system('python create_up.sql.py')
-                run_file('up.sql')
+                run_file('up.sql',DB_URI)
                 cur_ver_db+=1
             else:
                 print(f'\talready applied')
