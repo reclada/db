@@ -1,10 +1,11 @@
 from json.decoder import JSONDecodeError
 from update_db import get_version_from_commit, get_version_from_db
-from update_db import run_file, db_URI, psql_str,rmdir,run_test
+from update_db import run_file, db_URI, psql_str,rmdir,run_test,run_cmd_scalar
 
 import os
 import datetime
 import json
+import filecmp
 
 '''
     To use this script copy db_installer folder to reclada_db folder
@@ -14,12 +15,19 @@ import json
 if __name__ == "__main__":
 
     t = str(datetime.datetime.now())
+    
+    downgrade_test = True
+    downgrade_dump = 'downgrade_dump.sql'
+    current_dump = 'current_dump.sql'
 
     commit_ver = get_version_from_commit()
     db_ver = get_version_from_db()
     install_db = commit_ver != db_ver + 1
     if install_db:
         os.system('python install_db.py')
+        if downgrade_test:
+            print('pg_dump for current version . . .')
+            os.system(f'pg_dump -f {current_dump} {db_URI}')
     else:
         print('install_db.py skipped, database has actual version')
     
@@ -31,6 +39,16 @@ if __name__ == "__main__":
         raise Exception(f'create_up.sql.py error: {res}')
 
     run_file('up.sql')
+
+    if downgrade_test:
+        run_cmd_scalar('select dev.downgrade_version();')
+        print('pg_dump after downgrade version . . .')
+        os.system(f'pg_dump -f {downgrade_dump} {db_URI}')
+        if not filecmp.cmp(current_dump, downgrade_dump):
+            input("down.sql invalid !!! Press Enter to continue. . .")
+        os.remove(downgrade_dump)
+        os.remove(current_dump)
+        run_file('up.sql')
 
     input("Press Enter to update jsonschemas and install_db.sql . . .")
 
