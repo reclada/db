@@ -1,4 +1,14 @@
 -- you you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
-select reclada.raise_exception('Downgrade script not support');
+
+--{function/api.storage_generate_presigned_post}
+--{function/api.storage_generate_presigned_get}
+--{function/reclada_object.list_drop}
+--{function/api.reclada_object_list_drop}
+
+--{function/reclada_object.list}
+--{function/reclada_object.get_query_condition_filter}
+
+--{function/reclada_object.get_condition_array}
+--{function/reclada_object.get_query_condition}

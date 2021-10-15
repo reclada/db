@@ -30,7 +30,7 @@ BEGIN
 
 	obj_id := (data->>'GUID')::uuid;
 	IF (obj_id IS NULL) THEN
-		RAISE EXCEPTION 'The is no GUID';
+		RAISE EXCEPTION 'There is no GUID';
 	END IF;
 
 	field_value := data->'field';

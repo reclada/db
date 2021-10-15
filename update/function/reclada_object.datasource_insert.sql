@@ -1,16 +1,28 @@
-CREATE OR REPLACE FUNCTION reclada.datasource_insert_trigger_fnc()
-RETURNS trigger AS $$
+/*
+ * Function reclada_object.datasource_insert updates defaultDataSet and creates Job object
+ * Added instead of reclada.datasource_insert_trigger_fnc function called by trigger.
+ * class_name is the name of class inserted in reclada.object.
+ * obj_id is GUID of added object.
+ * attributes is attributes of added object.
+ * Required parameters:
+ *  _class_name - the class of objects
+ *  obj_id     - GUID of object
+ *  attributes - attributes of added object
+ */
+CREATE OR REPLACE FUNCTION reclada_object.datasource_insert
+(
+    _class_name text,
+    obj_id     uuid,
+    attributes jsonb
+)
+RETURNS void AS $$
 DECLARE
-    obj_id         uuid;
     dataset       jsonb;
     uri           text;
     environment   varchar;
 BEGIN
-    IF NEW.class in 
-            (select reclada_object.get_GUID_for_class('DataSource'))
-        OR NEW.class in (select reclada_object.get_GUID_for_class('File')) THEN
-
-        obj_id := NEW.GUID;
+    IF _class_name in 
+            ('DataSource','File') THEN
 
         SELECT v.data
         FROM reclada.v_active_object v
@@ -21,7 +33,7 @@ BEGIN
 
         PERFORM reclada_object.update(dataset);
 
-        uri := NEW.attributes->>'uri';
+        uri := attributes->>'uri';
 
         SELECT attrs->>'Environment'
         FROM reclada.v_active_object
@@ -43,7 +55,5 @@ BEGIN
                 }', environment, uri, obj_id)::jsonb);
 
     END IF;
-
-RETURN NEW;
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' VOLATILE;

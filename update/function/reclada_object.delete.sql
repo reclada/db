@@ -85,6 +85,8 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object, no such GUID';
     END IF;
 
+    PERFORM reclada_object.refresh_mv(class);
+
     PERFORM reclada_notification.send_object_notification('delete', data);
 
     RETURN data;

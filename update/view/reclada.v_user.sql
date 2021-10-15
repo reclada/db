@@ -1,5 +1,4 @@
-drop VIEW if EXISTS reclada.v_user;
-CREATE OR REPLACE VIEW reclada.v_user
+CREATE MATERIALIZED VIEW reclada.v_user
 AS
     SELECT  obj.id            ,
             obj.GUID as obj_id,

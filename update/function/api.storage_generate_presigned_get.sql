@@ -21,7 +21,7 @@ BEGIN
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 
-    IF(NOT(reclada_user.is_allowed(user_info, 'generate presigned get', ''))) THEN
+    IF (NOT(reclada_user.is_allowed(user_info, 'generate presigned get', ''))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned get';
     END IF;
 
@@ -31,6 +31,10 @@ BEGIN
         '{"class": "File", "attributes": {}, "GUID": "%s"}',
         object_id
     )::jsonb) -> 0 INTO object_data;
+
+    IF (object_data IS NULL) THEN
+		RAISE EXCEPTION 'There is no object with such id';
+	END IF;
 
     SELECT attrs->>'Lambda'
     FROM reclada.v_active_object
