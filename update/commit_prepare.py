@@ -1,6 +1,6 @@
 from json.decoder import JSONDecodeError
 from update_db import get_version_from_commit, get_version_from_db
-from update_db import run_file, db_user, server, db, psql_str,rmdir,run_test
+from update_db import run_file, db_URI, psql_str,rmdir,run_test
 
 import os
 import datetime
@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     if install_db:
         print('pg_dump...')
-        os.system(f'pg_dump -U {db_user} -p 5432 -h {server} -d {db} -N public -f install_db.sql -O')
+        os.system(f'pg_dump -N public -f install_db.sql -O {db_URI}')
 
         with open('up_script.sql') as f:
             ver_str = f.readline()
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
 
         print('loading jsonschemas..')
-        sc = os.popen(f'{psql_str} -c "SELECT for_class,attrs FROM reclada.v_class;"').readlines()
+        sc = os.popen(psql_str('-c "SELECT for_class,attrs FROM reclada.v_class;"')).readlines()
         rmdir('jsonschema')
         os.makedirs('jsonschema')
         os.chdir('jsonschema')

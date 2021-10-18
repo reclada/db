@@ -2,6 +2,9 @@ import os
 import json
 import stat
 from pathlib import Path
+import sys
+import urllib.parse
+
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 j = ''
@@ -13,12 +16,16 @@ branch_db = j["branch_db"]
 branch_runtime = j["branch_runtime"]
 branch_SciNLP = j["branch_SciNLP"]
 branch_QAAutotests = j["branch_QAAutotests"]
-server = j["server"]
-db = j["db"]
+
+db_URI = j["db_URI"]
+parsed = urllib.parse.urlparse(db_URI)
+db_URI = db_URI.replace(parsed.password, urllib.parse.quote(parsed.password))
+
+db_user = parsed.username
+db = db_URI.split('/')[-1]
 ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
 LAMBDA_NAME = j["LAMBDA_NAME"]
-db_user = j["db_user"]
-debug = j["debug"]
+run_object_create = j["run_object_create"]
 version = j["version"]
 quick_install = j["quick_install"]
 if version == 'latest':
@@ -26,30 +33,56 @@ if version == 'latest':
 else:
     config_version = int(version)
 
-psql_str = f'psql -P pager=off -U {db_user} -p 5432 -h {server} -d {db} '
+def psql_str(cmd:str,DB_URI:str = db_URI)->str:
+    return f'psql -t -P pager=off {cmd} {DB_URI}'
 
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
 
-def install_objects():
-    if not debug:
-        with open('object_create.sql') as f:
-            obj_cr = f.read()
-        with open('tmp.sql','w') as f:
-            obj_cr = obj_cr.replace('#@#lname#@#', LAMBDA_NAME)
-            obj_cr = obj_cr.replace('#@#ename#@#', ENVIRONMENT_NAME)
-            f.write(obj_cr)
-        cmd = f"{psql_str} -f tmp.sql"
-        os.system(cmd)
-        os.remove('tmp.sql')
+def json_schema_install(DB_URI=db_URI):
+    file_name = 'patched.sql'
+    rmdir('postgres-json-schema')
+    os.system(f'git clone https://github.com/gavinwahl/postgres-json-schema.git')
+    os.chdir('postgres-json-schema')
+    with open('postgres-json-schema--0.1.1.sql') as s, open(file_name,'w') as d:
+        d.write(s.read().replace('@extschema@','public').replace('CREATE OR REPLACE FUNCTION ','CREATE OR REPLACE FUNCTION public.'))
 
-def run_file(file_name):
-    os.system(f'{psql_str} -f {file_name}')
+    run_file(file_name,DB_URI)
+   
+    os.chdir('..')
+    rmdir('postgres-json-schema')
+
+
+def install_objects(l_name = LAMBDA_NAME, e_name = ENVIRONMENT_NAME, DB_URI = db_URI):
+    file_name = 'object_create_patched.sql'
+    with open('object_create.sql') as f:
+        obj_cr = f.read()
+
+    obj_cr = obj_cr.replace('#@#lname#@#', l_name)
+    obj_cr = obj_cr.replace('#@#ename#@#', e_name)
+
+    with open(file_name,'w') as f:
+        f.write(obj_cr)
+
+    run_file(file_name,DB_URI)
+    os.remove(file_name)
+
+
+def run_file(file_name,DB_URI=db_URI):
+    cmd = psql_str(f'-f "{file_name}"',DB_URI)
+    os.system(cmd)
+
+
+def run_cmd_scalar(command,DB_URI=db_URI)->str:
+    cmd = psql_str(f'-c "{command}"',DB_URI)
+    return os.popen(cmd).read().strip()
+
 
 def checkout(to:str = branch_db):
     cmd = f'git checkout {to} -q'
     #print(cmd)
     r = os.popen(cmd).read()
     return r
+
 
 def rmdir(top:str): 
     if os.path.exists(top) and os.path.isdir(top):
@@ -109,13 +142,10 @@ def get_commit_history(branch:str = branch_db, need_comment:bool = False):
 
     return res
 
-def get_version_from_db():
-    # TODO: refactor for using key psql
-    res = os.popen(f'{psql_str} -c "select max(ver) from dev.ver;"').readlines()
-    cur_ver_db = int(res[2])
-    return cur_ver_db
+def get_version_from_db(DB_URI=db_URI)->int:
+    return int(run_cmd_scalar("select max(ver) from dev.ver;",DB_URI))
 
-def get_version_from_commit(commit = '', file_name = 'up_script.sql'):
+def get_version_from_commit(commit = '', file_name = 'up_script.sql')->int:
     if commit != '':
         checkout(commit)
     cd = Path('update').exists()
@@ -136,10 +166,13 @@ def get_version_from_commit(commit = '', file_name = 'up_script.sql'):
 
 
 def recreate_db():
-    psql_str1 = f'psql -P pager=off -U {db_user} -p 5432 -h {server} -d postgres '
+    
+    splt = db_URI.split('/')
+    splt[-1] = 'postgres'
+    db_URI_postgres = '/'.join(splt)
     
     def execute(cmd:str):
-        os.system(f'{psql_str1} -c "{cmd}"')
+        os.system(psql_str(f'-c "{cmd}"', db_URI_postgres))
     
     execute(f'''REVOKE CONNECT ON DATABASE {db} FROM PUBLIC, {db_user};''')
     execute(f'''SELECT pg_terminate_backend(pid)        '''
@@ -161,8 +194,12 @@ def run_test():
 
 if __name__ == "__main__":
         
+    DB_URI = db_URI
+    if len(sys.argv) > 1:
+        DB_URI = sys.argv[1]
+
     clone_db()
-    cur_ver_db = get_version_from_db()
+    cur_ver_db = get_version_from_db(DB_URI)
     print(f'current version database: {cur_ver_db}')
 
     res = get_commit_history(branch_db)
@@ -179,7 +216,7 @@ if __name__ == "__main__":
             if commit_v == cur_ver_db + 1:
                 print('\trun')
                 os.system('python create_up.sql.py')
-                run_file('up.sql')
+                run_file('up.sql',DB_URI)
                 cur_ver_db+=1
             else:
                 print(f'\talready applied')
