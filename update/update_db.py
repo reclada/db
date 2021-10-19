@@ -97,7 +97,7 @@ def rmdir(top:str):
 
 def clone_db():
     rmdir('db')
-    os.system(f'git clone https://github.com/reclada/db')
+    os.system(f'git clone https://gitlab.reclada.com/developers/db')
     os.chdir('db')
     checkout(branch_db)
 
