@@ -2,3 +2,6 @@
 -- to add current version of object to downgrade script
 
 
+--{function/reclada_object.get_query_condition_filter}
+--{function/reclada_object.parse_filter}
+--{function/api.reclada_object_list}
