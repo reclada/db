@@ -90,6 +90,60 @@
  *               OFFSET 0 
  *               LIMIT 5
  *
+Сравнения
+    >
+    <
+    <=
+    >= 
+    = 
+    !=
+Логические:
+    AND
+    OR
+    NOT
+Прочее
+    LIKE (второй операнд обязательно строка)
+        {
+            "operator":"LIKE",
+            "value":["{class}","rev%"]
+        }
+    NOT LIKE (второй операнд обязательно строка)
+        {
+            "operator":"NOT LIKE",
+            "value":["{class}","rev%"]
+        }
+        эквивалент:
+        {
+            "operator":"NOT",
+            "value":
+            [
+                {
+                    "operator":"LIKE",
+                    "value":["{class}","rev%"]
+                }
+            ]
+        }
+    IS (второй операнд обязательно NULL)
+        { 
+            "operator":"IS", 
+            "value":
+            [
+                "{class}",
+                null
+            ]
+        }
+    IS NOT (второй операнд обязательно NULL)
+        { 
+            "operator":"IS NOT", 
+            "value":
+            [
+                "{class}",
+                null
+            ]
+        }
+    IN (второй операнд обязательно оператор ",")
+    
+
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list;
@@ -231,13 +285,13 @@ BEGIN
     END IF;
     query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
 
-    -- RAISE NOTICE 'conds: %', '
-    --             SELECT obj.data
-    --             '
-    --             || query
-    --             ||
-    --             ' ORDER BY ' || order_by ||
-    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
+    RAISE NOTICE 'conds: %', '
+                SELECT obj.data
+                '
+                || query
+                ||
+                ' ORDER BY ' || order_by ||
+                ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
     EXECUTE E'SELECT to_jsonb(array_agg(T.data))
         FROM (
             SELECT obj.data
