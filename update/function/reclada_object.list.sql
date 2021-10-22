@@ -96,6 +96,26 @@ Comparison Operators
     <=
     >= 
     = 
+        {
+            "operator": "=",
+            "value": 
+            [
+                "{class}", 
+                "DataSet"
+            ]
+        }
+        another:
+        {
+            "operator": "=",
+            "value": 
+            [
+                "{attributes,dataSources}", 
+                [
+                    "2033ef08-a89f-4789-91f5-bcf02533963d", 
+                    "a3a1b54e-74b8-4a95-a818-8e5337d264c0"
+                ]
+            ]
+        }
     !=
 Logical:
     AND
@@ -187,6 +207,73 @@ Other:
             ]
         }
     , using only with IN (example before)
+    || - concatenation of strings, operands must be string
+        { 
+            "operator":"=", 
+            "value":
+            [
+                "{attributes,forClass}",
+                { 
+                    "operator":"||", 
+                    "value":
+                    [
+                        "Pa",
+                        "{attributes,forClass}"
+                    ]
+                }
+            ]
+        }
+        another:
+        { 
+            "operator":"=", 
+            "value":
+            [
+                "{attributes,forClass}",
+                { 
+                    "operator":"||", 
+                    "value":
+                    [
+                        "Pa",
+                        "g",
+                        "e"
+                    ]
+                }
+            ]
+        }
+    + - addition of numbers, operands must be number
+        { 
+            "operator":"=", 
+            "value":
+            [
+                "{transactionID}",
+                { 
+                    "operator":"+", 
+                    "value":
+                    [
+                        4,
+                        5
+                    ]
+                }
+            ]
+        }
+        another:
+        { 
+            "operator":"=", 
+            "value":
+            [
+                "{transactionID}",
+                { 
+                    "operator":"+", 
+                    "value":
+                    [
+                        "{transactionID}",
+                        1,
+                        -1
+                    ]
+                }
+            ]
+        }
+
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list;
