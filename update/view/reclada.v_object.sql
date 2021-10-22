@@ -2,27 +2,37 @@
 CREATE OR REPLACE VIEW reclada.v_object
 AS
 with t as (
-    SELECT  
-            obj.id      ,
-            obj.GUID    ,
-            obj.class   ,
-            r.num       ,
-            NULLIF(obj.attributes ->> 'revision','')::uuid 
-                as revision,
+SELECT obj.id,
+            obj.guid,
+            obj.class,
+            NULL AS num,
+            NULL AS revision,
             obj.attributes,
-            obj.status  ,
-            obj.created_time ,
-            obj.created_by   ,
-            obj.transaction_id
-        FROM reclada.object obj
-        left join 
-        (
-            select  (r.attributes->>'num')::bigint num,
-                    r.GUID 
-                from reclada.object r
-                    where class in (select reclada_object.get_GUID_for_class('revision'))
-        ) r
-            on r.GUID = NULLIF(obj.attributes ->> 'revision','')::uuid
+            obj.status,
+            obj.created_time,
+            obj.created_by,
+            obj.transaction_id,
+            obj.parent_guid
+           FROM object obj
+           WHERE obj.attributes ->> 'revision' IS NULL
+       UNION ALL 
+           SELECT obj.id,
+            obj.guid,
+            obj.class,
+            r.num,
+            (obj.attributes ->> 'revision')::uuid AS revision,
+            obj.attributes,
+            obj.status,
+            obj.created_time,
+            obj.created_by,
+            obj.transaction_id,
+            obj.parent_guid
+           FROM object obj
+             JOIN ( SELECT (r_1.attributes ->> 'num'::text)::bigint AS num,
+                    r_1.guid
+                   FROM object r_1
+                  WHERE (r_1.class = ( SELECT reclada_object.get_guid_for_class('revision'::text) AS get_guid_for_class))) r ON r.guid = (obj.attributes ->> 'revision')::uuid
+           WHERE obj.attributes ->> 'revision' <> ''
 )
     SELECT  
             t.id                 ,
@@ -48,7 +58,8 @@ with t as (
             u.login as login_created_by,
             t.created_by as created_by,
             t.status,
-            t.transaction_id
+            t.transaction_id,
+            t.parent_guid
         FROM t
         left join reclada.v_object_status os
             on t.status = os.obj_id

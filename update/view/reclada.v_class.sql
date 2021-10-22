@@ -1,4 +1,4 @@
-drop VIEW if EXISTS reclada.v_class;
+--drop VIEW if EXISTS reclada.v_class;
 CREATE OR REPLACE VIEW reclada.v_class
 AS
     SELECT  obj.id            ,
@@ -11,7 +11,8 @@ AS
             obj.created_time  ,
             obj.attrs         ,
             obj.status        ,
-            obj.data
+            obj.data          ,
+            obj.parent_guid
 	FROM reclada.v_active_object obj
    	WHERE class_name = 'jsonschema';
 --select * from reclada.v_class
