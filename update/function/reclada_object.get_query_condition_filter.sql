@@ -73,7 +73,9 @@ result:
     (
         (obj_id = dfdf) 
         or (attrs #>> ''{revision}'' in (''1'',2,3,4)) 
-        or (status_caption in (1,2,5,4))))
+        or (status_caption in (1,2,5,4))
+    )
+)
 */
 
 DROP FUNCTION IF EXISTS reclada_object.get_query_condition_filter;
@@ -95,51 +97,29 @@ BEGIN
             FROM mytable t
             JOIN LATERAL 
             (
-                SELECT t.parsed #>> '{}' v
+                SELECT  t.parsed #>> '{}' v
             ) as pt
                 ON TRUE
+            LEFT JOIN reclada.v_filter_mapping fm
+                ON pt.v = fm.pattern
             JOIN LATERAL 
             (
                 SELECT CASE 
-                        WHEN pt.v LIKE '{class}'
-                            THEN 'class_name'
-                        WHEN pt.v LIKE '%{%}%'
-                            THEN REPLACE(
-                                    REPLACE(pt.v,'{','data #>> ''{'),
-                                '}','}''')
-                        WHEN pt.v LIKE '(%)'
-                            THEN REPLACE(
-                                    REPLACE(
-                                        REPLACE(pt.v,'(','(''')
-                                    ,')',''')')
-                                ,',',''',''')
-                        ELSE
-                            ''''||pt.v||''''
-                    END AS v
-                /*
-                SELECT CASE 
-                        WHEN pt.v LIKE '{attributes,%}'
-                            THEN format('attrs #>> ''''%s''''', REPLACE(pt.v,'{attributes,','{'))
-                        WHEN pt.v LIKE '{class}'
-                            THEN 'class_name'
-                        WHEN pt.v LIKE '{GUID}'
-                            THEN 'obj_id'
-                        WHEN pt.v LIKE '{status}'
-                            THEN 'status_caption'
-                        WHEN pt.v LIKE '(%)'
-                            THEN replace(
-                                    replace(
-                                        replace(pt.v,'(','(''')
-                                    ,')',''')')
-                                ,',',''',''')
-                        WHEN pt.v LIKE '{transactionID}'
-                            THEN 'transaction_id'
+                        WHEN fm.repl is not NULL 
+                            then '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)
                         WHEN pt.v LIKE '{%}'
-                            THEN 'transaction_id'
+                            THEN format('data #> ''%s''', pt.v)
+                        -- WHEN pt.v LIKE '{attributes,%}'
+                        --     THEN format('attrs #> ''%s''', REPLACE(pt.v,'{attributes,','{'))
+                        WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')
+                            then '''' || pt.v || '''::jsonb'
+                        WHEN jsonb_typeof(t.parsed) = 'string'
+                            then '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'
+                        WHEN jsonb_typeof(t.parsed) = 'null'
+                            then 'null'
                         ELSE
-                            ''''||pt.v||''''
+                            pt.v
                     END AS v
-                */
             ) as p
                 ON TRUE
             WHERE t.lvl = u.lvl
@@ -180,7 +160,7 @@ BEGIN
                         AND t.rn = mytable.rn
                 RETURNING 1
         )
-            SELECT COUNT(*) 
+            SELECT COUNT(1) 
                 FROM r
                 INTO _count;
     END LOOP;
@@ -189,7 +169,7 @@ BEGIN
         FROM mytable
             WHERE lvl = 0 AND rn = 0
         INTO _res;
-    
+    perform reclada.raise_notice( _res);
     DROP TABLE mytable;
     RETURN _res;
 END 

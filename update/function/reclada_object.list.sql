@@ -90,6 +90,103 @@
  *               OFFSET 0 
  *               LIMIT 5
  *
+Comparison Operators
+    >
+    <
+    <=
+    >= 
+    = 
+    !=
+Logical:
+    AND
+    OR
+    NOT
+Other:
+    LIKE (second operand must be string)
+        {
+            "operator":"LIKE",
+            "value":["{class}","rev%"]
+        }
+    NOT LIKE (second operand must be string)
+        {
+            "operator":"NOT LIKE",
+            "value":["{class}","rev%"]
+        }
+        equivalent:
+        {
+            "operator":"NOT",
+            "value":
+            [
+                {
+                    "operator":"LIKE",
+                    "value":["{class}","rev%"]
+                }
+            ]
+        }
+    IS (second operand must be NULL)
+        { 
+            "operator":"IS", 
+            "value":
+            [
+                "{class}",
+                null
+            ]
+        }
+    IS NOT (second operand must be NULL)
+        { 
+            "operator":"IS NOT", 
+            "value":
+            [
+                "{class}",
+                null
+            ]
+        }
+        equivalent:
+        { 
+            "operator":"NOT", 
+            "value":
+            [
+                { 
+                    "operator":"IS", 
+                    "value":
+                    [
+                        "{class}",
+                        null
+                    ]
+                }
+            ]
+        }
+        note: not equivalent:
+        { 
+            "operator":"IS", 
+            "value":
+            [
+                "{class}",
+                 {
+                    "operator":"NOT",
+                    "value":
+                    [
+                        null
+                    ]
+                }
+            ]
+        }
+    IN (second operand must be ",")
+        {
+            "operator":"in",
+            "value":
+            [
+                "{attributes,num}",
+                { 
+                    "operator":",", 
+                    "value":
+                    [
+                        2,3
+                    ]
+                }
+            ]
+        }
+    , using only with IN (example before)
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list;
@@ -231,13 +328,13 @@ BEGIN
     END IF;
     query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
 
-    -- RAISE NOTICE 'conds: %', '
-    --             SELECT obj.data
-    --             '
-    --             || query
-    --             ||
-    --             ' ORDER BY ' || order_by ||
-    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
+    RAISE NOTICE 'conds: %', '
+                SELECT obj.data
+                '
+                || query
+                ||
+                ' ORDER BY ' || order_by ||
+                ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
     EXECUTE E'SELECT to_jsonb(array_agg(T.data))
         FROM (
             SELECT obj.data
