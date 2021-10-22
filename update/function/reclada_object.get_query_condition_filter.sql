@@ -106,51 +106,20 @@ BEGIN
             (
                 SELECT CASE 
                         WHEN fm.repl is not NULL 
-                            then fm.repl
-                        WHEN pt.v LIKE '{attributes,%}'
-                            THEN format('attrs #>> ''%s''', REPLACE(pt.v,'{attributes,','{'))
-                        -- WHEN pt.v LIKE '%{%}%'
-                        --     THEN REPLACE(
-                        --             REPLACE(pt.v,'{','data #>> ''{'),
-                        --         '}','}''')
-                        --WHEN pt.v LIKE '(%)'
-                        --    THEN REPLACE(
-                        --            REPLACE(
-                        --                REPLACE(pt.v,'(','(''')
-                        --            ,')',''')')
-                        --        ,',',''',''')
+                            then '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)
+                        WHEN pt.v LIKE '{%}'
+                            THEN format('data #> ''%s''', pt.v)
+                        -- WHEN pt.v LIKE '{attributes,%}'
+                        --     THEN format('attrs #> ''%s''', REPLACE(pt.v,'{attributes,','{'))
                         WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')
-                            then pt.v
-                        WHEN jsonb_typeof(t.parsed) in ('string')
-                            then ''''||REPLACE(pt.v,'''','''''')||''''
-                        WHEN jsonb_typeof(t.parsed) in ('null')
+                            then '''' || pt.v || '''::jsonb'
+                        WHEN jsonb_typeof(t.parsed) = 'string'
+                            then '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'
+                        WHEN jsonb_typeof(t.parsed) = 'null'
                             then 'null'
                         ELSE
                             pt.v
                     END AS v
-                /*
-                SELECT CASE 
-                        WHEN pt.v LIKE '{attributes,%}'
-                            THEN format('attrs #>> ''''%s''''', REPLACE(pt.v,'{attributes,','{'))
-                        WHEN pt.v LIKE '{class}'
-                            THEN 'class_name'
-                        
-                        WHEN pt.v LIKE '{status}'
-                            THEN 'status_caption'
-                        WHEN pt.v LIKE '(%)'
-                            THEN replace(
-                                    replace(
-                                        replace(pt.v,'(','(''')
-                                    ,')',''')')
-                                ,',',''',''')
-                        WHEN pt.v LIKE '{transactionID}'
-                            THEN 'transaction_id'
-                        WHEN pt.v LIKE '{%}'
-                            THEN 'transaction_id'
-                        ELSE
-                            ''''||pt.v||''''
-                    END AS v
-                */
             ) as p
                 ON TRUE
             WHERE t.lvl = u.lvl

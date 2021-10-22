@@ -90,29 +90,29 @@
  *               OFFSET 0 
  *               LIMIT 5
  *
-Сравнения
+Comparison Operators
     >
     <
     <=
     >= 
     = 
     !=
-Логические:
+Logical:
     AND
     OR
     NOT
-Прочее
-    LIKE (второй операнд обязательно строка)
+Other:
+    LIKE (second operand must be string)
         {
             "operator":"LIKE",
             "value":["{class}","rev%"]
         }
-    NOT LIKE (второй операнд обязательно строка)
+    NOT LIKE (second operand must be string)
         {
             "operator":"NOT LIKE",
             "value":["{class}","rev%"]
         }
-        эквивалент:
+        equivalent:
         {
             "operator":"NOT",
             "value":
@@ -123,7 +123,7 @@
                 }
             ]
         }
-    IS (второй операнд обязательно NULL)
+    IS (second operand must be NULL)
         { 
             "operator":"IS", 
             "value":
@@ -132,7 +132,7 @@
                 null
             ]
         }
-    IS NOT (второй операнд обязательно NULL)
+    IS NOT (second operand must be NULL)
         { 
             "operator":"IS NOT", 
             "value":
@@ -141,9 +141,52 @@
                 null
             ]
         }
-    IN (второй операнд обязательно оператор ",")
-    
-
+        equivalent:
+        { 
+            "operator":"NOT", 
+            "value":
+            [
+                { 
+                    "operator":"IS", 
+                    "value":
+                    [
+                        "{class}",
+                        null
+                    ]
+                }
+            ]
+        }
+        note: not equivalent:
+        { 
+            "operator":"IS", 
+            "value":
+            [
+                "{class}",
+                 {
+                    "operator":"NOT",
+                    "value":
+                    [
+                        null
+                    ]
+                }
+            ]
+        }
+    IN (second operand must be ",")
+        {
+            "operator":"in",
+            "value":
+            [
+                "{attributes,num}",
+                { 
+                    "operator":",", 
+                    "value":
+                    [
+                        2,3
+                    ]
+                }
+            ]
+        }
+    , using only with IN (example before)
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list;

@@ -5,6 +5,8 @@
 */
 
 
+\i 'function/api.reclada_object_list.sql'
 \i 'function/reclada_object.parse_filter.sql'
 \i 'function/reclada_object.get_query_condition_filter.sql'
-\i 'function/api.reclada_object_list.sql'
+\i 'function/reclada_object.list.sql'
+\i 'view/reclada.v_filter_mapping.sql'

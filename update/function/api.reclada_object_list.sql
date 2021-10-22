@@ -76,7 +76,7 @@ BEGIN
     select format(  '{
                         "filter":
                         {
-                            "operator":"and",
+                            "operator":"AND",
                             "value":[
                                 {
                                     "operator":"=",
