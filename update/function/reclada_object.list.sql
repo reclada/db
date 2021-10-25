@@ -415,13 +415,13 @@ BEGIN
     END IF;
     query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
 
-    RAISE NOTICE 'conds: %', '
-                SELECT obj.data
-                '
-                || query
-                ||
-                ' ORDER BY ' || order_by ||
-                ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
+    -- RAISE NOTICE 'conds: %', '
+    --             SELECT obj.data
+    --             '
+    --             || query
+    --             ||
+    --             ' ORDER BY ' || order_by ||
+    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
     EXECUTE E'SELECT to_jsonb(array_agg(T.data))
         FROM (
             SELECT obj.data
