@@ -19,6 +19,7 @@ DROP VIEW IF EXISTS reclada.v_object;
 --{function/reclada_object.create}
 --{function/reclada_object.create_subclass}
 --{function/reclada_object.get_condition_array}
+--{function/reclada_object.update}
 
 DROP INDEX IF EXISTS reclada.parent_guid_index;
 ALTER TABLE reclada.object DROP COLUMN IF EXISTS parent_guid;
