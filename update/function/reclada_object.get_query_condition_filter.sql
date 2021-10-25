@@ -87,8 +87,8 @@ DECLARE
 BEGIN 
     -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE
     CREATE TEMP TABLE mytable AS
-        SELECT  lvl  ,  rn   , idx  ,
-                op   ,  prev , val  ,  
+        SELECT  lvl             ,  rn   , idx  ,
+                upper(op) as op ,  prev , val  ,  
                 parsed
             FROM reclada_object.parse_filter(data);
 
@@ -107,16 +107,37 @@ BEGIN
                 SELECT CASE 
                         WHEN fm.repl is not NULL 
                             then '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)
-                        WHEN pt.v LIKE '{%}'
-                            THEN format('data #> ''%s''', pt.v)
                         -- WHEN pt.v LIKE '{attributes,%}'
                         --     THEN format('attrs #> ''%s''', REPLACE(pt.v,'{attributes,','{'))
                         WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')
-                            then '''' || pt.v || '''::jsonb'
-                        WHEN jsonb_typeof(t.parsed) = 'string'
-                            then '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'
+                            then 
+                                case 
+                                    when t.op IN (' + ')
+                                        then pt.v
+                                    else '''' || pt.v || '''::jsonb'
+                                end
+                        WHEN jsonb_typeof(t.parsed) = 'string' 
+                            then    
+                                case
+                                    WHEN pt.v LIKE '{%}' 
+                                        THEN
+                                            case
+                                                when t.op IN (' LIKE ', ' NOT LIKE ', ' || ', ' ~ ', ' !~ ', ' ~* ', ' !~* ', ' SIMILAR TO ')
+                                                    then format('(data #>> ''%s'')', pt.v)
+                                                when t.op IN (' + ')
+                                                    then format('(data #> ''%s'')::decimal', pt.v)
+                                                else
+                                                    format('data #> ''%s''', pt.v)
+                                            end
+                                    when t.op IN (' LIKE ', ' NOT LIKE ', ' || ', ' ~ ', ' !~ ', ' ~* ', ' !~* ', ' SIMILAR TO ')
+                                        then ''''||REPLACE(pt.v,'''','''''')||''''
+                                    else
+                                        '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'
+                                end
                         WHEN jsonb_typeof(t.parsed) = 'null'
                             then 'null'
+                        WHEN jsonb_typeof(t.parsed) = 'array'
+                            then ''''||REPLACE(pt.v,'''','''''')||'''::jsonb'
                         ELSE
                             pt.v
                     END AS v
@@ -148,7 +169,14 @@ BEGIN
                                 WHEN 1
                                     THEN format('(%s %s)', res.op, min(res.parsed #>> '{}') )
                                 ELSE
-                                    '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||')'
+                                    CASE 
+                                        when res.op in (' || ')
+                                            then '(''"''||'||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||'||''"'')::jsonb'
+                                        when res.op in (' + ')
+                                            then '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||')::text::jsonb'
+                                        else
+                                            '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||')'
+                                    end
                             end AS converted
                         FROM mytable res 
                             WHERE res.parsed IS NOT NULL
