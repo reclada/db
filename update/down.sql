@@ -32,12 +32,14 @@ DO $$
 DECLARE
 	rltshp_uuid TEXT;
 	dds_uuid	uuid;
+	dds_rev		uuid;
+	dds_revn	int;
 	rlt_cnt		int;
 BEGIN
-	SELECT obj_id
+	SELECT obj_id,attrs->>'revision', revision_num
 	FROM reclada.v_active_object vao 
 	WHERE attrs->>'name' = 'defaultDataSet'
-		INTO dds_uuid;
+		INTO dds_uuid, dds_rev, dds_revn;
 
 	SELECT count(*)
 	FROM reclada.v_active_object vao
@@ -45,24 +47,29 @@ BEGIN
 		INTO rlt_cnt;
 	
 	IF rlt_cnt>0 THEN
-	SELECT reclada_object.UPDATE(b.d) FROM (
-			SELECT jsonb_set (a.data,'{attributes, dataSources}',(
-				SELECT '['||string_agg('"'||obj_id::TEXT||'"',',')||']'
-				FROM v_active_object vao 
-				WHERE class_name ='Relationship' AND attrs ->>'type'= 'defaultDataSet to DataSource')
-				::jsonb) AS d 
-			FROM (
-				SELECT DATA 
-				FROM v_active_object vao
-				WHERE obj_id=dds_uuid)
-			a) 
-		b;
-		FOR rltshp_uuid IN (SELECT obj_id FROM v_active_object vao WHERE class_name ='Relationship' AND attrs ->>'type'= 'defaultDataSet to DataSource') LOOP
-			PERFORM reclada_object.delete(
-				format('{
-					"GUID": "%s"
-					}', rltshp_uuid)::jsonb);
-		END LOOP;
+		DELETE FROM reclada.object
+		WHERE guid = dds_uuid AND status = reclada_object.get_active_status_obj_id();
+
+		DELETE FROM reclada.object
+		WHERE guid = dds_rev;
+
+		UPDATE reclada.object
+		SET status = reclada_object.get_active_status_obj_id()
+		WHERE status = reclada_object.get_archive_status_obj_id()
+			AND id = (
+				SELECT id
+				FROM reclada.v_object
+				WHERE obj_id = dds_uuid
+					AND revision_num = dds_revn - 1
+			);
+
+		DELETE FROM reclada.OBJECT 
+		WHERE class=(
+			SELECT obj_id 
+			FROM v_class  
+			WHERE for_class ='Relationship'
+		)
+			AND ATTRIBUTES->>'type' = 'defaultDataSet to DataSource';
 	END IF;
 END
 $$;

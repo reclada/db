@@ -45,8 +45,10 @@ BEGIN
                     }
                 }', dsrc_uuid, dset_uuid)::jsonb);
 	END LOOP;
-	dset_data := jsonb_set(dset_data, '{attributes, dataSources}', '[]'::jsonb);
-	PERFORM reclada_object.update(dset_data);
+	IF (jsonb_array_length(dset_data->'attributes'->'dataSources') > 0 )  THEN
+		dset_data := jsonb_set(dset_data, '{attributes, dataSources}', '[]'::jsonb);
+		PERFORM reclada_object.update(dset_data);
+	END IF;
 END
 $$;
 

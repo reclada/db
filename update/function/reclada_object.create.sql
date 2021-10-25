@@ -16,8 +16,7 @@ DROP FUNCTION IF EXISTS reclada_object.create;
 CREATE OR REPLACE FUNCTION reclada_object.create
 (
     data_jsonb jsonb, 
-    user_info jsonb default '{}'::jsonb,
-    _parent_guid uuid default null
+    user_info jsonb default '{}'::jsonb
 )
 RETURNS jsonb AS $$
 DECLARE
@@ -31,6 +30,7 @@ DECLARE
     obj_GUID      uuid;
     res           jsonb;
     affected      uuid[];
+    _parent_guid  uuid;
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -107,6 +107,8 @@ BEGIN
             RAISE EXCEPTION 'GUID: % is duplicate', obj_GUID;
         END IF;
         --raise notice 'schema: %',schema;
+
+        _parent_guid = (data->>'parent_guid')::uuid;
 
         INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)
             SELECT  CASE

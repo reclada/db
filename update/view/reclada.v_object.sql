@@ -2,37 +2,28 @@
 CREATE OR REPLACE VIEW reclada.v_object
 AS
 with t as (
-SELECT obj.id,
-            obj.guid,
-            obj.class,
-            NULL AS num,
-            NULL AS revision,
+    SELECT  
+            obj.id      ,
+            obj.GUID    ,
+            obj.class   ,
+            r.num       ,
+            NULLIF(obj.attributes ->> 'revision','')::uuid 
+                as revision,
             obj.attributes,
-            obj.status,
-            obj.created_time,
-            obj.created_by,
+            obj.status  ,
+            obj.created_time ,
+            obj.created_by   ,
             obj.transaction_id,
             obj.parent_guid
-           FROM object obj
-           WHERE obj.attributes ->> 'revision' IS NULL
-       UNION ALL 
-           SELECT obj.id,
-            obj.guid,
-            obj.class,
-            r.num,
-            (obj.attributes ->> 'revision')::uuid AS revision,
-            obj.attributes,
-            obj.status,
-            obj.created_time,
-            obj.created_by,
-            obj.transaction_id,
-            obj.parent_guid
-           FROM object obj
-             JOIN ( SELECT (r_1.attributes ->> 'num'::text)::bigint AS num,
-                    r_1.guid
-                   FROM object r_1
-                  WHERE (r_1.class = ( SELECT reclada_object.get_guid_for_class('revision'::text) AS get_guid_for_class))) r ON r.guid = (obj.attributes ->> 'revision')::uuid
-           WHERE obj.attributes ->> 'revision' <> ''
+        FROM reclada.object obj
+        LEFT JOIN 
+        (
+            SELECT  (r.attributes->>'num')::bigint num,
+                    r.GUID 
+            FROM reclada.object r
+                WHERE class IN (SELECT reclada_object.get_GUID_for_class('revision'))
+        ) r
+            ON r.GUID = NULLIF(obj.attributes ->> 'revision','')::uuid
 )
     SELECT  
             t.id                 ,
@@ -52,7 +43,8 @@ SELECT obj.id,
                                 t.class      as class     ,
                                 os.caption   as status    ,
                                 t.attributes as attributes,
-                                t.transaction_id as "transactionID"
+                                t.transaction_id as "transactionID",
+                                t.parent_guid as "parent_guid"
                     ) as tmp
             )::jsonb as data,
             u.login as login_created_by,
