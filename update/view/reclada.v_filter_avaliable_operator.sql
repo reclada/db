@@ -1,0 +1,28 @@
+drop VIEW if EXISTS reclada.v_filter_avaliable_operator;
+CREATE OR REPLACE VIEW reclada.v_filter_avaliable_operator
+AS
+    SELECT       ' = ' AS operator
+    UNION SELECT ' LIKE '    
+    UNION SELECT ' NOT LIKE '
+    UNION SELECT ' || '
+    UNION SELECT ' ~ '
+    UNION SELECT ' !~ '
+    UNION SELECT ' ~* '
+    UNION SELECT ' !~* '
+    UNION SELECT ' SIMILAR TO '
+    UNION SELECT ' + '
+    UNION SELECT ' > '
+    UNION SELECT ' < '
+    UNION SELECT ' <= '
+    UNION SELECT ' != '
+    UNION SELECT ' >= '
+    UNION SELECT ' AND '
+    UNION SELECT ' OR '
+    UNION SELECT ' NOT '
+    UNION SELECT ' IS '
+    UNION SELECT ' IS NOT '
+    UNION SELECT ' IN '
+    UNION SELECT ' , '
+    UNION SELECT ' + '
+    UNION SELECT ' @> '
+    UNION SELECT ' <@ '

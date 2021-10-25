@@ -122,7 +122,7 @@ Logical:
     OR
     NOT
 Other:
-    LIKE (second operand must be string)
+    LIKE / ~ / !~ / ~* / !~* / SIMILAR TO (second operand must be string) 
         {
             "operator":"LIKE",
             "value":["{class}","rev%"]
@@ -314,9 +314,18 @@ BEGIN
     		order_by_jsonb := format('[%s]', order_by_jsonb);
     END IF;
     SELECT string_agg(
-        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
+        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(ord.v, 'ASC')),
         ' , ')
     FROM jsonb_array_elements(order_by_jsonb) T
+    LEFT JOIN LATERAL
+    (
+        select upper(T.value->>'order') v
+    ) ord on true
+    LEFT JOIN LATERAL
+    (
+        SELECT reclada.raise_exception('order does not allowed '|| ord.v,'reclada_object.list')
+            where ord.v not in ('ASC', 'DESC')
+    ) V on true
     INTO order_by;
 
     limit_ := data->>'limit';
