@@ -122,14 +122,14 @@ BEGIN
                                     WHEN pt.v LIKE '{%}' 
                                         THEN
                                             case
-                                                when t.op IN (' LIKE ',' NOT LIKE ', ' || ')
+                                                when t.op IN (' LIKE ', ' NOT LIKE ', ' || ', ' ~ ', ' !~ ', ' ~* ', ' !~* ', ' SIMILAR TO ')
                                                     then format('(data #>> ''%s'')', pt.v)
                                                 when t.op IN (' + ')
                                                     then format('(data #> ''%s'')::decimal', pt.v)
                                                 else
                                                     format('data #> ''%s''', pt.v)
                                             end
-                                    when t.op IN (' LIKE ', ' NOT LIKE ', ' || ')
+                                    when t.op IN (' LIKE ', ' NOT LIKE ', ' || ', ' ~ ', ' !~ ', ' ~* ', ' !~* ', ' SIMILAR TO ')
                                         then ''''||REPLACE(pt.v,'''','''''')||''''
                                     else
                                         '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'
