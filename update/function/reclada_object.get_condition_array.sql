@@ -20,5 +20,5 @@ RETURNS text AS $$
     CONCAT(
         key_path,
         ' ', COALESCE(data->>'operator', '='), ' ',
-        format(E'\'%s\'::jsonb', data->'object'#>>'{}'))
+        format(E'\'%s\'::jsonb', data->'object'#>>'{}')) || CASE WHEN data->>'operator'='<@' THEN ' AND ' || key_path || ' != ''[]''::jsonb' ELSE '' END
 $$ LANGUAGE SQL IMMUTABLE;

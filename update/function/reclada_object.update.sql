@@ -106,7 +106,7 @@ BEGIN
     PERFORM reclada_object.datasource_insert
             (
                 class_name,
-                (schema->>'GUID')::uuid,
+                v_obj_id,
                 v_attrs
             );
     PERFORM reclada_object.refresh_mv(class_name);  
