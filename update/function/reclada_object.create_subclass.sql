@@ -17,7 +17,7 @@ DECLARE
     attrs           jsonb;
     class_schema    jsonb;
     version_         integer;
-
+    class_guid    uuid;
 BEGIN
 
     class := data->>'class';
@@ -46,6 +46,13 @@ BEGIN
     version_ := coalesce(version_,1);
     class_schema := class_schema->'attributes'->'schema';
 
+    SELECT obj_id
+    FROM reclada.v_class
+    WHERE for_class = class
+    ORDER BY version DESC
+    LIMIT 1
+    INTO class_guid;
+
     PERFORM reclada_object.create(format('{
         "class": "jsonschema",
         "attributes": {
@@ -56,7 +63,8 @@ BEGIN
                 "properties": %s,
                 "required": %s
             }
-        }
+        },
+        "parent_guid" : "%s"
     }',
     new_class,
     version_,
@@ -64,7 +72,8 @@ BEGIN
     (SELECT jsonb_agg(el) FROM (
         SELECT DISTINCT pg_catalog.jsonb_array_elements(
             (class_schema -> 'required') || (attrs -> 'required')
-        ) el) arr)
+        ) el) arr),
+    class_guid
     )::jsonb);
 
 END;

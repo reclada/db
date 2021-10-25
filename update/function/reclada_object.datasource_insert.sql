@@ -9,29 +9,51 @@
  *  obj_id     - GUID of object
  *  attributes - attributes of added object
  */
+ DROP FUNCTION IF EXISTS reclada_object.datasource_insert;
 CREATE OR REPLACE FUNCTION reclada_object.datasource_insert
 (
     _class_name text,
-    obj_id     uuid,
+    _obj_id     uuid,
     attributes jsonb
 )
 RETURNS void AS $$
 DECLARE
-    dataset       jsonb;
+    dataset_guid  uuid;
     uri           text;
     environment   varchar;
+    rel_cnt       int;
+    dataset2ds_type text;
 BEGIN
     IF _class_name in 
             ('DataSource','File') THEN
 
-        SELECT v.data
+        dataset2ds_type := 'defaultDataSet to DataSource';
+
+        SELECT v.obj_id
         FROM reclada.v_active_object v
 	    WHERE v.attrs->>'name' = 'defaultDataSet'
-	    INTO dataset;
+	    INTO dataset_guid;
 
-        dataset := jsonb_set(dataset, '{attributes, dataSources}', dataset->'attributes'->'dataSources' || format('["%s"]', obj_id)::jsonb);
+        SELECT count(*)
+        FROM reclada.v_active_object
+        WHERE class_name = 'Relationship'
+            AND (attrs->>'object')::uuid = _obj_id
+            AND (attrs->>'subject')::uuid = dataset_guid
+            AND attrs->>'type' = dataset2ds_type
+                INTO rel_cnt;
 
-        PERFORM reclada_object.update(dataset);
+        IF rel_cnt=0 THEN
+            PERFORM reclada_object.create(
+                format('{
+                    "class": "Relationship",
+                    "attributes": {
+                        "type": "%s",
+                        "object": "%s",
+                        "subject": "%s"
+                        }
+                    }', dataset2ds_type, _obj_id, dataset_guid)::jsonb);
+
+        END IF;
 
         uri := attributes->>'uri';
 
@@ -52,7 +74,7 @@ BEGIN
                     "command": "./run_pipeline.sh",
                     "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
                     }
-                }', environment, uri, obj_id)::jsonb);
+                }', environment, uri, _obj_id)::jsonb);
 
     END IF;
 END;

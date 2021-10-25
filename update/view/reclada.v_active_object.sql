@@ -13,7 +13,8 @@ AS
             t.class_name        ,
             t.attrs             ,
             t.data              ,
-            t.transaction_id
+            t.transaction_id    ,
+            t.parent_guid
         FROM reclada.v_object as t
             -- объект не удален
             where t.status = reclada_object.get_active_status_obj_id()
