@@ -7,4 +7,11 @@
 \i 'view/reclada.v_filter_avaliable_operator.sql'
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada_object.list.sql'
+\i 'function/reclada.xor.sql'
 
+CREATE OPERATOR ^ 
+(
+    PROCEDURE = reclada.xor, 
+    LEFTARG = boolean, 
+    RIGHTARG = boolean
+);
