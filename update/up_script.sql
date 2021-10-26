@@ -10,7 +10,7 @@
 \i 'function/reclada_object.list.sql'
 \i 'function/reclada.xor.sql'
 
-CREATE OPERATOR ^ 
+CREATE OPERATOR # 
 (
     PROCEDURE = reclada.xor, 
     LEFTARG = boolean, 

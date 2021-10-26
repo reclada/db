@@ -1,7 +1,7 @@
 -- you you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
-drop OPERATOR IF EXISTS ^(boolean, boolean);
+drop OPERATOR IF EXISTS #(boolean, boolean);
 DROP VIEW IF EXISTS reclada.v_revision;
 DROP VIEW IF EXISTS reclada.v_import_info;
 DROP VIEW IF EXISTS reclada.v_pk_for_class;

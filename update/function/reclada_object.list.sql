@@ -121,7 +121,7 @@ Logical:
     AND
     OR
     NOT
-    ^ - XOR
+    # - XOR
 Other:
     LIKE / ~ / !~ / ~* / !~* / SIMILAR TO (second operand must be string) 
         {
