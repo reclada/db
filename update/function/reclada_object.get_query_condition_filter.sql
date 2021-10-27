@@ -120,7 +120,7 @@ BEGIN
                         WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')
                             then 
                                 case 
-                                    when o.data_type in ('NUMERIC','INT')
+                                    when o.input_type in ('NUMERIC','INT')
                                         then pt.v
                                     else '''' || pt.v || '''::jsonb'
                                 end
@@ -130,16 +130,16 @@ BEGIN
                                     WHEN pt.v LIKE '{%}'
                                         THEN
                                             case
-                                                when o.data_type = 'TEXT'
+                                                when o.input_type = 'TEXT'
                                                     then format('(data #>> ''%s'')', pt.v)
-                                                when o.data_type = 'NUMERIC'
+                                                when o.input_type = 'NUMERIC'
                                                     then format('(data #>> ''%s'')::NUMERIC', pt.v)
-                                                when o.data_type = 'INT'
+                                                when o.input_type = 'INT'
                                                     then format('(data #>> ''%s'')::INT', pt.v)
                                                 else
                                                     format('data #> ''%s''', pt.v)
                                             end
-                                    when t.op IN (select operator from reclada.v_filter_avaliable_operator where data_type = 'TEXT')
+                                    when o.input_type = 'TEXT'
                                         then ''''||REPLACE(pt.v,'''','''''')||''''
                                     else
                                         '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'
@@ -178,7 +178,7 @@ BEGIN
                             CASE COUNT(1) 
                                 WHEN 1
                                     THEN 
-                                        CASE o.data_type
+                                        CASE o.output_type
                                             when 'NUMERIC'
                                                 then format('(%s %s)::TEXT::JSONB', res.op, min(res.parsed #>> '{}') )
                                             else 
@@ -186,9 +186,9 @@ BEGIN
                                         end
                                 ELSE
                                     CASE 
-                                        when o.data_type = 'TEXT'
-                                            then '(''"''||'||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||'||''"'')::TEXT'
-                                        when o.data_type in ('NUMERIC','INT')
+                                        when o.output_type = 'TEXT'
+                                            then '(''"''||'||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||'||''"'')::JSONB'
+                                        when o.output_type in ('NUMERIC','INT')
                                             then '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||')::TEXT::JSONB'
                                         else
                                             '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||')'
@@ -199,7 +199,7 @@ BEGIN
                             ON o.operator = res.op
                             WHERE res.parsed IS NOT NULL
                                 AND res.lvl = (SELECT max(lvl)+1 FROM mytable WHERE parsed IS NULL)
-                            GROUP BY  res.prev, res.op, res.lvl, o.data_type
+                            GROUP BY  res.prev, res.op, res.lvl, o.input_type, o.output_type
                 ) t
                 WHERE
                     t.lvl = mytable.lvl
