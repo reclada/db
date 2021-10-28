@@ -55,6 +55,10 @@ deploy-dynamic-env:
     - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
 
     - cat $CI_PROJECT_DIR/update/update_config.json
+
+    - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_db.py
+    - cat $CI_PROJECT_DIR/update/update_db.py
+
     - python --version
     - psql -V
     - cd $CI_PROJECT_DIR/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
@@ -91,6 +95,10 @@ deploy-autotest-env:
     - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
 
     - cat $CI_PROJECT_DIR/update/update_config.json
+
+    - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_db.py
+    - cat $CI_PROJECT_DIR/update/update_db.py
+
     - python --version
     - psql -V
     - cd $CI_PROJECT_DIR/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
@@ -151,6 +159,10 @@ deploy-prod-env:
     - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
 
     - cat $CI_PROJECT_DIR/update/update_config.json
+
+    - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_db.py
+    - cat $CI_PROJECT_DIR/update/update_db.py
+    
     - python --version
     - psql -V
     - python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
