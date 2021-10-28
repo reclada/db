@@ -84,3 +84,4 @@ update reclada.object
 }'::jsonb
     where class = reclada_object.get_jsonschema_GUID() 
         and attributes->>'forClass' = 'Runner';
+REFRESH MATERIALIZED VIEW reclada.v_class_lite;
