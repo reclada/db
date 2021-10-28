@@ -56,7 +56,7 @@ deploy-dynamic-env:
 
     - cat $CI_PROJECT_DIR/update/update_config.json
 
-    - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_db.py
     - cat $CI_PROJECT_DIR/update/update_db.py
 
     - python --version
