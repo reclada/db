@@ -98,7 +98,7 @@ def rmdir(top:str):
 
 def clone_db():
     rmdir('db')
-    os.system(f'git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/db.git')
+    os.system(f'git clone https://gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com/developers/db.git')
     os.chdir('db')
     checkout(branch_db)
 
