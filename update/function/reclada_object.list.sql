@@ -54,41 +54,6 @@
  *   "limit": 5,
  *   "offset": 2
  *   }::jsonb
- *   3. SELECT reclada_object.list(
- *       '{
- *           "filter": {
- *                   "operator":"or",
- *                       "value":[
- *                       {
- *                           "operator":"in",
- *                           "value":["{GUID}","(be193cf5-3156-4df4-8c9b-58b09524ce2f,67f37293-2dd6-469c-bc2d-923533991f77)"]
- *                       },
- *                       {
- *                           "operator":"=",
- *                           "value":["{class}","ObjectStatus"]
- *                       }
- *                   ]
- *               },
- *           "orderBy": [{"field": "id", "order": "DESC"}],
- *           "limit": 5,
- *           "offset": 0
- *       }'::jsonb)
- *   to make query:
- *       SELECT obj.data
- *           FROM reclada.v_active_object obj 
- *           WHERE (
- *                   (
- *                       data #>> '{GUID}' in 
- *                       (
- *                           'be193cf5-3156-4df4-8c9b-58b09524ce2f',
- *                           '67f37293-2dd6-469c-bc2d-923533991f77'
- *                       )
- *                   ) 
- *                   or (class_name = 'ObjectStatus')
- *               ) 
- *               ORDER BY obj.data#>'{id}' DESC 
- *               OFFSET 0 
- *               LIMIT 5
  *
 Comparison Operators
     >
