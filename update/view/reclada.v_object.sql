@@ -44,7 +44,7 @@ with t as (
                                 os.caption   as status    ,
                                 t.attributes as attributes,
                                 t.transaction_id as "transactionID",
-                                t.parent_guid as "parent_guid"
+                                t.parent_guid as "parentGUID"
                     ) as tmp
             )::jsonb as data,
             u.login as login_created_by,

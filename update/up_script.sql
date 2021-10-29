@@ -1,59 +1,87 @@
--- version = 39
+-- version = 40
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
 
-\i 'function/api.reclada_object_list.sql'
-\i 'function/reclada_object.parse_filter.sql'
+\i 'view/reclada.v_filter_avaliable_operator.sql'
+\i 'view/reclada.v_object.sql'
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada_object.list.sql'
-\i 'view/reclada.v_filter_mapping.sql'
+\i 'function/reclada.xor.sql'
 
-ALTER TABLE reclada.object ADD COLUMN IF NOT EXISTS parent_guid uuid;
-CREATE INDEX IF NOT EXISTS parent_guid_index ON reclada.object USING btree (parent_guid);
+CREATE OPERATOR # 
+(
+    PROCEDURE = reclada.xor, 
+    LEFTARG = boolean, 
+    RIGHTARG = boolean
+);
 
-\i 'function/reclada_object.update.sql'
-\i 'function/reclada_object.datasource_insert.sql'
-\i 'function/reclada_object.create.sql'
-\i 'function/reclada_object.create_subclass.sql'
-\i 'view/reclada.v_object.sql'
-\i 'view/reclada.v_active_object.sql'
-\i 'view/reclada.v_class.sql'
-\i 'function/reclada_object.get_condition_array.sql'
-
-CREATE INDEX IF NOT EXISTS class_lite_obj_idx ON reclada.v_class_lite USING btree (obj_id);
-CREATE INDEX IF NOT EXISTS class_lite_class_idx ON reclada.v_class_lite USING btree (for_class);
-
-DO $$
-DECLARE
-	dsrc_uuid	TEXT;
-	dset_uuid	TEXT;
-	trn_id		INT;
-	dset_data	jsonb;
-
-BEGIN
-	SELECT v.obj_id, v.data
-    FROM reclada.v_active_object v
-    WHERE v.attrs->>'name' = 'defaultDataSet'
-	    INTO dset_uuid, dset_data;
-	FOR dsrc_uuid IN (	SELECT DISTINCT jsonb_array_elements_text(attrs->'dataSources') 
-						FROM v_active_object vao 
-						WHERE obj_id = dset_uuid::uuid) LOOP
-		PERFORM reclada_object.create(
-            format('{
-                "class": "Relationship",
-                "attributes": {
-                    "type": "defaultDataSet to DataSource",
-                    "object": "%s",
-                    "subject": "%s"
-                    }
-                }', dsrc_uuid, dset_uuid)::jsonb);
-	END LOOP;
-	IF (jsonb_array_length(dset_data->'attributes'->'dataSources') > 0 )  THEN
-		dset_data := jsonb_set(dset_data, '{attributes, dataSources}', '[]'::jsonb);
-		PERFORM reclada_object.update(dset_data);
-	END IF;
-END
-$$;
-
+update reclada.object
+    set attributes = '
+{
+    "schema": {
+        "type": "object",
+        "required": [
+            "command",
+            "status",
+            "type",
+            "task",
+            "environment"
+        ],
+        "properties": {
+            "tags": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "platformRunnerID": {
+                "type": "string"
+            },
+            "task": {
+                "type": "string",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"
+            },
+            "type": {
+                "type": "string"
+            },
+            "runner": {
+                "type": "string",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"
+            },
+            "status": {
+                "type": "string",
+                "enum ": [
+                    "up",
+                    "down",
+                    "idle"
+                ]
+            },
+            "command": {
+                "type": "string"
+            },
+            "environment": {
+                "type": "string",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"
+            },
+            "inputParameters": {
+                "type": "array",
+                "items": {
+                    "type": "object"
+                }
+            },
+            "outputParameters": {
+                "type": "array",
+                "items": {
+                    "type": "object"
+                }
+            }
+        }
+    },
+    "version": "1",
+    "forClass": "Runner"
+}'::jsonb
+    where class = reclada_object.get_jsonschema_GUID() 
+        and attributes->>'forClass' = 'Runner';
+REFRESH MATERIALIZED VIEW reclada.v_class_lite;
