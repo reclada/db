@@ -246,6 +246,7 @@ DROP FUNCTION IF EXISTS reclada_object.list;
 CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, gui boolean default false)
 RETURNS jsonb AS $$
 DECLARE
+    _f_name TEXT = 'reclada_object.list';
     class               text;
     attrs               jsonb;
     order_by_jsonb      jsonb;
@@ -263,12 +264,14 @@ DECLARE
     _filter             JSONB;
 BEGIN
 
+    perform reclada.validate_json(data, _f_name);
+
     tran_id := (data->>'transactionID')::bigint;
     class := data->>'class';
     _filter = data->'filter';
-    IF (class IS NULL and tran_id IS NULL and _filter IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class, transactionID and filter are not specified';
-    END IF;
+    -- IF (class IS NULL and tran_id IS NULL and _filter IS NULL) THEN
+    --     RAISE EXCEPTION 'The reclada object class, transactionID and filter are not specified';
+    -- END IF;
 
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
@@ -276,39 +279,30 @@ BEGIN
         (order_by_jsonb = '[]'::jsonb)) THEN
         order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
     END IF;
-    IF (jsonb_typeof(order_by_jsonb) != 'array') THEN
-    		order_by_jsonb := format('[%s]', order_by_jsonb);
-    END IF;
+    -- IF (jsonb_typeof(order_by_jsonb) != 'array') THEN
+    -- 		order_by_jsonb := format('[%s]', order_by_jsonb);
+    -- END IF;
     SELECT string_agg(
-        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(ord.v, 'ASC')),
+        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
         ' , ')
-    FROM jsonb_array_elements(order_by_jsonb) T
-    LEFT JOIN LATERAL
-    (
-        select upper(T.value->>'order') v
-    ) ord on true
-    LEFT JOIN LATERAL
-    (
-        SELECT reclada.raise_exception('order does not allowed '|| ord.v,'reclada_object.list')
-            where ord.v not in ('ASC', 'DESC')
-    ) V on true
-    INTO order_by;
+        FROM jsonb_array_elements(order_by_jsonb) T
+        INTO order_by;
 
     limit_ := data->>'limit';
     IF (limit_ IS NULL) THEN
         limit_ := 500;
     END IF;
-    IF ((limit_ ~ '(\D+)') AND (limit_ != 'ALL')) THEN
-    		RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
-    END IF;
+    --IF ((limit_ ~ '(\D+)') AND (limit_ != 'ALL')) THEN
+    --		RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
+    --END IF;
 
     offset_ := data->>'offset';
     IF (offset_ IS NULL) THEN
         offset_ := 0;
     END IF;
-    IF (offset_ ~ '(\D+)') THEN
-    		RAISE EXCEPTION 'The offset must be an integer number';
-    END IF;
+    -- IF (offset_ ~ '(\D+)') THEN
+    -- 		RAISE EXCEPTION 'The offset must be an integer number';
+    -- END IF;
 
     IF (_filter IS NOT NULL) THEN
         query_conditions := reclada_object.get_query_condition_filter(_filter);

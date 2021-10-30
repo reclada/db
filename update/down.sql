@@ -14,3 +14,4 @@ delete from reclada.object
 --{function/reclada.validate_json}
 --{function/reclada_object.get_query_condition_filter}
 --{function/api.reclada_object_list}
+--{function/reclada_object.list}

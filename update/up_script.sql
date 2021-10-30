@@ -95,7 +95,8 @@ SELECT reclada_object.create(
                         ],
                         "type": "string"
                     }
-                }
+                },
+                "required": ["value","operator"]
             }
         }
     }'
@@ -105,3 +106,74 @@ SELECT reclada_object.create(
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/api.reclada_object_list.sql'
 
+SELECT reclada_object.create(
+    '{
+        "class": "DTOJsonSchema",
+        "attributes": {
+            "function":"reclada_object.list",
+            "schema":{
+                "type": "object",
+                "properties": {
+                    "transactionID": {
+                        "type": "integer"
+                    },
+                    "class": {
+                        "type": "string"
+                    },
+                    "filter": {
+                        "type": "object"
+                    },
+                    "orderBy":{
+                        "type": "array",
+                        "items":{
+                            "type":"object",
+                            "properties": {
+                                "field":{
+                                    "type":"string"
+                                },
+                                "order":{
+                                    "type":"string",
+                                    "enum": ["ASC", "DESC"]
+                                }
+                            },
+                            "required": ["field"]
+                        }
+                    },
+                    "limit":{
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": ["ALL"]
+                            },
+                            {
+                                "type": "integer"
+                            }
+                        ]
+                    },
+                    "offset":{
+                        "type": "integer"
+                    }
+                },
+                "anyOf": [
+                    {
+                        "required": [
+                            "transactionID"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "class"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "filter"
+                        ]
+                    }
+                ]
+            }
+        }
+    }'
+);
+
+\i 'function/reclada_object.list.sql'
