@@ -72,25 +72,27 @@ BEGIN
     END IF;
 
     _filter = data->'filter';
+    if _filter is not null then
+        select format(  '{
+                            "filter":
+                            {
+                                "operator":"AND",
+                                "value":[
+                                    {
+                                        "operator":"=",
+                                        "value":["{class}","%s"]
+                                    },
+                                    %s
+                                ]
+                            }
+                        }',
+                class,
+                _filter
+            )::jsonb 
+            into _filter;
+        data := data || _filter;
+    end if;
 
-    select format(  '{
-                        "filter":
-                        {
-                            "operator":"AND",
-                            "value":[
-                                {
-                                    "operator":"=",
-                                    "value":["{class}","%s"]
-                                },
-                                %s
-                            ]
-                        }
-                    }',
-            class,
-            _filter
-        )::jsonb 
-        into _filter;
-    data := data || _filter;
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 

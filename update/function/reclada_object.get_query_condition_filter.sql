@@ -84,19 +84,17 @@ RETURNS TEXT AS $$
 DECLARE 
     _count   INT;
     _res     TEXT;
+    _f_name TEXT = 'reclada_object.get_query_condition_filter';
 BEGIN 
+    
+    perform reclada.validate_json(data, _f_name);
+
     -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE
     CREATE TEMP TABLE mytable AS
         SELECT  lvl             ,  rn   , idx  ,
                 upper(op) as op ,  prev , val  ,  
                 parsed
             FROM reclada_object.parse_filter(data);
-
-    PERFORM reclada.raise_exception('operator does not allowed ' || t.op,'reclada_object.get_query_condition_filter')
-        FROM mytable t
-        LEFT JOIN reclada.v_filter_avaliable_operator op
-            ON t.op = op.operator
-            WHERE op.operator IS NULL;
 
     UPDATE mytable u
         SET parsed = to_jsonb(p.v)
