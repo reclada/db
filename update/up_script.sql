@@ -45,7 +45,14 @@ SELECT reclada_object.create(
                                 {
                                     "type": "array",
                                     "items":{
-                                        "type": "string"
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "number"
+                                            }
+                                        ]
                                     }
                                 }
                             ]
@@ -53,46 +60,6 @@ SELECT reclada_object.create(
                         "minItems": 1
                     },
                     "operator": {
-                        "enum": [
-                            "=",
-                            "LIKE",
-                            "NOT LIKE",
-                            "||",
-                            "~",
-                            "!~",
-                            "~*",
-                            "!~*",
-                            "SIMILAR TO",
-                            ">",
-                            "<",
-                            "<=",
-                            "!=",
-                            ">=",
-                            "AND",
-                            "OR",
-                            "NOT",
-                            "#",
-                            "IS",
-                            "IS NOT",
-                            "IN",
-                            ",",
-                            "@>",
-                            "<@",
-                            "+",
-                            "-",
-                            "*",
-                            "/",
-                            "%",
-                            "^",
-                            "|/",
-                            "||/",
-                            "!!",
-                            "@",
-                            "&",
-                            "|",
-                            "<<",
-                            ">>"
-                        ],
                         "type": "string"
                     }
                 },
@@ -177,3 +144,8 @@ SELECT reclada_object.create(
 );
 
 \i 'function/reclada_object.list.sql'
+\i 'view/reclada.v_object.sql'
+\i 'view/reclada.v_filter_avaliable_operator.sql'
+\i 'view/reclada.v_filter_inner_operator.sql'
+
+
