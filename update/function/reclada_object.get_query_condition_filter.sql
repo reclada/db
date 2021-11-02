@@ -84,35 +84,6 @@ DECLARE
 BEGIN 
     
     perform reclada.validate_json(data, _f_name);
-/*
-    {
-        "operator":"IN",
-        "value":[
-            "{createdTime}",
-            [
-                "2021-09-22T14:50:00.411942+00:00",
-                "2021-09-22T14:51:00.411942+00:00"
-            ]
-        ] 
-    } 
-    ->
-    {
-        "operator":"IN",
-        "value":[
-            "{createdTime}",
-            { 
-                "operator":",",
-                "value":
-                [
-                    "2021-09-22T14:50:00.411942+00:00",
-                    "2021-09-22T14:51:00.411942+00:00"
-                ]
-            }
-        ] 
-    } 
-*/
-
-
     -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE
     CREATE TEMP TABLE mytable AS
         SELECT  res.lvl              AS lvl         , 
@@ -187,17 +158,16 @@ BEGIN
                                             case
                                                 when t.input_type = 'TEXT'
                                                     then format('(data #>> ''%s'')', pt.v)
-                                                when t.input_type = 'NUMERIC'
-                                                    then format('(data #>> ''%s'')::NUMERIC', pt.v)
-                                                when t.input_type = 'INT'
-                                                    then format('(data #>> ''%s'')::INT', pt.v)
+                                                when t.input_type = 'JSONB' or t.input_type is null
+                                                    then format('data #> ''%s''', pt.v)
                                                 else
-                                                    format('data #> ''%s''', pt.v)
+                                                    format('(data #>> ''%s'')::', pt.v) || t.input_type
                                             end
                                     when t.input_type = 'TEXT'
                                         then ''''||REPLACE(pt.v,'''','''''')||''''
-                                    else
-                                        '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'
+                                    when t.input_type = 'JSONB' or t.input_type is null
+                                        then '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'
+                                    else ''''||REPLACE(pt.v,'''','''''')||'''::'||t.input_type
                                 end
                         WHEN jsonb_typeof(t.parsed) = 'null'
                             then 'null'
