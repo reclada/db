@@ -37,6 +37,9 @@ SELECT reclada_object.create(
                                     "type": "string"
                                 },
                                 {
+                                    "type": "null"
+                                },
+                                {
                                     "type": "number"
                                 },
                                 {
@@ -144,6 +147,7 @@ SELECT reclada_object.create(
 );
 
 \i 'function/reclada_object.list.sql'
+\i 'function/reclada_object.parse_filter.sql'
 \i 'view/reclada.v_object.sql'
 \i 'view/reclada.v_filter_avaliable_operator.sql'
 \i 'view/reclada.v_filter_inner_operator.sql'

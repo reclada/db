@@ -115,34 +115,49 @@ BEGIN
 
     -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE
     CREATE TEMP TABLE mytable AS
-        SELECT  lvl             ,  rn   , idx  ,
-                upper(op) as op ,  prev , val  ,  
-                parsed
-            FROM reclada_object.parse_filter(data);
+        SELECT  res.lvl              AS lvl         , 
+                res.rn               AS rn          , 
+                res.idx              AS idx         ,
+                res.prev             AS prev        , 
+                res.val              AS val         ,  
+                res.parsed           AS parsed      , 
+                coalesce(
+                    po.inner_operator, 
+                    op.operator
+                )                   AS op           , 
+                coalesce
+                (
+                    iop.input_type,
+                    op.input_type
+                )                   AS input_type   ,
+                case 
+                    when iop.input_type is not NULL 
+                        then NULL 
+                    else 
+                        op.output_type
+                end                 AS output_type  ,
+                po.operator         AS po           ,
+                po.input_type       AS po_input_type,
+                iop.brackets        AS po_inner_brackets
+            FROM reclada_object.parse_filter(data) res
+            LEFT JOIN reclada.v_filter_avaliable_operator op
+                ON res.op = op.operator
+            LEFT JOIN reclada_object.parse_filter(data) p
+                on  p.lvl = res.lvl-1
+                    and res.prev = p.rn
+            LEFT JOIN reclada.v_filter_avaliable_operator po
+                on po.operator = p.op
+            LEFT JOIN reclada.v_filter_inner_operator iop
+                on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('operator does not allowed ' || t.op,'reclada_object.get_query_condition_filter')
+    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op,'reclada_object.get_query_condition_filter')
         FROM mytable t
-        LEFT JOIN reclada.v_filter_avaliable_operator op
-            ON t.op = op.operator
-            WHERE op.operator IS NULL;
+            WHERE t.op IS NULL;
 
-    update mytable u
-        set op = ap.inner_operator
-            from mytable c
-            join mytable p
-                on  p.lvl = c.lvl-1
-                    and c.prev = p.rn
-            join reclada.v_filter_avaliable_operator ap
-                on ap.inner_operator is not null
-                    and p.op = ap.operator
-            where c.lvl = u.lvl
-                AND c.rn = u.rn;
 
     UPDATE mytable u
         SET parsed = to_jsonb(p.v)
             FROM mytable t
-            left join reclada.v_filter_avaliable_operator o
-                on o.operator = t.op
             JOIN LATERAL 
             (
                 SELECT  t.parsed #>> '{}' v
@@ -160,7 +175,7 @@ BEGIN
                         WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')
                             then 
                                 case 
-                                    when o.input_type in ('NUMERIC','INT')
+                                    when t.input_type in ('NUMERIC','INT')
                                         then pt.v
                                     else '''' || pt.v || '''::jsonb'
                                 end
@@ -170,16 +185,16 @@ BEGIN
                                     WHEN pt.v LIKE '{%}'
                                         THEN
                                             case
-                                                when o.input_type = 'TEXT'
+                                                when t.input_type = 'TEXT'
                                                     then format('(data #>> ''%s'')', pt.v)
-                                                when o.input_type = 'NUMERIC'
+                                                when t.input_type = 'NUMERIC'
                                                     then format('(data #>> ''%s'')::NUMERIC', pt.v)
-                                                when o.input_type = 'INT'
+                                                when t.input_type = 'INT'
                                                     then format('(data #>> ''%s'')::INT', pt.v)
                                                 else
                                                     format('data #> ''%s''', pt.v)
                                             end
-                                    when o.input_type = 'TEXT'
+                                    when t.input_type = 'TEXT'
                                         then ''''||REPLACE(pt.v,'''','''''')||''''
                                     else
                                         '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'
@@ -215,24 +230,24 @@ BEGIN
                             res.prev rn,
                             res.op,
                             1 q,
-                            CASE COUNT(1) 
-                                WHEN 1
-                                    THEN 
-                                        CASE o.output_type
-                                            when 'NUMERIC'
-                                                then format('(%s %s)::TEXT::JSONB', res.op, min(res.parsed #>> '{}') )
-                                            else 
-                                                format('(%s %s)', res.op, min(res.parsed #>> '{}') )
-                                        end
-                                ELSE
-                                    case 
-                                        when not o.inner_brackets 
-                                            then array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) 
-                                        else
+                            case 
+                                when not res.po_inner_brackets 
+                                    then array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) 
+                                else
+                                    CASE COUNT(1) 
+                                        WHEN 1
+                                            THEN 
+                                                CASE res.output_type
+                                                    when 'NUMERIC'
+                                                        then format('(%s %s)::TEXT::JSONB', res.op, min(res.parsed #>> '{}') )
+                                                    else 
+                                                        format('(%s %s)', res.op, min(res.parsed #>> '{}') )
+                                                end
+                                        ELSE
                                             CASE 
-                                                when o.output_type = 'TEXT'
+                                                when res.output_type = 'TEXT'
                                                     then '(''"''||'||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||'||''"'')::JSONB'
-                                                when o.output_type in ('NUMERIC','INT')
+                                                when res.output_type in ('NUMERIC','INT')
                                                     then '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||')::TEXT::JSONB'
                                                 else
                                                     '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||')'
@@ -240,42 +255,9 @@ BEGIN
                                     end
                             end AS converted
                         FROM mytable res 
-                        LEFT JOIN mytable p
-                            on p.lvl = res.lvl-1
-                                and res.prev = p.rn
-                        left join reclada.v_filter_avaliable_operator po
-                            on po.operator = p.op
-                        JOIN lateral
-                        ( 
-                            select  input_type  , output_type, 
-                                    operator    , inner_brackets
-                            FROM 
-                            (
-                                select  2 as id, 
-                                        aop.input_type, 
-                                        aop.output_type, 
-                                        aop.operator,
-                                        true as inner_brackets
-                                    from reclada.v_filter_avaliable_operator aop
-                                        where po.inner_operator is NULL
-                                            and aop.operator = res.op
-                                UNION 
-                                select  1 as id,
-                                        iop.input_type, 
-                                        NULL as output_type, 
-                                        iop.operator,
-                                        iop.inner_brackets
-                                    from reclada.v_filter_inner_operator iop
-                                        where po.inner_operator is not NULL
-                                            and res.op = iop.operator
-                            ) t
-                            ORDER BY ID 
-                            LIMIT 1
-                        ) o
-                            ON true
                             WHERE res.parsed IS NOT NULL
                                 AND res.lvl = (SELECT max(lvl)+1 FROM mytable WHERE parsed IS NULL)
-                            GROUP BY  res.prev, res.op, res.lvl, o.input_type, o.output_type, o.inner_brackets
+                            GROUP BY  res.prev, res.op, res.lvl, res.input_type, res.output_type, res.po_inner_brackets
                 ) t
                 WHERE
                     t.lvl = mytable.lvl

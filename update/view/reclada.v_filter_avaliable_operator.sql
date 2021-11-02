@@ -15,12 +15,12 @@ AS
     UNION SELECT ' <= '             , 'JSONB'                       , 'BOOL'    , NULL    
     UNION SELECT ' != '             , 'JSONB'                       , 'BOOL'    , NULL    
     UNION SELECT ' >= '             , 'JSONB'                       , 'BOOL'    , NULL    
-    UNION SELECT ' AND '            , 'BOOL'                        , 'BOOL'    , NULL       
+    UNION SELECT ' AND '            , 'BOOL'                        , 'BOOL'    , NULL    
     UNION SELECT ' OR '             , 'BOOL'                        , 'BOOL'    , NULL    
     UNION SELECT ' NOT '            , 'BOOL'                        , 'BOOL'    , NULL          
     UNION SELECT ' # '              , 'BOOL'                        , 'BOOL'    , NULL      -- XOR 
     UNION SELECT ' IS '             , 'JSONB'                       , 'BOOL'    , NULL    
-    UNION SELECT ' IS NOT '         , 'JSONB'                       , 'BOOL'    , NULL       
+    UNION SELECT ' IS NOT '         , 'JSONB'                       , 'BOOL'    , NULL     
     UNION SELECT ' IN '             , 'JSONB'                       , 'BOOL'    , ' , '   
     UNION SELECT ' , '              , 'JSONB'                       , NULL      , NULL    
     UNION SELECT ' @> '             , 'JSONB'                       , 'BOOL'    , NULL    
@@ -39,5 +39,5 @@ AS
     UNION SELECT ' | '              , 'INT'                         , 'INT'     , NULL    -- bitwise OR    32 | 3    35
     UNION SELECT ' << '             , 'INT'                         , 'INT'     , NULL    -- bitwise shift left    1 << 4    16
     UNION SELECT ' >> '             , 'INT'                         , 'INT'     , NULL    -- bitwise shift right    8 >> 2    2
-    UNION SELECT ' BETWEEN '        , ' timestamp with time zone '  , 'BOOL'    , ' AND ' ;
+    UNION SELECT ' BETWEEN '        , 'TIMESTAMP WITH TIME ZONE'    , 'BOOL'    , ' AND ' ;
     
