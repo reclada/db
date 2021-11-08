@@ -60,7 +60,7 @@ with t as (
             on u.obj_id = t.created_by
         left join reclada.v_class_lite cl
             on cl.obj_id = t.class
-            ;
+;
 
 -- select * from reclada.v_object where revision is not null
 -- select distinct status from reclada.object 

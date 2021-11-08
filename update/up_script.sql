@@ -7,6 +7,7 @@
 
 \i 'view/reclada.v_PK_for_class.sql'
 \i 'view/reclada.v_DTO_json_schema.sql'
+\i 'view/reclada.v_filter_between.sql'
 
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",

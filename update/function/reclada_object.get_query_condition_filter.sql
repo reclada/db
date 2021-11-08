@@ -181,13 +181,32 @@ BEGIN
             WHERE t.lvl = u.lvl
                 AND t.rn = u.rn
                 AND t.parsed IS NOT NULL;
-                
+
+    update mytable u
+        set op = CASE 
+                    when f.btwn
+                        then ' BETWEEN '
+                    else u.op -- f.inop
+                end,
+            parsed = format(vb.operand_format,u.parsed)::jsonb
+        FROM mytable t
+        join lateral
+        (
+            select  t.op like ' %/BETWEEN ' btwn, 
+                    t.po_inner_brackets is not null inop
+        ) f 
+            on true
+        join reclada.v_filter_between vb
+            on t.op = vb.operator
+            WHERE t.lvl = u.lvl
+                AND t.rn = u.rn
+                AND (f.btwn or f.inop);
 
     INSERT INTO mytable (lvl,rn)
         VALUES (0,0);
-    
+
     _count := 1;
-    
+
     WHILE (_count>0) LOOP
         WITH r AS 
         (

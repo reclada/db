@@ -22,7 +22,6 @@ AS
     UNION SELECT ' IS '             , 'JSONB'                       , 'BOOL'    , NULL    
     UNION SELECT ' IS NOT '         , 'JSONB'                       , 'BOOL'    , NULL     
     UNION SELECT ' IN '             , 'JSONB'                       , 'BOOL'    , ' , '   
-    UNION SELECT ' , '              , 'JSONB'                       , NULL      , NULL    
     UNION SELECT ' @> '             , 'JSONB'                       , 'BOOL'    , NULL    
     UNION SELECT ' <@ '             , 'JSONB'                       , 'BOOL'    , NULL    
     UNION SELECT ' + '              , 'NUMERIC'                     , 'NUMERIC' , NULL    -- addition   
@@ -39,5 +38,18 @@ AS
     UNION SELECT ' | '              , 'INT'                         , 'INT'     , NULL    -- bitwise OR    32 | 3    35
     UNION SELECT ' << '             , 'INT'                         , 'INT'     , NULL    -- bitwise shift left    1 << 4    16
     UNION SELECT ' >> '             , 'INT'                         , 'INT'     , NULL    -- bitwise shift right    8 >> 2    2
-    UNION SELECT ' BETWEEN '        , 'TIMESTAMP WITH TIME ZONE'    , 'BOOL'    , ' AND ' ;
+    UNION SELECT ' BETWEEN '        , 'TIMESTAMP WITH TIME ZONE'    , 'BOOL'    , ' AND ' 
+    UNION SELECT ' Y/BETWEEN '      , NULL                          , NULL      , ' AND ' -- year
+    UNION SELECT ' MON/BETWEEN '    , NULL                          , NULL      , ' AND ' -- month
+    UNION SELECT ' D/BETWEEN '      , NULL                          , NULL      , ' AND ' -- day
+    UNION SELECT ' H/BETWEEN '      , NULL                          , NULL      , ' AND ' -- hour
+    UNION SELECT ' MIN/BETWEEN '    , NULL                          , NULL      , ' AND ' -- minute
+    UNION SELECT ' S/BETWEEN '      , NULL                          , NULL      , ' AND ' -- second
+    UNION SELECT ' DOW/BETWEEN '    , NULL                          , NULL      , ' AND ' -- The day of the week as Sunday (0) to Saturday (6)
+    UNION SELECT ' DOY/BETWEEN '    , NULL                          , NULL      , ' AND ' -- The day of the year (1 - 365/366)
+    UNION SELECT ' Q/BETWEEN '      , NULL                          , NULL      , ' AND ' -- The quarter of the year (1 - 4) that the date is in
+    UNION SELECT ' W/BETWEEN '      , NULL                          , NULL      , ' AND ' -- week
+
+
+;
     
