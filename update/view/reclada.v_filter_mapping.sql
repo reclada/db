@@ -6,4 +6,4 @@ AS
     -- UNION SELECT  '{GUID}'          , 'obj_id' 
     -- UNION SELECT  '{transactionID}' , 'transaction_id' 
     -- UNION SELECT  '{GUID}'          , 'obj_id' 
-
+;
