@@ -27,6 +27,10 @@ BEGIN
     IF _class_name in 
             ('DataSource','File') THEN
 
+        IF (_obj_id IS NULL) THEN
+            RAISE EXCEPTION 'Object GUID IS NULL';
+        END IF;
+
         dataset2ds_type := 'defaultDataSet to DataSource';
 
         SELECT v.obj_id
@@ -34,12 +38,16 @@ BEGIN
 	    WHERE v.attrs->>'name' = 'defaultDataSet'
 	    INTO dataset_guid;
 
+        IF (dataset_guid IS NULL) THEN
+            RAISE EXCEPTION 'Can''t found defaultDataSet';
+        END IF;
+
         SELECT count(*)
         FROM reclada.v_active_object
         WHERE class_name = 'Relationship'
-            AND (attrs->>'object')::uuid = _obj_id
-            AND (attrs->>'subject')::uuid = dataset_guid
-            AND attrs->>'type' = dataset2ds_type
+            AND NULLIF(attrs->>'object','')::uuid   = _obj_id
+            AND NULLIF(attrs->>'subject','')::uuid  = dataset_guid
+            AND attrs->>'type'                      = dataset2ds_type
                 INTO rel_cnt;
 
         IF rel_cnt=0 THEN

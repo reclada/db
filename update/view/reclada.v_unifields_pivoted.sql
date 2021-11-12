@@ -1,6 +1,10 @@
 DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
 CREATE OR REPLACE VIEW reclada.v_unifields_pivoted AS
-SELECT class_uuid, uni_number, dup_behavior,
+SELECT
+    class_uuid,
+    uni_number,
+    dup_behavior,
+    is_cascade,
     MAX(CASE WHEN field_number = 1 THEN unifield END) AS f1,
     MAX(CASE WHEN field_number = 2 THEN unifield END) AS f2,
     MAX(CASE WHEN field_number = 3 THEN unifield END) AS f3,
@@ -11,5 +15,5 @@ SELECT class_uuid, uni_number, dup_behavior,
     MAX(CASE WHEN field_number = 8 THEN unifield END) AS f8
 FROM v_object_unifields vou
 WHERE is_mandatory
-GROUP BY class_uuid, uni_number, dupbehavior 
-ORDER BY class_uuid, uni_number, dupbehavior;
+GROUP BY class_uuid, uni_number, dup_behavior 
+ORDER BY class_uuid, uni_number, dup_behavior;

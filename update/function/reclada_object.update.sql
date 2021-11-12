@@ -28,7 +28,8 @@ DECLARE
     old_obj       jsonb;
     branch        uuid;
     revid         uuid;
-
+    _parent_guid  uuid;
+    _parent_field   text;
 BEGIN
 
     class_name := data->>'class';
@@ -79,6 +80,16 @@ BEGIN
     branch := data->'branch';
     SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) 
         INTO revid;
+
+    SELECT parent_field
+        FROM reclada.v_parent_field
+        WHERE for_class = class_name
+            INTO _parent_field;
+
+    _parent_guid = (data->>'parent_guid')::uuid;
+    IF (_parent_guid IS NULL AND _parent_field IS NOT NULL) THEN
+        _parent_guid = v_attrs->>_parent_field;
+    END IF;
     
     with t as 
     (

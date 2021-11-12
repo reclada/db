@@ -21,18 +21,22 @@ CREATE OR REPLACE FUNCTION reclada_object.create
 RETURNS jsonb AS $$
 DECLARE
     branch        uuid;
-    data          jsonb;
+    _data          jsonb;
     class_name    text;
     _class_uuid    uuid;
     tran_id       bigint;
     _attrs         jsonb;
     schema        jsonb;
-    obj_GUID      uuid;
+    _obj_GUID      uuid;
     res           jsonb;
     affected      uuid[];
-    _dupBehavior  text;
+    _dupBehavior  dp_bhvr;
+    _isCascade      boolean;
     _uniField     text;
     _parent_guid  uuid;
+    _last_use       timestamp;
+    _parent_field   text;
+    skip_insert     boolean;
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -41,22 +45,22 @@ BEGIN
     /*TODO: check if some objects have revision AND others do not */
     branch:= data_jsonb->0->'branch';
 
-    FOR data IN SELECT jsonb_array_elements(data_jsonb) 
+    FOR _data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
-
-        class_name := data->>'class';
+        skip_insert := false;
+        class_name := _data->>'class';
 
         IF (class_name IS NULL) THEN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;
         _class_uuid := reclada.try_cast_uuid(class_name);
 
-        _attrs := data->'attributes';
+        _attrs := _data->'attributes';
         IF (_attrs IS NULL) THEN
             RAISE EXCEPTION 'The reclada object must have attributes';
         END IF;
 
-        tran_id := (data->>'transactionID')::bigint;
+        tran_id := (_data->>'transactionID')::bigint;
         if tran_id is null then
             tran_id := reclada.get_transaction_id();
         end if;
@@ -79,78 +83,130 @@ BEGIN
             RAISE EXCEPTION 'JSON invalid: %', _attrs;
         END IF;
         
-        IF data->>'id' IS NOT NULL THEN
+        IF _data->>'id' IS NOT NULL THEN
             RAISE EXCEPTION '%','Field "id" not allow!!!';
+        END IF;
+
+        SELECT parent_field
+        FROM reclada.v_parent_field
+        WHERE for_class = class_name
+            INTO _parent_field;
+
+        _parent_guid = (_data->>'parent_guid')::uuid;
+        IF (_parent_guid IS NULL AND _parent_field IS NOT NULL) THEN
+            _parent_guid = _attrs->>_parent_field;
         END IF;
 
         IF _class_uuid IN (SELECT class_uuid FROM reclada.v_unifields_idx_cnt)
         THEN
-            FOR obj_GUID, _dupBehavior, _uniField IN (
-            SELECT obj_id, dup_behavior, f1
-            FROM reclada.v_active_object vao
-            JOIN reclada.v_unifields_pivoted vup ON vao."class" = vup.class_uuid
-            WHERE vao.attrs ->> f1||vao.attrs ->> f2||vao.attrs ->> f3||vao.attrs ->> f4||vao.attrs ->> f5||vao.attrs ->> f6||vao.attrs ->> f7||vao.attrs ->> f8
-                = _attrs ->> f1||_attrs ->> f2||_attrs ->> f3||_attrs ->> f4||_attrs ->> f5||_attrs ->> f6||_attrs ->> f7||_attrs ->> f8
-                AND vao."class" = _class_uuid) LOOP
-                CASE _dupBehavior
-                    WHEN 'Replace' THEN
-                        SELECT reclada_object.delete(format('{"GUID": "%s"}', get_сhilds)::jsonb)
-                        FROM reclada.get_сhilds(obj_GUID);
-                    WHEN 'Update' THEN
-                        -- TODO cascade update
-                    WHEN 'Reject' THEN
-                        RETURN '{}'::jsonb;
-                    WHEN 'Copy'    THEN
-                        _attrs = _attrs || format('{"%s": "%s"}', _uniField, (_attrs->> _uniField) || nextval('reclada.object_id_seq'))::jsonb;
-                    WHEN 'Insert' THEN
-                        -- DO nothing
-                    WHEN 'Merge' THEN
-                        -- TODO merge
-                END CASE;
-            END LOOP;
+            SELECT dup_behavior, last_use                      
+            FROM reclada_object.cr_dup_behavior         
+            WHERE parent_guid       = _parent_guid
+                AND transaction_id  = tran_id
+                INTO _dupBehavior,  _last_use;
+
+            IF (_dupBehavior = 'Update') THEN
+                IF (_last_use < current_timestamp - interval '1 hour') THEN
+                    UPDATE reclada_object.cr_dup_behavior
+                    SET last_use = current_timestamp
+                    WHERE parent_guid       = _parent_guid
+                        AND transaction_id  = tran_id;
+                END IF;
+
+                FOR _obj_GUID IN (
+                    SELECT obj_guid
+                    FROM reclada.get_duplicates(_attrs, _class_uuid)) LOOP
+                        PERFORM reclada_object.add_cr_dup_mark(
+                            (_data->>'GUID')::uuid,
+                            tran_id,
+                            'Update');
+                        _data := reclada_object.remove_parent_guid(_data, parent_field);
+                        _data = reclada_object.update_json_by_guid(_obj_GUID, _data);
+                        SELECT reclada_object.update(_data)
+                            INTO res;
+                        affected := array_append( affected, _obj_GUID);
+                        skip_insert := true;
+                END LOOP;
+            END IF;
+            IF (NOT skip_insert) THEN
+                FOR _obj_GUID, _dupBehavior, _isCascade, _uniField IN (
+                    SELECT obj_guid, dup_behavior, is_cascade, dup_field
+                    FROM reclada.get_duplicates(_attrs, _class_uuid)) LOOP
+                    CASE _dupBehavior
+                        WHEN 'Replace' THEN
+                            CASE _isCascade
+                                WHEN true
+                                THEN
+                                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', a)::jsonb)
+                                    FROM reclada.get_childs(_obj_GUID) a;
+                                WHEN false
+                                THEN
+                                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_GUID)::jsonb);
+                            END CASE;
+                        WHEN 'Update' THEN
+                            IF _isCascade THEN
+                                PERFORM reclada_object.add_cr_dup_mark(
+                                    (_data->>'GUID')::uuid,
+                                    _obj_GUID,
+                                    tran_id,
+                                    'Update');
+                            END IF;
+                            _data := reclada_object.remove_parent_guid(_data, parent_field);
+                            SELECT reclada_object.update(_data)
+                                INTO res;
+                            affected := array_append( affected, _obj_GUID);
+                            skip_insert := true;
+                        WHEN 'Reject' THEN
+                            skip_insert := true;
+                        WHEN 'Copy'    THEN
+                            _attrs = _attrs || format('{"%s": "%s_%s"}', _uniField, _attrs->> _uniField, nextval('reclada.object_id_seq'))::jsonb;
+                        WHEN 'Insert' THEN
+                            -- DO nothing
+                        WHEN 'Merge' THEN
+                            SELECT reclada_object.update(reclada_object.merge(_data - 'class', data) || format('{"GUID": "%s"}', _obj_GUID)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
+                            FROM reclada.v_active_object
+                            WHERE obj_id = _obj_GUID
+                                INTO res;
+                            affected := array_append( affected, _obj_GUID);
+                            skip_insert := true;
+                    END CASE;
+                END LOOP;
+            END IF;
         END IF;
 
-        obj_GUID := (data->>'GUID')::uuid;
-        IF EXISTS (
-            SELECT 1
-            FROM reclada.object 
-            WHERE GUID = obj_GUID
-        ) THEN
-            RAISE EXCEPTION 'GUID: % is duplicate', obj_GUID;
+        IF (NOT skip_insert) THEN
+            _obj_GUID := (_data->>'GUID')::uuid;
+            IF EXISTS (
+                SELECT 1
+                FROM reclada.object 
+                WHERE GUID = _obj_GUID
+            ) THEN
+                RAISE EXCEPTION 'GUID: % is duplicate', _obj_GUID;
+            END IF;
+            --raise notice 'schema: %',schema;
+
+            INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)
+                SELECT  CASE
+                            WHEN _obj_GUID IS NULL
+                                THEN public.uuid_generate_v4()
+                            ELSE _obj_GUID
+                        END AS GUID,
+                        _class_uuid, 
+                        _attrs,
+                        tran_id,
+                        _parent_guid
+            RETURNING GUID INTO _obj_GUID;
+            affected := array_append( affected, _obj_GUID);
+
+            PERFORM reclada_object.datasource_insert
+                (
+                    class_name,
+                    _obj_GUID,
+                    _attrs
+                );
+
+            PERFORM reclada_object.refresh_mv(class_name);
         END IF;
-        --raise notice 'schema: %',schema;
-
-        CASE class_name
-            WHEN 'jsonschema'
-            THEN
-                _parent_guid = (data->>'parent_guid')::uuid;
-            ELSE
-                SELECT _attrs->>parent_field
-                FROM reclada.v_parent_field
-                WHERE for_class = class_name
-                    INTO _parent_guid;
-
-        INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)
-            SELECT  CASE
-                        WHEN obj_GUID IS NULL
-                            THEN public.uuid_generate_v4()
-                        ELSE obj_GUID
-                    END AS GUID,
-                    _class_uuid, 
-                    _attrs,
-                    tran_id,
-                    _parent_guid
-        RETURNING GUID INTO obj_GUID;
-        affected := array_append( affected, obj_GUID);
-
-        PERFORM reclada_object.datasource_insert
-            (
-                class_name,
-                obj_GUID,
-                _attrs
-            );
-
-        PERFORM reclada_object.refresh_mv(class_name);
     END LOOP;
 
     res := array_to_json

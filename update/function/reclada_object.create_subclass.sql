@@ -16,8 +16,12 @@ DECLARE
     new_class       text;
     attrs           jsonb;
     class_schema    jsonb;
-    version_         integer;
-    class_guid    uuid;
+    version_        integer;
+    class_guid      uuid;
+    _uniFields      jsonb;
+    _idx_name       text;
+    _f_list         text;
+    _idx_cnt        int;
 BEGIN
 
     class := data->>'class';
@@ -76,9 +80,9 @@ BEGIN
     class_guid
     )::jsonb);
 
-    IF ( jsonb_typeof(attrs->'properties'->'dupChecking') = 'array' ) THEN
-        for _uniFields IN (
-            SELECT jsonb_array_elements(attrs->'properties'->'dupChecking')->'uniFields'
+    IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
+        FOR _uniFields IN (
+            SELECT jsonb_array_elements(attrs->'dupChecking')->'uniFields'
         ) LOOP
             IF ( jsonb_typeof(_uniFields) = 'array' ) THEN
                 SELECT

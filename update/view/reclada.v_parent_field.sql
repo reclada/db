@@ -3,6 +3,6 @@ CREATE OR REPLACE VIEW reclada.v_parent_field AS
     SELECT
         for_class,
         obj_id as class_uuid,
-        attrs->'schema'->'properties'->>'parentField' AS parent_field
+        attrs->>'parentField' AS parent_field
     FROM reclada.v_class
-    WHERE attrs->'schema'->'properties'->>'parentField' IS NOT NULL;
+    WHERE attrs->>'parentField' IS NOT NULL;
