@@ -25,6 +25,7 @@ db_user = parsed.username
 db = db_URI.split('/')[-1]
 ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
 LAMBDA_NAME = j["LAMBDA_NAME"]
+LAMBDA_REGION = j["LAMBDA_REGION"]
 run_object_create = j["run_object_create"]
 version = j["version"]
 quick_install = j["quick_install"]
@@ -34,10 +35,12 @@ if version == 'latest':
 else:
     config_version = int(version)
 
+
 def psql_str(cmd:str,DB_URI:str = db_URI)->str:
     return f'psql -t -P pager=off {cmd} {DB_URI}'
 
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
+
 
 def json_schema_install(DB_URI=db_URI):
     file_name = 'patched.sql'
@@ -53,12 +56,13 @@ def json_schema_install(DB_URI=db_URI):
     rmdir('postgres-json-schema')
 
 
-def install_objects(l_name = LAMBDA_NAME, e_name = ENVIRONMENT_NAME, DB_URI = db_URI):
+def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
     file_name = 'object_create_patched.sql'
     with open('object_create.sql') as f:
         obj_cr = f.read()
 
     obj_cr = obj_cr.replace('#@#lname#@#', l_name)
+    obj_cr = obj_cr.replace('#@#lregion#@#', l_region)
     obj_cr = obj_cr.replace('#@#ename#@#', e_name)
 
     with open(file_name,'w') as f:
@@ -143,8 +147,10 @@ def get_commit_history(branch:str = branch_db, need_comment:bool = False):
 
     return res
 
+
 def get_version_from_db(DB_URI=db_URI)->int:
     return int(run_cmd_scalar("select max(ver) from dev.ver;",DB_URI))
+
 
 def get_version_from_commit(commit = '', file_name = 'up_script.sql')->int:
     if commit != '':
@@ -198,6 +204,7 @@ def run_test():
         + '--alluredir results --log-file=test_output.log')
     os.chdir('..')
     rmdir('QAAutotests')
+
 
 if __name__ == "__main__":
         
