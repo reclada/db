@@ -24,19 +24,14 @@ DECLARE
 
 BEGIN
 
-    class := data->>'class';
+    class := data->>'{class}';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    objid := data->>'GUID';
+    objid := data->>'{GUID}';
     IF (objid IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no GUID';
-    END IF;
-
-    attrs := data->'attributes';
-    IF (attrs IS NULL) THEN
-        RAISE EXCEPTION 'reclada object must have attributes';
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
@@ -45,6 +40,45 @@ BEGIN
     IF (NOT(reclada_user.is_allowed(user_info, 'update', class))) THEN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'update', class;
     END IF;
+
+    with recursive j as 
+    (
+        select  row_number() over() as id,
+                key,
+                value 
+            from jsonb_each(data)
+                where key like '{%}'
+    ),
+    t as
+    (
+        select  j.id    , 
+                j.key   , 
+                j.value , 
+                o.data
+            from reclada.v_object o
+            join j
+                on true
+                where o.obj_id = 
+                    (
+                        select (j.value#>>'{}')::uuid 
+                            from j where j.key = '{GUID}'
+                    )
+    ),
+    r as 
+    (
+        select id,key,value,jsonb_set(t.data,t.key::text[],t.value) as u, t.data
+            from t
+                where id = 1
+        union
+        select t.id,t.key,t.value,jsonb_set(r.u   ,t.key::text[],t.value) as u, t.data
+            from r
+            JOIN t
+                on t.id-1 = r.id
+    )
+    select r.u
+        from r
+            where id = (select max(j.id) from j)
+        INTO data;
 
     SELECT reclada_object.update(data, user_info) INTO result;
     RETURN result;

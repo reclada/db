@@ -20,7 +20,7 @@ RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $body$
 DECLARE
-    class_name     text;
+    _class_name     text;
     class_uuid     uuid;
     v_obj_id       uuid;
     v_attrs        jsonb;
@@ -31,11 +31,11 @@ DECLARE
 
 BEGIN
 
-    class_name := data->>'class';
-    IF (class_name IS NULL) THEN
+    _class_name := data->>'class';
+    IF (_class_name IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
-    class_uuid := reclada.try_cast_uuid(class_name);
+    class_uuid := reclada.try_cast_uuid(_class_name);
     v_obj_id := data->>'GUID';
     IF (v_obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no GUID';
@@ -46,21 +46,21 @@ BEGIN
         RAISE EXCEPTION 'The reclada object must have attributes';
     END IF;
 
-    SELECT reclada_object.get_schema(class_name) 
+    SELECT reclada_object.get_schema(_class_name) 
         INTO schema;
 
     if class_uuid is null then
-        SELECT reclada_object.get_schema(class_name) 
+        SELECT reclada_object.get_schema(_class_name) 
             INTO schema;
     else
-        select v.data 
+        select v.data, v.for_class 
             from reclada.v_class v
                 where class_uuid = v.obj_id
-            INTO schema;
+            INTO schema, _class_name;
     end if;
     -- TODO: don't allow update jsonschema
     IF (schema IS NULL) THEN
-        RAISE EXCEPTION 'No json schema available for %', class_name;
+        RAISE EXCEPTION 'No json schema available for %', _class_name;
     END IF;
 
     IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', v_attrs))) THEN
@@ -70,6 +70,7 @@ BEGIN
     SELECT 	v.data
         FROM reclada.v_active_object v
 	        WHERE v.obj_id = v_obj_id
+                AND v.class_name = _class_name 
 	    INTO old_obj;
 
     IF (old_obj IS NULL) THEN
@@ -105,11 +106,11 @@ BEGIN
 	            WHERE v.obj_id = v_obj_id;
     PERFORM reclada_object.datasource_insert
             (
-                class_name,
+                _class_name,
                 v_obj_id,
                 v_attrs
             );
-    PERFORM reclada_object.refresh_mv(class_name);  
+    PERFORM reclada_object.refresh_mv(_class_name);  
                   
     select v.data 
         FROM reclada.v_active_object v

@@ -13,12 +13,6 @@ def db_install():
     rmdir('db')
     clone_db()
     
-    if db_user != reclada_user_name:
-        if run_cmd_scalar(f"SELECT rolname FROM pg_roles WHERE rolname=\'{reclada_user_name}\'") != reclada_user_name:
-            run_cmd_scalar(f"CREATE ROLE {reclada_user_name} NOINHERIT")
-        if run_cmd_scalar(f"SELECT CASE WHEN pg_has_role(\'{db_user}\',\'{reclada_user_name}\',\'member\') THEN 1 ELSE 0 END") == '0':
-            run_cmd_scalar(f"GRANT {reclada_user_name} TO {db_user}")
-
     short_install = os.path.isfile(os.path.join('update','install_db.sql')) and quick_install
     use_dump = False
     if short_install:
