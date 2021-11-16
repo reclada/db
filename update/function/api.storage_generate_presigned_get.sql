@@ -39,7 +39,7 @@ BEGIN
     SELECT attrs
     FROM reclada.v_active_object
     WHERE class_name = 'Context'
-    ORDER BY created_time DESC
+    ORDER BY id DESC
     LIMIT 1
     INTO context;
 
