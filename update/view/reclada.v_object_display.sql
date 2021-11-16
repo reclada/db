@@ -3,7 +3,7 @@ CREATE OR REPLACE VIEW reclada.v_object_display
 AS
     SELECT  obj.id            ,
             obj.guid          ,
-            (obj.attributes->>'сlassGUID')::uuid  as class_guid,
+            (obj.attributes->>'classGUID')::uuid  as class_guid,
             obj.attributes->>'caption'   as caption  ,
             obj.attributes->'table'      as table    ,
             obj.attributes->'card'       as card     ,

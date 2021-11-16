@@ -32,7 +32,7 @@ BEGIN
 
         class := coalesce(data_jsonb->>'{class}', data_jsonb->>'class');
         IF (class IS NULL) THEN
-            RAISE EXCEPTION 'The reclada object class is not specified';
+            RAISE EXCEPTION 'The reclada object class is not specified (api)';
         END IF;
 
         SELECT reclada_user.auth_by_token(data_jsonb->>'accessToken') INTO user_info;

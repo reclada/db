@@ -192,8 +192,6 @@ def run_test():
     os.system(f'pytest '
         + 'tests/components/security/test_database_sql_injections.py '
         + 'tests/components/database '
-        + '--alluredir results --log-file=test_output.log')
-    os.system(f'pytest '
         + 'tests/components/postgrest '
         + '--alluredir results --log-file=test_output.log')
     os.chdir('..')
