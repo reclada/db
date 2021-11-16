@@ -1,4 +1,4 @@
--- drop VIEW if EXISTS reclada.v_ui_active_object;
+drop VIEW if EXISTS reclada.v_ui_active_object;
 CREATE OR REPLACE VIEW reclada.v_ui_active_object
 AS
     SELECT  t.id                ,
@@ -26,7 +26,7 @@ AS
                                 t.data #>> j.key::text[] val
                             FROM reclada.v_active_object t
                             JOIN reclada.v_object_display od
-                                ON od.for_class = t.class
+                                ON od.class_guid = t.class
                             JOIN lateral 
                             (
                                 SELECT key FROM jsonb_each(od.table)

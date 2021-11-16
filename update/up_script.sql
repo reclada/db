@@ -38,14 +38,15 @@ SELECT reclada_object.create('{
                 }
             },
             "properties": {
-                "forClass": {"type": "string"},
+                "classGUID": {"type": "string"},
                 "caption": {"type": "string"},
+                "flat": {"type": "bool"},
                 "table":{"$ref": "#/$defs/displayType"},
                 "card":{"$ref": "#/$defs/displayType"},
                 "preview":{"$ref": "#/$defs/displayType"},
                 "list":{"$ref": "#/$defs/displayType" }
             },
-            "required": ["forClass","caption","table","card","preview","list"]
+            "required": ["classGUID","caption"]
         }
     }
 }'::jsonb);
@@ -53,7 +54,15 @@ SELECT reclada_object.create('{
 SELECT reclada_object.create(('{
     "class":"ObjectDisplay",
     "attributes":{
-        "forClass": "'|| reclada_object.get_GUID_for_class('File') ||'",
+        "classGUID": "'|| reclada_object.get_GUID_for_class('ObjectDisplay') ||'",
+        "caption": "Object display"
+    }
+}')::jsonb);
+
+SELECT reclada_object.create(('{
+    "class":"ObjectDisplay",
+    "attributes":{
+        "classGUID": "'|| reclada_object.get_GUID_for_class('File') ||'",
         "caption": "Files",
         "table": {
             "{attributes,name}": {
@@ -157,7 +166,10 @@ SELECT reclada_object.create(('{
 
 \i 'view/reclada.v_object_display.sql' 
 \i 'view/reclada.v_ui_active_object.sql' 
+\i 'function/reclada_object.need_flat.sql' 
 \i 'function/reclada_object.list.sql' 
 \i 'function/api.reclada_object_update.sql' 
 \i 'function/reclada_object.update.sql' 
+\i 'function/api.reclada_object_list.sql' 
+\i 'function/api.reclada_object_create.sql' 
 

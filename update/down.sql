@@ -12,3 +12,6 @@ delete from reclada.object
 --{function/reclada_object.list}
 --{function/reclada_object.update}
 --{function/api.reclada_object_update}
+--{function/api.reclada_object_list}
+--{function/api.reclada_object_create}
+--{function/reclada_object.need_flat}

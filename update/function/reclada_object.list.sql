@@ -373,7 +373,7 @@ BEGIN
             ) conds
         INTO query_conditions;
     END IF;
-    IF gui then
+    IF gui AND reclada_object.need_flat(class) THEN
         query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;
     else
         query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;

@@ -40,8 +40,11 @@
             "card": {
                 "$ref": "#/$defs/displayType"
             },
-            "forClass": {
+            "classGUID": {
                 "type": "string"
+            },
+            "flat": {
+                "type": "bool"
             },
             "list": {
                 "$ref": "#/$defs/displayType"
@@ -54,12 +57,8 @@
             }
         },
         "required": [
-            "forClass",
-            "caption",
-            "table",
-            "card",
-            "preview",
-            "list"
+            "classGUID",
+            "caption"
         ]
     },
     "version": "1"
