@@ -1,6 +1,7 @@
 -- you you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
+
 --{view/reclada.v_ui_active_object}
 --{view/reclada.v_object_display}
 delete from reclada.object 
@@ -15,3 +16,7 @@ delete from reclada.object
 --{function/api.reclada_object_list}
 --{function/api.reclada_object_create}
 --{function/reclada_object.need_flat}
+
+--{function/api.storage_generate_presigned_get}
+--{function/api.storage_generate_presigned_post}
+

@@ -1,4 +1,4 @@
-SELECT reclada_object.create('{"class": "Context","attributes": {"Lambda": "#@#lname#@#","Environment": "#@#ename#@#"}}'::jsonb);
+SELECT reclada_object.create('{"class": "Context","attributes": {"Lambda": "#@#lname#@#","Region": "#@#lregion#@#","Environment": "#@#ename#@#"}}'::jsonb);
 SELECT reclada_object.create('
    {
    "class": "Runner",

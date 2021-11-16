@@ -4,7 +4,6 @@
     to run text script of functions
 */
 
-
 SELECT reclada_object.create('{
     "class": "jsonschema",
     "attributes":{
@@ -172,4 +171,7 @@ SELECT reclada_object.create(('{
 \i 'function/reclada_object.update.sql' 
 \i 'function/api.reclada_object_list.sql' 
 \i 'function/api.reclada_object_create.sql' 
+
+\i 'function/api.storage_generate_presigned_get.sql'
+\i 'function/api.storage_generate_presigned_post.sql'
 
