@@ -1,4 +1,4 @@
-/*new
+/*
  * Function reclada_object.update updates object with new revision.
  * A jsonb with the following parameters is required.
  * Required parameters:
