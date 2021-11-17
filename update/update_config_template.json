@@ -6,6 +6,7 @@
     "db_URI" : "postgresql://[user_name]:[password]@[host(server_name)]:[port(default: 5432)]/[db_name]",
     "quick_install" : true,
     "LAMBDA_NAME" : "LAMBDA_NAME",
+    "LAMBDA_REGION": "LAMBDA_REGION",
     "ENVIRONMENT_NAME" : "ENVIRONMENT_NAME",
     "run_object_create" : true,
     "version": "latest",
