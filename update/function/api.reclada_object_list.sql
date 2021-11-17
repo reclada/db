@@ -66,14 +66,14 @@ DECLARE
     _filter             jsonb;
 BEGIN
 
-    class := data->>'class';
+    class := coalesce(data->>'{class}', data->>'class');
     IF(class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
     _filter = data->'filter';
-    if _filter is not null then
-        select format(  '{
+    IF _filter IS NOT NULL THEN
+        SELECT format(  '{
                             "filter":
                             {
                                 "operator":"AND",
@@ -89,9 +89,21 @@ BEGIN
                 class,
                 _filter
             )::jsonb 
-            into _filter;
+            INTO _filter;
         data := data || _filter;
-    end if;
+    ELSE
+        data := data || ('{"class":"'|| class ||'"}')::jsonb;
+    --     select format(  '{
+    --                         "filter":{
+    --                             "operator":"=",
+    --                             "value":["{class}","%s"]
+    --                         }
+    --                     }',
+    --             class,
+    --             _filter
+    --         )::jsonb 
+    --         INTO _filter;
+    END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
@@ -100,9 +112,9 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;
     END IF;
 
-    SELECT reclada_object.list(data, true) INTO result;
-
+    SELECT reclada_object.list(data, true) 
+        INTO result;
     RETURN result;
 
 END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE;

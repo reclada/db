@@ -269,9 +269,6 @@ BEGIN
     tran_id := (data->>'transactionID')::bigint;
     class := data->>'class';
     _filter = data->'filter';
-    -- IF (class IS NULL and tran_id IS NULL and _filter IS NULL) THEN
-    --     RAISE EXCEPTION 'The reclada object class, transactionID and filter are not specified';
-    -- END IF;
 
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
@@ -279,9 +276,6 @@ BEGIN
         (order_by_jsonb = '[]'::jsonb)) THEN
         order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
     END IF;
-    -- IF (jsonb_typeof(order_by_jsonb) != 'array') THEN
-    -- 		order_by_jsonb := format('[%s]', order_by_jsonb);
-    -- END IF;
     SELECT string_agg(
         format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
         ' , ')
@@ -292,28 +286,25 @@ BEGIN
     IF (limit_ IS NULL) THEN
         limit_ := 500;
     END IF;
-    --IF ((limit_ ~ '(\D+)') AND (limit_ != 'ALL')) THEN
-    --		RAISE EXCEPTION 'The limit must be an integer number or "ALL"';
-    --END IF;
 
     offset_ := data->>'offset';
     IF (offset_ IS NULL) THEN
         offset_ := 0;
     END IF;
-    -- IF (offset_ ~ '(\D+)') THEN
-    -- 		RAISE EXCEPTION 'The offset must be an integer number';
-    -- END IF;
-
+ 
     IF (_filter IS NOT NULL) THEN
         query_conditions := reclada_object.get_query_condition_filter(_filter);
+        IF gui THEN
+            query_conditions := REPLACE(query_conditions,'#>','->');
+        end if;
     ELSE
         class_uuid := reclada.try_cast_uuid(class);
 
-        if class_uuid is not null then
-            select v.for_class 
-                from reclada.v_class_lite v
-                    where class_uuid = v.obj_id
-            into class;
+        IF class_uuid IS NOT NULL THEN
+            SELECT v.for_class
+                FROM reclada.v_class_lite v
+                    WHERE class_uuid = v.obj_id
+            INTO class;
 
             IF (class IS NULL) THEN
                 RAISE EXCEPTION 'Class not found by GUID: %', class_uuid::text;
@@ -382,15 +373,18 @@ BEGIN
             ) conds
         INTO query_conditions;
     END IF;
-    query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
-
-    -- RAISE NOTICE 'conds: %', '
-    --             SELECT obj.data
-    --             '
-    --             || query
-    --             ||
-    --             ' ORDER BY ' || order_by ||
-    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
+    IF gui AND reclada_object.need_flat(class) THEN
+        query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;
+    ELSE
+        query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
+    END IF;
+    RAISE NOTICE 'conds: %', '
+                SELECT obj.data
+                '
+                || query
+                ||
+                ' ORDER BY ' || order_by ||
+                ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
     EXECUTE E'SELECT to_jsonb(array_agg(T.data))
         FROM (
             SELECT obj.data
@@ -428,4 +422,4 @@ BEGIN
     RETURN res;
 
 END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE;
