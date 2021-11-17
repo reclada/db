@@ -61,6 +61,60 @@ SELECT reclada_object.create(('{
 SELECT reclada_object.create(('{
     "class":"ObjectDisplay",
     "attributes":{
+        "classGUID": "'|| reclada_object.get_GUID_for_class('DataRow') ||'",
+        "caption": "Data row"
+    }
+}')::jsonb);
+
+SELECT reclada_object.create(('{
+    "class":"ObjectDisplay",
+    "attributes":{
+        "classGUID": "'|| reclada_object.get_GUID_for_class('TextBlock') ||'",
+        "caption": "Text block"
+    }
+}')::jsonb);
+
+SELECT reclada_object.create(('{
+    "class":"ObjectDisplay",
+    "attributes":{
+        "classGUID": "'|| reclada_object.get_GUID_for_class('Message') ||'",
+        "caption": "Message"
+    }
+}')::jsonb);
+SELECT reclada_object.create(('{
+    "class":"ObjectDisplay",
+    "attributes":{
+        "classGUID": "'|| reclada_object.get_GUID_for_class('Page') ||'",
+        "caption": "Page"
+    }
+}')::jsonb);
+SELECT reclada_object.create(('{
+    "class":"ObjectDisplay",
+    "attributes":{
+        "classGUID": "'|| reclada_object.get_GUID_for_class('Document') ||'",
+        "caption": "Document"
+    }
+}')::jsonb);
+
+SELECT reclada_object.create(('{
+    "class":"ObjectDisplay",
+    "attributes":{
+        "classGUID": "'|| reclada_object.get_GUID_for_class('jsonschema') ||'",
+        "caption": "Json schema"
+    }
+}')::jsonb);
+
+SELECT reclada_object.create(('{
+    "class":"ObjectDisplay",
+    "attributes":{
+        "classGUID": "'|| reclada_object.get_GUID_for_class('Job') ||'",
+        "caption": "Job"
+    }
+}')::jsonb);
+
+SELECT reclada_object.create(('{
+    "class":"ObjectDisplay",
+    "attributes":{
         "classGUID": "'|| reclada_object.get_GUID_for_class('File') ||'",
         "caption": "Files",
         "table": {
@@ -171,6 +225,7 @@ SELECT reclada_object.create(('{
 \i 'function/reclada_object.update.sql' 
 \i 'function/api.reclada_object_list.sql' 
 \i 'function/api.reclada_object_create.sql' 
+\i 'function/api.reclada_object_delete.sql' 
 
 \i 'function/api.storage_generate_presigned_get.sql'
 \i 'function/api.storage_generate_presigned_post.sql'

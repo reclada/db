@@ -22,6 +22,7 @@ DECLARE
     attrs            jsonb;
     data_to_create   jsonb = '[]'::jsonb;
     result           jsonb;
+    _need_flat       bool := false;
 BEGIN
 
     IF (jsonb_typeof(data) != 'array') THEN
@@ -43,7 +44,9 @@ BEGIN
         IF (NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN
             RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
         END IF;
+        
         if reclada_object.need_flat(class) then
+            _need_flat := true;
             with recursive j as 
             (
                 select  row_number() over() as id,
@@ -137,7 +140,10 @@ BEGIN
     end if;
 
     SELECT reclada_object.create(data_to_create, user_info) INTO result;
-    RETURN '{"status":"OK"}'::jsonb;
+    if _need_flat then
+        RETURN '{"status":"OK"}'::jsonb;
+    end if;
+    RETURN result;
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

@@ -66,7 +66,7 @@ DECLARE
     _filter             jsonb;
 BEGIN
 
-    class := data->>'{class}';
+    class := coalesce(data->>'{class}', data->>'class');
     IF(class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;

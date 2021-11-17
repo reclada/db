@@ -15,6 +15,7 @@ delete from reclada.object
 --{function/api.reclada_object_update}
 --{function/api.reclada_object_list}
 --{function/api.reclada_object_create}
+--{function/api.reclada_object_delete}
 --{function/reclada_object.need_flat}
 
 --{function/api.storage_generate_presigned_get}
