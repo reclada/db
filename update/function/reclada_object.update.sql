@@ -1,4 +1,4 @@
-/*
+/*new
  * Function reclada_object.update updates object with new revision.
  * A jsonb with the following parameters is required.
  * Required parameters:
@@ -68,7 +68,7 @@ BEGIN
     END IF;
 
     SELECT 	v.data
-        FROM reclada.v_active_object v
+        FROM reclada.v_object v
 	        WHERE v.obj_id = v_obj_id
                 AND v.class_name = _class_name 
 	    INTO old_obj;
@@ -101,8 +101,24 @@ BEGIN
                 v_attrs || format('{"revision":"%s"}',revid)::jsonb,
                 transaction_id
             FROM reclada.v_object v
-            JOIN t 
-                on t.id = v.id
+            JOIN 
+            (   
+                select id 
+                    FROM 
+                    (
+                        select id, 1 as q
+                            from t
+                        union 
+                        select id, 2 as q
+                            from reclada.object ro
+                                where ro.guid = v_obj_id
+                                    ORDER BY ID DESC 
+                                        LIMIT 1
+                    ) ta
+                    ORDER BY q ASC 
+                        LIMIT 1
+            ) as tt
+                on tt.id = v.id
 	            WHERE v.obj_id = v_obj_id;
     PERFORM reclada_object.datasource_insert
             (
