@@ -300,11 +300,11 @@ BEGIN
     ELSE
         class_uuid := reclada.try_cast_uuid(class);
 
-        if class_uuid is not null then
-            select v.for_class 
-                from reclada.v_class_lite v
-                    where class_uuid = v.obj_id
-            into class;
+        IF class_uuid IS NOT NULL THEN
+            SELECT v.for_class
+                FROM reclada.v_class_lite v
+                    WHERE class_uuid = v.obj_id
+            INTO class;
 
             IF (class IS NULL) THEN
                 RAISE EXCEPTION 'Class not found by GUID: %', class_uuid::text;
@@ -375,9 +375,9 @@ BEGIN
     END IF;
     IF gui AND reclada_object.need_flat(class) THEN
         query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;
-    else
+    ELSE
         query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
-    end if;
+    END IF;
     RAISE NOTICE 'conds: %', '
                 SELECT obj.data
                 '
@@ -422,4 +422,4 @@ BEGIN
     RETURN res;
 
 END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE;

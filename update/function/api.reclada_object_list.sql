@@ -66,14 +66,14 @@ DECLARE
     _filter             jsonb;
 BEGIN
 
-    class := data->>'{class}';
-    IF(class IS NULL) THEN
+    class := data->>'class';
+    IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
     _filter = data->'filter';
-    IF _filter is not null THEN
-        select format(  '{
+    IF _filter IS NOT NULL THEN
+        SELECT format(  '{
                             "filter":
                             {
                                 "operator":"AND",
@@ -117,4 +117,4 @@ BEGIN
     RETURN result;
 
 END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE;
