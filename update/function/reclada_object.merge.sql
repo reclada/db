@@ -25,24 +25,27 @@ AS $function$
         END IF;
         CASE ltype 
         WHEN 'object' THEN
-            SELECT ('{' || string_agg(format('"%s":%s',key,reclada_object.merge(lval,rval)::text),',') || '}')
-                FROM (                     -- Using joining operators compatible with merge or hash join is obligatory
-                SELECT (a.rec).key as key,
-                    (a.rec).value AS lval,
-                    (b.rec).value AS rval                                        --    with FULL OUTER JOIN. merge is compatible only with NESTED LOOPS
-                FROM (SELECT jsonb_each(lobj) AS rec) a         --    so I use LEFT JOIN UNION ALL RIGHT JOIN insted of FULL OUTER JOIN.
-                LEFT JOIN
-                    (SELECT jsonb_each(robj) AS rec) b
-                ON (a.rec).key = (b.rec).key
-            UNION
-                SELECT (a.rec).key as key,
-                    (b.rec).value AS lval,
-                    (a.rec).value AS rval
-                FROM (SELECT jsonb_each(robj) AS rec) a
-                LEFT JOIN
-                    (SELECT jsonb_each(lobj) AS rec) b
-                ON (a.rec).key = (b.rec).key
-            ) a
+            SELECT jsonb_object_agg(key,val)
+            FROM (
+                SELECT key, reclada_object.merge(lval,rval) as val
+                    FROM (                     -- Using joining operators compatible with merge or hash join is obligatory
+                    SELECT (a.rec).key as key,
+                        (a.rec).value AS lval,
+                        (b.rec).value AS rval                                        --    with FULL OUTER JOIN. merge is compatible only with NESTED LOOPS
+                    FROM (SELECT jsonb_each(lobj) AS rec) a         --    so I use LEFT JOIN UNION ALL RIGHT JOIN insted of FULL OUTER JOIN.
+                    LEFT JOIN
+                        (SELECT jsonb_each(robj) AS rec) b
+                    ON (a.rec).key = (b.rec).key
+                UNION
+                    SELECT (a.rec).key as key,
+                        (b.rec).value AS lval,
+                        (a.rec).value AS rval
+                    FROM (SELECT jsonb_each(robj) AS rec) a
+                    LEFT JOIN
+                        (SELECT jsonb_each(lobj) AS rec) b
+                    ON (a.rec).key = (b.rec).key
+                ) a
+            ) b
                 INTO res;
             RETURN res;
         WHEN 'array' THEN

@@ -15,5 +15,5 @@ SELECT
     MAX(CASE WHEN field_number = 8 THEN unifield END) AS f8
 FROM v_object_unifields vou
 WHERE is_mandatory
-GROUP BY class_uuid, uni_number, dup_behavior 
+GROUP BY class_uuid, uni_number, dup_behavior,is_cascade
 ORDER BY class_uuid, uni_number, dup_behavior;

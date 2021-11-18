@@ -1,5 +1,5 @@
 DROP FUNCTION IF EXISTS reclada_object.update_json_by_guid;
-CREATE OR REPLACE FUNCTION reclada_object.update_jsonby_guid(lobj uuid, robj jsonb)
+CREATE OR REPLACE FUNCTION reclada_object.update_json_by_guid(lobj uuid, robj jsonb)
     RETURNS jsonb
     LANGUAGE sql
     VOLATILE

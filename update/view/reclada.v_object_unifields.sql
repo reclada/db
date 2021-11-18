@@ -16,8 +16,8 @@ AS
             for_class,
             obj_id                                      AS class_uuid,
             dup_behavior,
-            is_cascade,
-            dc->>'isMandatory'                          AS is_mandatory,
+            is_cascade::boolean                         AS is_cascade,
+            (dc->>'isMandatory')::boolean               AS is_mandatory,
             jsonb_array_elements_text(dc->'uniFields')  AS uf,
             dc->'uniFields'::text                       AS field_list,
             row_number() OVER ( PARTITION BY for_class ORDER BY dc->'uniFields'::text) AS uni_number
@@ -26,7 +26,7 @@ AS
             SELECT
                 for_class,
                 attrs->>'dupBehavior'           AS dup_behavior,
-                attrs->>'isCascade'             AS is_cascade,
+                (attrs->>'isCascade')           AS is_cascade,
                 jsonb_array_elements( attrs ->'dupChecking') AS dc,
                 obj_id
             FROM

@@ -1,7 +1,5 @@
 -- you you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
-DROP INDEX get_unifield_index_name('{uri}'::text[]);
-DROP INDEX get_unifield_index_name('{cheksum}'::text[]);
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
@@ -28,13 +26,17 @@ SET attributes = attributes - 'dupBehavior'
 WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
-SET attributes = attributes - '{dupChecking}'
+SET attributes = attributes - 'isCascade'
+WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+
+UPDATE reclada.object
+SET attributes = attributes - 'dupChecking'
 WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
 
 DROP VIEW       reclada.v_parent_field;
 DROP VIEW       reclada.v_unifields_idx_cnt;
 DROP VIEW       reclada.v_unifields_pivoted;
-DROP VIEW       reclada.v_object_unifields;
+DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 
 DROP FUNCTION   reclada.get_unifield_index_name;
 DROP FUNCTION   reclada_object.merge;
@@ -52,3 +54,10 @@ DROP FUNCTION   reclada_object.remove_parent_guid;
 --{function/reclada_object.refresh_mv}
 --{function/reclada_object.update}
 --{function/reclada_object.datasource_insert}
+--{view/reclada.v_pk_for_class}
+
+DROP TABLE reclada_object.cr_dup_behavior;
+DROP TYPE dp_bhvr;
+
+DROP INDEX uri_index_;
+DROP INDEX checksum_index_;

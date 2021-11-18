@@ -22,6 +22,7 @@ RETURNS jsonb AS $$
 DECLARE
     branch        uuid;
     _data          jsonb;
+    new_data        jsonb;
     class_name    text;
     _class_uuid    uuid;
     tran_id       bigint;
@@ -30,6 +31,7 @@ DECLARE
     _obj_GUID      uuid;
     res           jsonb;
     affected      uuid[];
+    inserted        uuid[];
     _dupBehavior  dp_bhvr;
     _isCascade      boolean;
     _uniField     text;
@@ -37,6 +39,7 @@ DECLARE
     _last_use       timestamp;
     _parent_field   text;
     skip_insert     boolean;
+    notify_res      jsonb;
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -112,17 +115,18 @@ BEGIN
                     WHERE parent_guid       = _parent_guid
                         AND transaction_id  = tran_id;
                 END IF;
-
+                --TODO check iscascade 
                 FOR _obj_GUID IN (
                     SELECT obj_guid
                     FROM reclada.get_duplicates(_attrs, _class_uuid)) LOOP
+                        new_data := _data;
                         PERFORM reclada_object.add_cr_dup_mark(
                             (_data->>'GUID')::uuid,
                             tran_id,
                             'Update');
-                        _data := reclada_object.remove_parent_guid(_data, parent_field);
-                        _data = reclada_object.update_json_by_guid(_obj_GUID, _data);
-                        SELECT reclada_object.update(_data)
+                        new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
+                        new_data = reclada_object.update_json_by_guid(_obj_GUID, new_data);
+                        SELECT reclada_object.update(new_data)
                             INTO res;
                         affected := array_append( affected, _obj_GUID);
                         skip_insert := true;
@@ -132,6 +136,7 @@ BEGIN
                 FOR _obj_GUID, _dupBehavior, _isCascade, _uniField IN (
                     SELECT obj_guid, dup_behavior, is_cascade, dup_field
                     FROM reclada.get_duplicates(_attrs, _class_uuid)) LOOP
+                    new_data := _data;
                     CASE _dupBehavior
                         WHEN 'Replace' THEN
                             CASE _isCascade
@@ -146,13 +151,13 @@ BEGIN
                         WHEN 'Update' THEN
                             IF _isCascade THEN
                                 PERFORM reclada_object.add_cr_dup_mark(
-                                    (_data->>'GUID')::uuid,
-                                    _obj_GUID,
+                                    (new_data->>'GUID')::uuid,
                                     tran_id,
                                     'Update');
                             END IF;
-                            _data := reclada_object.remove_parent_guid(_data, parent_field);
-                            SELECT reclada_object.update(_data)
+                            new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
+                            new_data = reclada_object.update_json_by_guid(_obj_GUID, _data);
+                            SELECT reclada_object.update(new_data)
                                 INTO res;
                             affected := array_append( affected, _obj_GUID);
                             skip_insert := true;
@@ -163,7 +168,7 @@ BEGIN
                         WHEN 'Insert' THEN
                             -- DO nothing
                         WHEN 'Merge' THEN
-                            SELECT reclada_object.update(reclada_object.merge(_data - 'class', data) || format('{"GUID": "%s"}', _obj_GUID)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
+                            SELECT reclada_object.update(reclada_object.merge(new_data - 'class', data) || format('{"GUID": "%s"}', _obj_GUID)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
                             FROM reclada.v_active_object
                             WHERE obj_id = _obj_GUID
                                 INTO res;
@@ -197,7 +202,7 @@ BEGIN
                         _parent_guid
             RETURNING GUID INTO _obj_GUID;
             affected := array_append( affected, _obj_GUID);
-
+            inserted := array_append( inserted, _obj_GUID);
             PERFORM reclada_object.datasource_insert
                 (
                     class_name,
@@ -217,11 +222,20 @@ BEGIN
                     FROM reclada.v_active_object o
                     WHERE o.obj_id = ANY (affected)
                 )
+            )::jsonb;
+    notify_res := array_to_json
+            (
+                array
+                (
+                    SELECT o.data 
+                    FROM reclada.v_active_object o
+                    WHERE o.obj_id = ANY (inserted)
+                )
             )::jsonb; 
     PERFORM reclada_notification.send_object_notification
         (
             'create',
-            res
+            notify_res
         );
     RETURN res;
 

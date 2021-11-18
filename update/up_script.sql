@@ -25,6 +25,7 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada_object.merge.sql'
 \i 'function/reclada_object.update_json.sql'
+\i 'function/reclada_object.update_json_by_guid.sql'
 \i 'function/reclada_object.remove_parent_guid.sql'
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.create_subclass.sql'
@@ -71,5 +72,6 @@ WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.ge
 
 SELECT reclada_object.refresh_mv('uniFields');
 
-CREATE INDEX get_unifield_index_name('{uri}'::text[]) ON reclada.object USING HASH (((attributes->'uri'))));
-CREATE INDEX get_unifield_index_name('{cheksum}'::text[]) ON reclada.object USING HASH (((attributes->'checksum'))));
+
+CREATE INDEX uri_index_ ON reclada.object USING HASH (((attributes->'uri')));
+CREATE INDEX checksum_index_ ON reclada.object USING HASH (((attributes->'checksum')));

@@ -21,7 +21,7 @@ LANGUAGE PLPGSQL VOLATILE
 AS $body$
 DECLARE
     class_name     text;
-    class_uuid     uuid;
+    _class_uuid     uuid;
     v_obj_id       uuid;
     v_attrs        jsonb;
     schema        jsonb;
@@ -30,13 +30,17 @@ DECLARE
     revid         uuid;
     _parent_guid  uuid;
     _parent_field   text;
+    _obj_GUID       uuid;
+    new_data       jsonb;
+    _dupBehavior    dp_bhvr;
+    _uniField       text;
 BEGIN
 
     class_name := data->>'class';
     IF (class_name IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
-    class_uuid := reclada.try_cast_uuid(class_name);
+    _class_uuid := reclada.try_cast_uuid(class_name);
     v_obj_id := data->>'GUID';
     IF (v_obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no GUID';
@@ -50,7 +54,7 @@ BEGIN
     SELECT reclada_object.get_schema(class_name) 
         INTO schema;
 
-    if class_uuid is null then
+    if _class_uuid is null then
         SELECT reclada_object.get_schema(class_name) 
             INTO schema;
     else
@@ -91,6 +95,33 @@ BEGIN
         _parent_guid = v_attrs->>_parent_field;
     END IF;
     
+    IF _class_uuid IN (SELECT class_uuid FROM reclada.v_unifields_idx_cnt)
+    THEN
+        FOR _obj_GUID, _dupBehavior, _uniField IN (
+            SELECT obj_guid, dup_behavior, dup_field
+            FROM reclada.get_duplicates(v_attrs, _class_uuid, v_obj_id)) LOOP
+            new_data := data;
+            CASE _dupBehavior
+                WHEN 'Replace' THEN
+                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_GUID)::jsonb);
+                WHEN 'Update' THEN
+                    new_data := reclada_object.remove_parent_guid(new_data, parent_field);
+                    new_data = reclada_object.update_json_by_guid(_obj_GUID, new_data);
+                    PERFORM reclada_object.update(new_data);   --TODO add affected data to response
+                WHEN 'Reject' THEN
+                    --TODO reject duplicates
+                WHEN 'Copy'    THEN
+                    v_attrs = v_attrs || format('{"%s": "%s_%s"}', _uniField, _attrs->> _uniField, nextval('reclada.object_id_seq'))::jsonb;
+                WHEN 'Insert' THEN
+                    -- DO nothing
+                WHEN 'Merge' THEN
+                    PERFORM reclada_object.update(reclada_object.merge(new_data - 'class', vao.data) || format('{"GUID": "%s"}', _obj_GUID)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
+                    FROM reclada.v_active_object vao
+                    WHERE obj_id = _obj_GUID;
+            END CASE;
+        END LOOP;
+    END IF;
+
     with t as 
     (
         update reclada.object o
