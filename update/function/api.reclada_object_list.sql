@@ -57,7 +57,7 @@
 */
 
 DROP FUNCTION IF EXISTS api.reclada_object_list;
-CREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)
+CREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb default null, draft text default 'false')
 RETURNS jsonb AS $$
 DECLARE
     class               text;
@@ -65,6 +65,24 @@ DECLARE
     result              jsonb;
     _filter             jsonb;
 BEGIN
+
+    if draft != 'false' then
+        return array_to_json
+            (
+                array
+                (
+                    SELECT o.data 
+                        FROM reclada.draft o
+                            where id = 
+                                (
+                                    select max(id) 
+                                        FROM reclada.draft d
+                                            where o.guid = d.guid
+                                )
+                            -- and o.user = user_info->>'guid'
+                )
+            )::jsonb;
+    end if;
 
     class := coalesce(data->>'{class}', data->>'class');
     IF(class IS NULL) THEN

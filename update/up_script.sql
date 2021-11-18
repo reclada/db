@@ -4,4 +4,17 @@
     to run text script of functions
 */
 
+
+
+create table reclada.draft(
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1),
+    guid uuid,
+    user_guid uuid DEFAULT reclada_object.get_default_user_obj_id(),
+    data jsonb not null
+);
+
+
 \i 'function/api.reclada_object_create.sql'
+\i 'function/reclada_object.create.sql'
+\i 'function/api.reclada_object_list.sql'
+\i 'function/api.reclada_object_delete.sql'

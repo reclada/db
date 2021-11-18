@@ -12,8 +12,8 @@
  *
 */
 
-DROP FUNCTION IF EXISTS api.reclada_object_delete(jsonb);
-CREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb)
+DROP FUNCTION IF EXISTS api.reclada_object_delete;
+CREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb, draft text default 'false')
 RETURNS jsonb AS $$
 DECLARE
     class         text;
@@ -23,28 +23,37 @@ DECLARE
 
 BEGIN
 
-    class := coalesce(data ->> '{class}', data ->> 'class');
-    IF (class IS NULL) THEN
-        RAISE EXCEPTION 'reclada object class not specified';
-    END IF;
-
     obj_id := coalesce(data ->> '{GUID}', data ->> 'GUID');
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
 
-    data := data || ('{"GUID":"'|| obj_id ||'","class":"'|| class ||'"}')::jsonb;
+    if draft != 'false' then
+        delete from reclada.draft 
+            where guid = obj_id;
+        
+    else
 
-    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
-    data := data - 'accessToken';
+        class := coalesce(data ->> '{class}', data ->> 'class');
+        IF (class IS NULL) THEN
+            RAISE EXCEPTION 'reclada object class not specified';
+        END IF;
 
-    IF (NOT(reclada_user.is_allowed(user_info, 'delete', class))) THEN
-        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;
-    END IF;
+        data := data || ('{"GUID":"'|| obj_id ||'","class":"'|| class ||'"}')::jsonb;
 
-    SELECT reclada_object.delete(data, user_info) INTO result;
+        SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
+        data := data - 'accessToken';
 
-    if reclada_object.need_flat(class) then 
+        IF (NOT(reclada_user.is_allowed(user_info, 'delete', class))) THEN
+            RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;
+        END IF;
+
+        SELECT reclada_object.delete(data, user_info) INTO result;
+
+    end if;
+
+    if reclada_object.need_flat(class) 
+        or draft != 'false' then 
         RETURN '{"status":"OK"}'::jsonb;
     end if;
 
