@@ -85,7 +85,7 @@ BEGIN
             src as
             (
                 select  jsonb_set('{}'::jsonb,('{'|| i.d ||'}')::text[],'{}'::jsonb) r,
-                        i.* 
+                        i.rn
                     from inn i
                         where i.rn = 1
                 union
@@ -94,7 +94,7 @@ BEGIN
                             i.k,
                             '{}'::jsonb
                         ) r,
-                        i.* 
+                        i.rn
                     from src s
                     join inn i
                         on s.rn + 1 = i.rn
@@ -112,7 +112,7 @@ BEGIN
                         j.key::text[],
                         j.value
                     ) v,
-                    j.*
+                    j.id
                     FROM j
                         where j.id = 1
                 union 
@@ -121,7 +121,7 @@ BEGIN
                         j.key::text[],
                         j.value
                     ) v,
-                    j.*
+                    j.id
                     FROM res
                     join j
                         on res.id + 1 =j.id
