@@ -15,3 +15,11 @@ delete from reclada.object
 
 delete from reclada.object 
     where guid in (select reclada_object.get_GUID_for_class('DBAsset'));
+
+UPDATE reclada.OBJECT
+SET ATTRIBUTES = ATTRIBUTES - '{schema,properties,object,minLength}'
+WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
+
+UPDATE reclada.OBJECT
+SET ATTRIBUTES = ATTRIBUTES - '{schema,properties,subject,minLength}'
+WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));

@@ -16,6 +16,7 @@ create table reclada.draft(
 \i 'function/reclada_object.create.sql'
 \i 'function/api.reclada_object_list.sql'
 \i 'function/api.reclada_object_delete.sql'
+\i 'function/reclada_object.datasource_insert.sql'
 
 SELECT reclada_object.create_subclass('{
     "class": "DataSource",
@@ -39,3 +40,11 @@ SELECT reclada_object.create_subclass('{
     }
 }'::jsonb);
 
+
+UPDATE reclada.OBJECT
+SET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,object,minLength}','28'::jsonb)
+WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
+
+UPDATE reclada.OBJECT
+SET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,subject,minLength}','28'::jsonb)
+WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
