@@ -36,7 +36,7 @@ BEGIN
         SELECT v.obj_id
         FROM reclada.v_active_object v
 	    WHERE v.attrs->>'name' = 'defaultDataSet'
-	    INTO dataset_guid;
+	        INTO dataset_guid;
 
         IF (dataset_guid IS NULL) THEN
             RAISE EXCEPTION 'Can''t found defaultDataSet';
@@ -68,9 +68,9 @@ BEGIN
         SELECT attrs->>'Environment'
         FROM reclada.v_active_object
         WHERE class_name = 'Context'
-        ORDER BY created_time DESC
+        ORDER BY id DESC
         LIMIT 1
-        INTO environment;
+            INTO environment;
 
         PERFORM reclada_object.create(
             format('{
