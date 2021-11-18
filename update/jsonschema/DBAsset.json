@@ -1,0 +1,32 @@
+{
+    "forClass": "DBAsset",
+    "schema": {
+        "properties": {
+            "classGUID": {
+                "type": "string"
+            },
+            "connectionString": {
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "uri": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "forClass",
+            "connectionString",
+            "name"
+        ],
+        "type": "object"
+    },
+    "version": "1"
+}

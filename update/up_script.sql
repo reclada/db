@@ -4,8 +4,6 @@
     to run text script of functions
 */
 
-
-
 create table reclada.draft(
     id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1),
     guid uuid,
@@ -18,3 +16,26 @@ create table reclada.draft(
 \i 'function/reclada_object.create.sql'
 \i 'function/api.reclada_object_list.sql'
 \i 'function/api.reclada_object_delete.sql'
+
+SELECT reclada_object.create_subclass('{
+    "class": "DataSource",
+    "attributes": {
+        "newClass": "Asset",
+        "properties": {
+            "classGUID": {"type": "string"}
+        },
+        "required": ["forClass"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "Asset",
+    "attributes": {
+        "newClass": "DBAsset",
+        "properties": {
+            "connectionString": {"type": "string"}
+        },
+        "required": ["connectionString"]
+    }
+}'::jsonb);
+

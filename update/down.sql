@@ -9,3 +9,9 @@ drop table reclada.draft;
 --{function/reclada_object.create}
 --{function/api.reclada_object_list}
 --{function/api.reclada_object_delete}
+
+delete from reclada.object 
+    where guid in (select reclada_object.get_GUID_for_class('Asset'));
+
+delete from reclada.object 
+    where guid in (select reclada_object.get_GUID_for_class('DBAsset'));
