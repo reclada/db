@@ -3,9 +3,11 @@
     "schema": {
         "properties": {
             "object": {
+                "minLength": 28,
                 "type": "string"
             },
             "subject": {
+                "minLength": 28,
                 "type": "string"
             },
             "tags": {

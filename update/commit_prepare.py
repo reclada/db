@@ -55,18 +55,33 @@ if __name__ == "__main__":
 
         if len(ldd) == len(lcd):
             d = []
+            copy = False
             for i in range(len(ldd)):
-                suffix = ", true);\n"
-                for prefix in ["SELECT pg_catalog.setval('dev.ver_id_seq',","SELECT pg_catalog.setval('reclada."]:
-                    if (ldd[i].startswith(prefix)
-                        and lcd[i].startswith(prefix)
-                        and ldd[i].endswith(suffix)
-                        and lcd[i].endswith(suffix)):
-                        break
+                if not copy:
+                    copy = ldd[i].startswith('COPY ')
+                    if copy:
+                        sc = set()
+                        sd = set()
+                    suffix = ", true);\n"
+                    for prefix in ["SELECT pg_catalog.setval('dev.ver_id_seq',","SELECT pg_catalog.setval('reclada."]:
+                        if (ldd[i].startswith(prefix)
+                            and lcd[i].startswith(prefix)
+                            and ldd[i].endswith(suffix)
+                            and lcd[i].endswith(suffix)):
+                            break
+                    else:
+                        if (ldd[i] != lcd[i]):
+                            d.append(lcd[i])
+                            d.append(ldd[i])
                 else:
-                    if (ldd[i] != lcd[i]):
-                        d.append(lcd[i])
-                        d.append(ldd[i])
+                    if ldd[i] == '\n':
+                        copy = False
+                        if sc != sd:
+                            input("!!! down.sql invalid !!! table data has changed . . .")
+                            break
+                    else:
+                        sd.add(ldd[i])
+                        sc.add(lcd[i])
             if len(d)>0:
                 print("down.sql invalid:")
                 for i in range(0,len(d),2):

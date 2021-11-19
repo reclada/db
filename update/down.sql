@@ -9,6 +9,7 @@ drop table reclada.draft;
 --{function/reclada_object.create}
 --{function/api.reclada_object_list}
 --{function/api.reclada_object_delete}
+--{function/reclada_object.datasource_insert}
 
 delete from reclada.object 
     where guid in (select reclada_object.get_GUID_for_class('Asset'));
@@ -17,9 +18,9 @@ delete from reclada.object
     where guid in (select reclada_object.get_GUID_for_class('DBAsset'));
 
 UPDATE reclada.OBJECT
-SET ATTRIBUTES = ATTRIBUTES - '{schema,properties,object,minLength}'
+SET ATTRIBUTES = ATTRIBUTES #- '{schema,properties,object,minLength}'
 WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
 
 UPDATE reclada.OBJECT
-SET ATTRIBUTES = ATTRIBUTES - '{schema,properties,subject,minLength}'
+SET ATTRIBUTES = ATTRIBUTES #- '{schema,properties,subject,minLength}'
 WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
