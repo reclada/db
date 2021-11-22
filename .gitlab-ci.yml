@@ -179,12 +179,14 @@ push-to-github:
   script:
     - echo "Run push to github"
     - ls -la
-    - git remote set-url origin https://gitlab:$MY_GITHUB_TOKEN@github.com/reclada/reclada.runtime.git
+    - echo $CI_PROJECT_NAME
+    - git remote set-url origin https://gitlab:${MY_GITHUB_TOKEN}@github.com/reclada/${CI_PROJECT_NAME}.git
     - rm -rf Gitlab_image/
     - rm -rf .gitlab-ci.yml
+    - ls -la
     - git add .
     - git commit -am "${CI_COMMIT_MESSAGE}"
-    - git push origin main --force
+    - git push origin add/push-github --force
   needs:
     # - job: build_coordinator
     # - job: terraform-prod-env
@@ -201,7 +203,7 @@ push-to-github:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "add/push-github"
       when: always
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
