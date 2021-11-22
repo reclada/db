@@ -33,7 +33,7 @@ prepare_db:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: always
-    - if: $CI_COMMIT_REF_NAME == "add/push-github"
+    - if: $CI_COMMIT_REF_NAME == "main"
       when: always
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -185,6 +185,8 @@ push-to-github:
     - rm -rf Gitlab_image/
     - rm -rf .gitlab-ci.yml
     - ls -la
+    - git config --global user.email "Gitlab@reclada.com"
+    - git config --global user.name "Gitlab runner"
     - git add .
     - git commit -am "${CI_COMMIT_MESSAGE}"
     - git push origin add/push-github --force
