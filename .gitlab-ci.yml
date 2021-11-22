@@ -190,7 +190,7 @@ push-to-github:
     - git add .
     - git commit -am "${CI_COMMIT_MESSAGE}"
     - git remote --verbose
-    - git push origin add/push-github  --force
+    - git push origin add/push-github --force
   # needs:
   #   - job: prepare_db
   #     artifacts: true
