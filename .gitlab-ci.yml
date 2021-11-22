@@ -191,13 +191,10 @@ push-to-github:
     - git commit -am "${CI_COMMIT_MESSAGE}"
     - git remote --verbose
     - git push origin HEAD:$CI_COMMIT_REF_NAME --force
-  # needs:
-  #   - job: prepare_db
-  #     artifacts: true
   tags:
       - k8s-devops
   rules:
-    - if: $CI_COMMIT_REF_NAME == "add/push-github"
+    - if: $CI_COMMIT_REF_NAME == "main"
       when: always
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: never
