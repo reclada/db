@@ -26,3 +26,11 @@ WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
 UPDATE reclada.OBJECT
 SET ATTRIBUTES = ATTRIBUTES #- '{schema,properties,subject,minLength}'
 WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
+
+DROP OPERATOR IF EXISTS reclada.##(boolean, boolean);
+CREATE OPERATOR reclada.# (
+    FUNCTION = reclada.xor,
+    LEFTARG = boolean,
+    RIGHTARG = boolean
+);
+--{function/reclada_object.get_query_condition_filter}
