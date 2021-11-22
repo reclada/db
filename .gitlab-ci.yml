@@ -179,6 +179,7 @@ push-to-github:
   image: bitnami/git
   script:
     - echo "Run push to github"
+    - date
     - ls -la
     - echo $CI_PROJECT_NAME
     - git remote set-url origin https://gitlab:${MY_GITHUB_TOKEN}@github.com/reclada/${CI_PROJECT_NAME}.git
@@ -190,7 +191,7 @@ push-to-github:
     - git add .
     - git commit -am "${CI_COMMIT_MESSAGE}"
     - git remote --verbose
-    - git push origin add/push-github --force
+    - git push origin $CI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME --force
   # needs:
   #   - job: prepare_db
   #     artifacts: true
