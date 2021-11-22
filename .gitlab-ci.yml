@@ -172,3 +172,36 @@ deploy-prod-env:
       when: always
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
+
+push-to-github:
+  stage: push
+  image: bitnami/git
+  script:
+    - echo "Run push to github"
+    - ls -la
+    - git remote set-url origin https://gitlab:$MY_GITHUB_TOKEN@github.com/reclada/reclada.runtime.git
+    - rm -rf Gitlab_image/
+    - rm -rf .gitlab-ci.yml
+    - git add .
+    - git commit -am "${CI_COMMIT_MESSAGE}"
+    - git push origin main --force
+  needs:
+    # - job: build_coordinator
+    # - job: terraform-prod-env
+    - job: prepare_coordinator
+      artifacts: true
+  tags:
+      - k8s-devops
+  rules:
+    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
+      when: never
+    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+      when: never
+    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
+      when: never
+    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
+      when: never
+    - if: $CI_COMMIT_REF_NAME == "main"
+      when: always
+    - if: $CI_COMMIT_REF_NAME == "test"
+      when: never
