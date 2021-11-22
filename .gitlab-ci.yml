@@ -155,9 +155,9 @@ deploy-prod-env:
     - python --version
     - psql -V
     - python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
-  needs:
-    - job: prepare_db
-      artifacts: true
+  # needs:
+  #   - job: prepare_db
+  #     artifacts: true
   tags:
       - k8s-devops
   rules:
