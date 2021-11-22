@@ -189,9 +189,8 @@ push-to-github:
     - git commit -am "${CI_COMMIT_MESSAGE}"
     - git push origin add/push-github --force
   needs:
-    # - job: build_coordinator
-    # - job: terraform-prod-env
-    - job: prepare_coordinator
+    # - job: deploy-prod-env
+    - job: prepare_db
       artifacts: true
   tags:
       - k8s-devops
