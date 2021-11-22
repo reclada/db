@@ -33,7 +33,7 @@ prepare_db:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "add/push-github"
       when: always
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -188,10 +188,9 @@ push-to-github:
     - git add .
     - git commit -am "${CI_COMMIT_MESSAGE}"
     - git push origin add/push-github --force
-  # needs:
-    # - job: deploy-prod-env
-    # - job: prepare_db
-    #   artifacts: true
+  needs:
+    - job: prepare_db
+      artifacts: true
   tags:
       - k8s-devops
   rules:
