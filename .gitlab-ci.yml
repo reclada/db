@@ -4,6 +4,7 @@ stages:
   - test
   - deploy
   - autotest
+  - push-to-github
 
 prepare_db:
   stage: prepare
