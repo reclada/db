@@ -75,7 +75,7 @@ result:
 */
 
 DROP FUNCTION IF EXISTS reclada_object.get_query_condition_filter;
-CREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter( data JSONB )
+CREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data JSONB)
 RETURNS TEXT AS $$
 DECLARE 
     _count   INT;
@@ -204,6 +204,10 @@ BEGIN
             WHERE t.lvl = u.lvl
                 AND t.rn = u.rn
                 AND (f.btwn or f.inop);
+
+    UPDATE mytable u
+        SET op = ' OPERATOR(reclada.##) '
+        WHERE op = ' XOR ';
 
     INSERT INTO mytable (lvl,rn)
         VALUES (0,0);

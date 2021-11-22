@@ -50,3 +50,17 @@ WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
 UPDATE reclada.OBJECT
 SET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,subject,minLength}','36'::jsonb)
 WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
+
+
+DROP OPERATOR IF EXISTS reclada.#(boolean, boolean);
+--DROP FUNCTION IF EXISTS reclada.xor;
+
+--\i 'function/reclada.xor.sql'
+
+CREATE OPERATOR reclada.## (
+    FUNCTION = reclada.xor,
+    LEFTARG = boolean,
+    RIGHTARG = boolean
+);
+
+\i 'function/reclada_object.get_query_condition_filter.sql'

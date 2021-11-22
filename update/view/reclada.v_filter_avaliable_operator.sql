@@ -18,7 +18,7 @@ AS
     UNION SELECT ' AND '            , 'BOOL'                        , 'BOOL'    , NULL    
     UNION SELECT ' OR '             , 'BOOL'                        , 'BOOL'    , NULL    
     UNION SELECT ' NOT '            , 'BOOL'                        , 'BOOL'    , NULL          
-    UNION SELECT ' # '              , 'BOOL'                        , 'BOOL'    , NULL      -- XOR 
+    UNION SELECT ' XOR '              , 'BOOL'                        , 'BOOL'    , NULL      -- XOR
     UNION SELECT ' IS '             , 'JSONB'                       , 'BOOL'    , NULL    
     UNION SELECT ' IS NOT '         , 'JSONB'                       , 'BOOL'    , NULL     
     UNION SELECT ' IN '             , 'JSONB'                       , 'BOOL'    , ' , '   
