@@ -175,7 +175,7 @@ deploy-prod-env:
       when: never
 
 push-to-github:
-  stage: push
+  stage: push-to-github
   image: bitnami/git
   script:
     - echo "Run push to github"
