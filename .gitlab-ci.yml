@@ -188,10 +188,10 @@ push-to-github:
     - git add .
     - git commit -am "${CI_COMMIT_MESSAGE}"
     - git push origin add/push-github --force
-  needs:
+  # needs:
     # - job: deploy-prod-env
-    - job: prepare_db
-      artifacts: true
+    # - job: prepare_db
+    #   artifacts: true
   tags:
       - k8s-devops
   rules:
