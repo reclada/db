@@ -197,6 +197,8 @@ push-to-github:
   tags:
       - k8s-devops
   rules:
+    - if: $CI_COMMIT_REF_NAME == "add/push-github"
+      when: always
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: never
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
@@ -207,5 +209,3 @@ push-to-github:
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
-    - if: $CI_COMMIT_REF_NAME == "add/push-github"
-      when: always
