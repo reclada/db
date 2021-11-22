@@ -4,6 +4,7 @@ stages:
   - test
   - deploy
   - autotest
+  - push-to-github
 
 prepare_db:
   stage: prepare
@@ -166,9 +167,9 @@ deploy-prod-env:
     - python --version
     - psql -V
     - python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
-  needs:
-    - job: prepare_db
-      artifacts: true
+  # needs:
+  #   - job: prepare_db
+  #     artifacts: true
   tags:
       - k8s-devops
   rules:
@@ -182,5 +183,38 @@ deploy-prod-env:
       when: never
     - if: $CI_COMMIT_REF_NAME == "main"
       when: always
+    - if: $CI_COMMIT_REF_NAME == "test"
+      when: never
+
+push-to-github:
+  stage: push-to-github
+  image: bitnami/git
+  script:
+    - echo "Run push to github"
+    - ls -la
+    - echo $CI_PROJECT_NAME
+    - git remote set-url origin https://gitlab:${MY_GITHUB_TOKEN}@github.com/reclada/${CI_PROJECT_NAME}.git
+    - rm -rf Gitlab_image/
+    - rm -rf .gitlab-ci.yml
+    - ls -la
+    - git config --global user.email "Gitlab@reclada.com"
+    - git config --global user.name "Gitlab runner"
+    - git add .
+    - git commit -am "${CI_COMMIT_MESSAGE}"
+    - git remote --verbose
+    - git push origin HEAD:$CI_COMMIT_REF_NAME --force
+  tags:
+      - k8s-devops
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "main"
+      when: always
+    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
+      when: never
+    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+      when: never
+    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
+      when: never
+    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
+      when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
