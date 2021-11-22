@@ -187,8 +187,8 @@ push-to-github:
     - ls -la
     - git config --global user.email "Gitlab@reclada.com"
     - git config --global user.name "Gitlab runner"
-    - git add .
-    - git commit -am "${CI_COMMIT_MESSAGE}"
+    # - git add .
+    # - git commit -am "${CI_COMMIT_MESSAGE}"
     - git push origin add/push-github --force
   # needs:
   #   - job: prepare_db
