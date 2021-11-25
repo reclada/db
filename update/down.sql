@@ -35,3 +35,4 @@ CREATE OPERATOR reclada.# (
 );
 --{function/reclada_object.get_query_condition_filter}
 --{view/reclada.v_filter_avaliable_operator}
+--{function/reclada_object.parse_filter}

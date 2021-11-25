@@ -57,6 +57,7 @@ CREATE OPERATOR reclada.## (
     LEFTARG = boolean,
     RIGHTARG = boolean
 );
+\i 'function/reclada_object.parse_filter.sql'
 \i 'view/reclada.v_filter_avaliable_operator.sql'
 \i 'function/reclada_object.get_query_condition_filter.sql'
 
