@@ -13,7 +13,11 @@
 */
 
 DROP FUNCTION IF EXISTS api.reclada_object_delete;
-CREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb, draft text default 'false')
+CREATE OR REPLACE FUNCTION api.reclada_object_delete(
+    data jsonb, 
+    ver text default '1', 
+    draft text default 'false'
+)
 RETURNS jsonb AS $$
 DECLARE
     class         text;
@@ -23,7 +27,12 @@ DECLARE
 
 BEGIN
 
-    obj_id := coalesce(data ->> '{GUID}', data ->> 'GUID');
+    obj_id := CASE ver
+                when '1'
+                    then data->>'GUID'
+                when '2'
+                    then data->>'{GUID}'
+            end;
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
@@ -34,7 +43,12 @@ BEGIN
         
     else
 
-        class := coalesce(data ->> '{class}', data ->> 'class');
+        class := CASE ver
+                        when '1'
+                            then data->>'class'
+                        when '2'
+                            then data->>'{class}'
+                    end;
         IF (class IS NULL) THEN
             RAISE EXCEPTION 'reclada object class not specified';
         END IF;

@@ -243,7 +243,11 @@ Other:
 */
 
 DROP FUNCTION IF EXISTS reclada_object.list;
-CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, gui boolean default false)
+CREATE OR REPLACE FUNCTION reclada_object.list(
+    data jsonb, 
+    gui boolean default false,
+    ver text default '1' 
+)
 RETURNS jsonb AS $$
 DECLARE
     _f_name TEXT = 'reclada_object.list';
@@ -294,7 +298,7 @@ BEGIN
  
     IF (_filter IS NOT NULL) THEN
         query_conditions := reclada_object.get_query_condition_filter(_filter);
-        IF gui THEN
+        IF ver = '2' THEN
             query_conditions := REPLACE(query_conditions,'#>','->');
         end if;
     ELSE
@@ -373,7 +377,7 @@ BEGIN
             ) conds
         INTO query_conditions;
     END IF;
-    IF gui AND reclada_object.need_flat(class) THEN
+    IF ver = '2' THEN
         query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;
     ELSE
         query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;

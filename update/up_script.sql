@@ -13,33 +13,41 @@ create table reclada.draft(
 
 
 \i 'function/api.reclada_object_create.sql'
-\i 'function/reclada_object.create.sql'
 \i 'function/api.reclada_object_list.sql'
 \i 'function/api.reclada_object_delete.sql'
+\i 'function/api.reclada_object_update.sql'
+
+\i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.datasource_insert.sql'
+\i 'function/reclada_object.list.sql'
+\i 'function/reclada_object.get_query_condition_filter.sql'
+\i 'function/reclada_object.parse_filter.sql'
+
 \i 'function/reclada.raise_exception.sql'
+\i 'view/reclada.v_filter_avaliable_operator.sql'
 
-SELECT reclada_object.create_subclass('{
-    "class": "DataSource",
-    "attributes": {
-        "newClass": "Asset",
-        "properties": {
-            "classGUID": {"type": "string"}
-        },
-        "required": ["forClass"]
-    }
-}'::jsonb);
 
-SELECT reclada_object.create_subclass('{
-    "class": "Asset",
-    "attributes": {
-        "newClass": "DBAsset",
-        "properties": {
-            "connectionString": {"type": "string"}
-        },
-        "required": ["connectionString"]
-    }
-}'::jsonb);
+-- SELECT reclada_object.create_subclass('{
+--     "class": "DataSource",
+--     "attributes": {
+--         "newClass": "Asset",
+--         "properties": {
+--             "classGUID": {"type": "string"}
+--         },
+--         "required": ["forClass"]
+--     }
+-- }'::jsonb);
+-- 
+-- SELECT reclada_object.create_subclass('{
+--     "class": "Asset",
+--     "attributes": {
+--         "newClass": "DBAsset",
+--         "properties": {
+--             "connectionString": {"type": "string"}
+--         },
+--         "required": ["connectionString"]
+--     }
+-- }'::jsonb);
 
 
 UPDATE reclada.OBJECT
@@ -57,7 +65,11 @@ CREATE OPERATOR reclada.## (
     LEFTARG = boolean,
     RIGHTARG = boolean
 );
-\i 'function/reclada_object.parse_filter.sql'
-\i 'view/reclada.v_filter_avaliable_operator.sql'
-\i 'function/reclada_object.get_query_condition_filter.sql'
+
+
+
+delete from reclada.v_object_display where "table" is null;
+
+
+
 

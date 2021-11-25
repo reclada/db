@@ -57,7 +57,11 @@
 */
 
 DROP FUNCTION IF EXISTS api.reclada_object_list;
-CREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb default null, draft text default 'false')
+CREATE OR REPLACE FUNCTION api.reclada_object_list(
+    data jsonb default null, 
+    ver text default '1', 
+    draft text default 'false'
+    )
 RETURNS jsonb AS $$
 DECLARE
     class               text;
@@ -84,7 +88,12 @@ BEGIN
             )::jsonb;
     end if;
 
-    class := coalesce(data->>'{class}', data->>'class');
+    class := CASE ver
+                when '1'
+                    then data->>'class'
+                when '2'
+                    then data->>'{class}'
+            end;
     IF(class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;

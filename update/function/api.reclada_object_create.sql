@@ -13,7 +13,11 @@
  */
 
 DROP FUNCTION IF EXISTS api.reclada_object_create;
-CREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb, draft text default 'false')
+CREATE OR REPLACE FUNCTION api.reclada_object_create(
+    data    jsonb                   , 
+    ver     text    default '1'     ,  
+    draft   text    default 'false'
+)
 RETURNS jsonb AS $$
 DECLARE
     data_jsonb       jsonb;
@@ -35,13 +39,24 @@ BEGIN
 
     FOR data_jsonb IN SELECT jsonb_array_elements(data) LOOP
 
-        _guid := coalesce(data_jsonb ->> '{GUID}', data_jsonb ->> 'GUID');
+        _guid := CASE ver
+                        when '1'
+                            then data_jsonb->>'GUID'
+                        when '2'
+                            then data_jsonb->>'{GUID}'
+                    end;
         if _draft then
             INSERT into reclada.draft(guid,data)
                 values(_guid,data_jsonb);
         else
 
-            class := coalesce(data_jsonb->>'{class}', data_jsonb->>'class');
+             class := CASE ver
+                            when '1'
+                                then data_jsonb->>'class'
+                            when '2'
+                                then data_jsonb->>'{class}'
+                        end;
+
             IF (class IS NULL) THEN
                 RAISE EXCEPTION 'The reclada object class is not specified (api)';
             END IF;
@@ -53,7 +68,7 @@ BEGIN
                 RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;
             END IF;
             
-            if reclada_object.need_flat(class) then
+            if ver = '2' then
                 _need_flat := true;
                 with recursive j as 
                 (
@@ -153,7 +168,7 @@ BEGIN
         SELECT reclada_object.create(data_to_create, user_info) 
             INTO result;
     end if;
-    if _need_flat or _draft then
+    if ver = '2' or _draft then
         RETURN '{"status":"OK"}'::jsonb;
     end if;
     RETURN result;
