@@ -40,6 +40,7 @@ DECLARE
     _parent_field   text;
     skip_insert     boolean;
     notify_res      jsonb;
+    _cnt             int;
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -115,15 +116,22 @@ BEGIN
                     WHERE parent_guid       = _parent_guid
                         AND transaction_id  = tran_id;
                 END IF;
-                --TODO check iscascade 
-                FOR _obj_GUID IN (
-                    SELECT obj_guid
+                SELECT count(*)
+                FROM reclada.get_duplicates(_attrs, _class_uuid)
+                    INTO _cnt;
+                IF (_cnt >1) THEN
+                    RAISE EXCEPTION 'Found more than one duplicates. Resolve conflict manually.';
+                END IF;
+                FOR _obj_GUID, _isCascade IN (
+                    SELECT obj_guid, is_cascade
                     FROM reclada.get_duplicates(_attrs, _class_uuid)) LOOP
                         new_data := _data;
-                        PERFORM reclada_object.add_cr_dup_mark(
-                            (_data->>'GUID')::uuid,
-                            tran_id,
-                            'Update');
+                        IF (_isCascade) THEN
+                            PERFORM reclada_object.add_cr_dup_mark(
+                                (_data->>'GUID')::uuid,
+                                tran_id,
+                                'Update');
+                        END IF;
                         new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
                         new_data = reclada_object.update_json_by_guid(_obj_GUID, new_data);
                         SELECT reclada_object.update(new_data)
@@ -133,6 +141,12 @@ BEGIN
                 END LOOP;
             END IF;
             IF (NOT skip_insert) THEN
+                SELECT COUNT(*), MAX(dup_behavior)
+                FROM reclada.get_duplicates(_attrs, _class_uuid)
+                    INTO _cnt, _dupBehavior;
+                IF (_cnt>1 AND _dupBehavior IN ('Update','Merge')) THEN
+                    RAISE EXCEPTION 'Found more than one duplicates. Resolve conflict manually.';
+                END IF;
                 FOR _obj_GUID, _dupBehavior, _isCascade, _uniField IN (
                     SELECT obj_guid, dup_behavior, is_cascade, dup_field
                     FROM reclada.get_duplicates(_attrs, _class_uuid)) LOOP
@@ -156,13 +170,13 @@ BEGIN
                                     'Update');
                             END IF;
                             new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
-                            new_data = reclada_object.update_json_by_guid(_obj_GUID, _data);
+                            new_data = reclada_object.update_json_by_guid(_obj_GUID, new_data);
                             SELECT reclada_object.update(new_data)
                                 INTO res;
                             affected := array_append( affected, _obj_GUID);
                             skip_insert := true;
                         WHEN 'Reject' THEN
-                            skip_insert := true;
+                            RAISE EXCEPTION 'Object rejected';
                         WHEN 'Copy'    THEN
                             _attrs = _attrs || format('{"%s": "%s_%s"}', _uniField, _attrs->> _uniField, nextval('reclada.object_id_seq'))::jsonb;
                         WHEN 'Insert' THEN

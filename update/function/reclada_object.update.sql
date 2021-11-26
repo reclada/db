@@ -34,6 +34,7 @@ DECLARE
     new_data       jsonb;
     _dupBehavior    dp_bhvr;
     _uniField       text;
+    _cnt            int;
 BEGIN
 
     class_name := data->>'class';
@@ -60,7 +61,7 @@ BEGIN
     else
         select v.data 
             from reclada.v_class v
-                where class_uuid = v.obj_id
+                where _class_uuid = v.obj_id
             INTO schema;
     end if;
     -- TODO: don't allow update jsonschema
@@ -94,9 +95,19 @@ BEGIN
     IF (_parent_guid IS NULL AND _parent_field IS NOT NULL) THEN
         _parent_guid = v_attrs->>_parent_field;
     END IF;
+
+    IF (_parent_guid IS NULL) THEN
+        _parent_guid := old_obj->>'parentGUID';
+    END IF;
     
     IF _class_uuid IN (SELECT class_uuid FROM reclada.v_unifields_idx_cnt)
     THEN
+        SELECT COUNT(*), MAX(dup_behavior)
+        FROM reclada.get_duplicates(v_attrs, _class_uuid)
+            INTO _cnt, _dupBehavior;
+        IF (_cnt>1 AND _dupBehavior IN ('Update','Merge')) THEN
+            RAISE EXCEPTION 'Found more than one duplicates. Resolve conflict manually.';
+        END IF;
         FOR _obj_GUID, _dupBehavior, _uniField IN (
             SELECT obj_guid, dup_behavior, dup_field
             FROM reclada.get_duplicates(v_attrs, _class_uuid, v_obj_id)) LOOP
@@ -109,7 +120,7 @@ BEGIN
                     new_data = reclada_object.update_json_by_guid(_obj_GUID, new_data);
                     PERFORM reclada_object.update(new_data);   --TODO add affected data to response
                 WHEN 'Reject' THEN
-                    --TODO reject duplicates
+                    RAISE EXCEPTION 'Object rejected';
                 WHEN 'Copy'    THEN
                     v_attrs = v_attrs || format('{"%s": "%s_%s"}', _uniField, _attrs->> _uniField, nextval('reclada.object_id_seq'))::jsonb;
                 WHEN 'Insert' THEN
@@ -134,13 +145,15 @@ BEGIN
                                 class,
                                 status,
                                 attributes,
-                                transaction_id
+                                transaction_id,
+                                parent_guid
                               )
         select  v.obj_id,
                 (schema->>'GUID')::uuid,
                 reclada_object.get_active_status_obj_id(),--status 
                 v_attrs || format('{"revision":"%s"}',revid)::jsonb,
-                transaction_id
+                transaction_id,
+                _parent_guid
             FROM reclada.v_object v
             JOIN t 
                 on t.id = v.id
