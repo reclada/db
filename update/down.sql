@@ -18,6 +18,7 @@ drop table reclada.draft;
 --{view/reclada.v_filter_avaliable_operator}
 --{function/reclada_object.create_subclass}
 --{view/reclada.v_ui_active_object}
+--{view/reclada.v_default_display}
 
 delete from reclada.object 
     where guid in (select reclada_object.get_GUID_for_class('Asset'));
