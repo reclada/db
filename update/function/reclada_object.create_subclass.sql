@@ -68,10 +68,10 @@ BEGIN
     }',
     new_class,
     version_,
-    (class_schema->'properties') || (attrs->'properties'),
+    (class_schema->'properties') || coalesce((attrs->'properties'),'{}'::jsonb),
     (SELECT jsonb_agg(el) FROM (
         SELECT DISTINCT pg_catalog.jsonb_array_elements(
-            (class_schema -> 'required') || (attrs -> 'required')
+            (class_schema -> 'required') || coalesce((attrs -> 'required'),'{}'::jsonb)
         ) el) arr),
     class_guid
     )::jsonb);

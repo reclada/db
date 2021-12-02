@@ -2,12 +2,6 @@
     "forClass": "DBAsset",
     "schema": {
         "properties": {
-            "classGUID": {
-                "type": "string"
-            },
-            "connectionString": {
-                "type": "string"
-            },
             "name": {
                 "type": "string"
             },
@@ -22,8 +16,7 @@
             }
         },
         "required": [
-            "forClass",
-            "connectionString",
+            {},
             "name"
         ],
         "type": "object"
