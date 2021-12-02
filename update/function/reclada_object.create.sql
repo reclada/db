@@ -142,6 +142,10 @@ BEGIN
                     WHERE o.obj_id = ANY (affected)
                 )
             )::jsonb; 
+    
+    delete from reclada.draft 
+        where guid = ANY (affected);
+
     PERFORM reclada_notification.send_object_notification
         (
             'create',
