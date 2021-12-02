@@ -141,7 +141,7 @@ BEGIN
                 END LOOP;
             END IF;
             IF (NOT skip_insert) THEN
-                SELECT COUNT(*), MAX(dup_behavior)
+                SELECT COUNT(DISTINCT obj_guid), MAX(dup_behavior)
                 FROM reclada.get_duplicates(_attrs, _class_uuid)
                     INTO _cnt, _dupBehavior;
                 IF (_cnt>1 AND _dupBehavior IN ('Update','Merge')) THEN
@@ -176,7 +176,7 @@ BEGIN
                             affected := array_append( affected, _obj_GUID);
                             skip_insert := true;
                         WHEN 'Reject' THEN
-                            RAISE EXCEPTION 'Object rejected';
+                            RAISE EXCEPTION 'Duplicate found (GUID: %). Object rejected.', _obj_GUID;
                         WHEN 'Copy'    THEN
                             _attrs = _attrs || format('{"%s": "%s_%s"}', _uniField, _attrs->> _uniField, nextval('reclada.object_id_seq'))::jsonb;
                         WHEN 'Insert' THEN
