@@ -66,8 +66,7 @@ BEGIN
 
     end if;
 
-    if reclada_object.need_flat(class) 
-        or draft != 'false' then 
+    if ver = '2' or draft != 'false' then 
         RETURN '{"status":"OK"}'::jsonb;
     end if;
 

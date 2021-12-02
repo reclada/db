@@ -307,12 +307,11 @@ BEGIN
 
         IF (class_uuid IS NULL) THEN
             SELECT v.obj_id
-                FROM reclada.v_class_lite v
+                FROM reclada.v_class v
                     WHERE _class = v.for_class
                     ORDER BY v.version DESC
                     limit 1 
             INTO class_uuid;
-
             IF (class_uuid IS NULL) THEN
                 RAISE EXCEPTION 'Class not found: %', _class;
             END IF;
@@ -403,7 +402,7 @@ BEGIN
             ' ORDER BY ' || order_by ||
             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
     INTO objects;
-
+    objects := coalesce(objects,'[]'::jsonb);
     IF gui THEN
 
         if ver = '2' then

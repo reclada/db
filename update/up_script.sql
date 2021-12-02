@@ -47,11 +47,11 @@ SELECT reclada_object.create_subclass('{
 
 
 UPDATE reclada.OBJECT
-SET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,object,minLength}','36'::jsonb)
+SET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,object,pattern}','"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"'::jsonb)
 WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
 
 UPDATE reclada.OBJECT
-SET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,subject,minLength}','36'::jsonb)
+SET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,subject,pattern}','"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"'::jsonb)
 WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
 
 
