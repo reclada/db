@@ -244,7 +244,7 @@ Other:
 
 DROP FUNCTION IF EXISTS reclada_object.list;
 CREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, gui boolean default false)
-RETURNS jsonb AS $$
+RETURNS text AS $$
 DECLARE
     _f_name TEXT = 'reclada_object.list';
     class               text;
@@ -274,7 +274,7 @@ BEGIN
     IF ((order_by_jsonb IS NULL) OR
         (order_by_jsonb = 'null'::jsonb) OR
         (order_by_jsonb = '[]'::jsonb)) THEN
-        order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
+        order_by_jsonb := '[{"field": "id", "order": "ASC"}]'::jsonb;
     END IF;
     SELECT string_agg(
         format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
@@ -419,7 +419,14 @@ BEGIN
         res := objects;
     END IF;
 
-    RETURN res;
+    --RETURN res;
+
+
+
+
+
+
+    RETURN query_conditions;
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

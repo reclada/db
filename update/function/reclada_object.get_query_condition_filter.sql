@@ -75,7 +75,7 @@ result:
 */
 
 DROP FUNCTION IF EXISTS reclada_object.get_query_condition_filter;
-CREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data JSONB)
+CREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data JSONB, schema JSONB default null)
 RETURNS TEXT AS $$
 DECLARE 
     _count   INT;
@@ -84,6 +84,7 @@ DECLARE
 BEGIN 
     
     perform reclada.validate_json(data, _f_name);
+    schema := '{"GUID": "c7fc0455-0572-40d7-987f-583cc2c9630c", "class": "5362d59b-82a1-4c7c-8ec3-07c256009fb0", "status": "active", "attributes": {"schema": {"type": "object", "required": ["checksum", "name", "mimeType"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}, "checksum": {"type": "string"}, "mimeType": {"type": "string"}}}, "version": "1", "forClass": "File"}, "parentGUID": null, "createdTime": "2021-10-04T11:06:30.979167+03:00", "transactionID": 58}'::jsonb;
     -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE
     CREATE TEMP TABLE mytable AS
         SELECT  res.lvl              AS lvl         , 
@@ -121,7 +122,7 @@ BEGIN
             LEFT JOIN reclada.v_filter_inner_operator iop
                 on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op, _f_name)
+    PERFORM reclada.raise_exception('Operator is not allowed ' || t.op, _f_name)
         FROM mytable t
             WHERE t.op IS NULL;
 
@@ -160,11 +161,33 @@ BEGIN
                                         THEN
                                             case
                                                 when t.input_type = 'TEXT'
-                                                    then format('(data #>> ''%s'')', pt.v)
+                                                    then
+                                                        case
+                                                            when schema is null
+                                                                then format('(data #>> ''%s'')', pt.v)
+                                                            else format('reclada_object.get_value_or_default(data,''%s'',', pt.v)
+                                                                 --   || format('''%s''::jsonb)', schema)
+                                                                 --replace(
+                                                                 --   format('reclada_object.get_value_or_default(data,''%s'',', pt.v)
+                                                                 --   || format('''%s''::jsonb)', schema),
+                                                                 --   '>', '>>')
+                                                        end
                                                 when t.input_type = 'JSONB' or t.input_type is null
-                                                    then format('data #> ''%s''', pt.v)
-                                                else
-                                                    format('(data #>> ''%s'')::', pt.v) || t.input_type
+                                                    then
+                                                        case
+                                                            when schema is null
+                                                                then format('data #> ''%s''', pt.v)
+                                                            else format('reclada_object.get_value_or_default(data,''%s'',''%s''::jsonb)', pt.v, schema)
+                                                        end
+                                                    else
+                                                        case
+                                                            when schema is null
+                                                                then format('(data #>> ''%s'')::', pt.v) || t.input_type
+                                                            else replace(
+                                                                    format('reclada_object.get_value_or_default(data,''%s'',', pt.v)
+                                                                    || format('''%s''::jsonb)::', schema) || t.input_type,
+                                                                    '>', '>>')
+                                                        end
                                             end
                                     when t.input_type = 'TEXT'
                                         then ''''||REPLACE(pt.v,'''','''''')||''''

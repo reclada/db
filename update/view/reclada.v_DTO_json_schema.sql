@@ -15,5 +15,5 @@ AS
             obj.parent_guid
 	FROM reclada.v_active_object obj
    	WHERE class_name = 'DTOJsonSchema';
-    
+
 
