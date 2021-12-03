@@ -1,5 +1,5 @@
 DROP FUNCTION IF EXISTS reclada_object.merge;
-CREATE OR REPLACE FUNCTION reclada_object.merge(lobj jsonb, robj jsonb)
+CREATE OR REPLACE FUNCTION reclada_object.merge(lobj jsonb, robj jsonb, schema jsonb default null)
     RETURNS jsonb
     LANGUAGE plpgsql
     STABLE
@@ -47,6 +47,9 @@ AS $function$
                 ) a
             ) b
                 INTO res;
+            IF schema IS NOT NULL AND NOT validate_json_schema(schema, res) THEN
+                RAISE EXCEPTION 'Objects aren''t mergeable. Solve duplicate conflicate manually.';
+            END IF;
             RETURN res;
         WHEN 'array' THEN
             SELECT to_jsonb(array_agg(rec)) FROM (

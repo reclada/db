@@ -182,7 +182,7 @@ BEGIN
                         WHEN 'Insert' THEN
                             -- DO nothing
                         WHEN 'Merge' THEN
-                            SELECT reclada_object.update(reclada_object.merge(new_data - 'class', data) || format('{"GUID": "%s"}', _obj_GUID)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
+                            SELECT reclada_object.update(reclada_object.merge(new_data - 'class', data,schema->'attributes'->'schema') || format('{"GUID": "%s"}', _obj_GUID)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
                             FROM reclada.v_active_object
                             WHERE obj_id = _obj_GUID
                                 INTO res;

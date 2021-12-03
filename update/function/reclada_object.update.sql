@@ -131,7 +131,7 @@ BEGIN
                 WHEN 'Insert' THEN
                     -- DO nothing
                 WHEN 'Merge' THEN                    
-                    RETURN reclada_object.update(reclada_object.merge(_data - 'class', vao.data) || format('{"GUID": "%s"}', _obj_GUID)::jsonb)
+                    RETURN reclada_object.update(reclada_object.merge(_data - 'class', vao.data, schema->'attributes'->'schema') || format('{"GUID": "%s"}', _obj_GUID)::jsonb)
                     FROM reclada.v_active_object vao
                     WHERE obj_id = _obj_GUID;
             END CASE;
