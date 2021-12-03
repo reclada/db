@@ -2,6 +2,7 @@ DROP FUNCTION IF EXISTS reclada_object.get_value_or_default;
 CREATE OR REPLACE FUNCTION reclada_object.get_value_or_default(data jsonb, field text[], schema jsonb, text_type boolean default false)
 RETURNS jsonb AS $$
     SELECT
+        --format('{"v": "%s"}',
         COALESCE(
         data #> field,
         schema #> (
@@ -11,7 +12,8 @@ RETURNS jsonb AS $$
             ||
             field[array_position(field, 'attributes') + 1:]
             ||
-            '{default}'));
+            '{default}'))
+        --)::jsonb;
 $$ LANGUAGE SQL IMMUTABLE;
 
 UPDATE reclada.object

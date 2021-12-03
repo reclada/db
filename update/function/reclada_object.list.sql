@@ -248,7 +248,7 @@ CREATE OR REPLACE FUNCTION reclada_object.list(
     gui boolean default false,
     ver text default '1' 
 )
-RETURNS jsonb AS $$
+RETURNS text AS $$
 DECLARE
     _f_name TEXT = 'reclada_object.list';
     _class              text;
@@ -385,13 +385,18 @@ BEGIN
         query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
     END IF;
 
-    -- RAISE NOTICE 'conds: %', '
-    --             SELECT obj.data
-    --             '
-    --             || query
-    --             ||
-    --             ' ORDER BY ' || order_by ||
-    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
+
+
+    RAISE EXCEPTION 'conds: %', '
+                 SELECT obj.data
+                 '
+                 || query
+                 ||
+                 ' ORDER BY ' || order_by ||
+                 ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
+
+
+
 
     EXECUTE E'SELECT to_jsonb(array_agg(T.data))
         FROM (
@@ -467,7 +472,8 @@ BEGIN
         res := objects;
     END IF;
 
-    RETURN res;
+    --RETURN res;
 
+return query_conditions;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
