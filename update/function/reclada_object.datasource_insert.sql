@@ -42,6 +42,10 @@ BEGIN
             RAISE EXCEPTION 'Can''t found defaultDataSet';
         END IF;
 
+        IF (dataset_guid IS NULL) THEN
+            RAISE EXCEPTION 'Can''t found defaultDataSet';
+        END IF;
+
         SELECT count(*)
         FROM reclada.v_active_object
         WHERE class_name = 'Relationship'

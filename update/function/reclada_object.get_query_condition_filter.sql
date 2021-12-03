@@ -139,6 +139,8 @@ BEGIN
             JOIN LATERAL 
             (
                 SELECT CASE 
+                        WHEN t.op LIKE '%<@%' AND t.idx=1 AND jsonb_typeof(t.parsed)='string'
+                            THEN format('data #> ''%s''!= ''[]''::jsonb AND data #> ''%s''!= ''{}''::jsonb AND data #> ''%s''', pt.v, pt.v, pt.v)
                         WHEN fm.repl is not NULL 
                             then 
                                 case 
