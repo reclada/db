@@ -1,5 +1,6 @@
 {
     "forClass": "Cell",
+    "parentField": "table",
     "schema": {
         "properties": {
             "bbox": {

@@ -207,6 +207,10 @@ BEGIN
                 AND t.rn = u.rn
                 AND (f.btwn or f.inop);
 
+    UPDATE mytable u
+        SET op = ' OPERATOR(reclada.##) '
+        WHERE op = ' XOR ';
+
     INSERT INTO mytable (lvl,rn)
         VALUES (0,0);
 

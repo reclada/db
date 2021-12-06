@@ -37,6 +37,7 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/reclada_object.datasource_insert.sql'
 \i 'function/reclada.get_duplicates.sql'
 \i 'function/reclada_object.add_cr_dup_mark.sql'
+\i 'function/reclada_object.parse_filter.sql'
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)
