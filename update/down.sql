@@ -56,6 +56,8 @@ DROP FUNCTION   reclada_object.remove_parent_guid;
 --{function/reclada_object.datasource_insert}
 --{view/reclada.v_pk_for_class}
 --{function/reclada_object.parse_filter}
+--{function/reclada_object.list}
+
 
 DROP TABLE reclada_object.cr_dup_behavior;
 DROP TYPE dp_bhvr;
