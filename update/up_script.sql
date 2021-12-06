@@ -39,6 +39,8 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/reclada_object.add_cr_dup_mark.sql'
 \i 'function/reclada_object.parse_filter.sql'
 
+\i 'function/reclada_object.list.sql'
+
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)
 WHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' and status = reclada_object.get_active_status_obj_id();
