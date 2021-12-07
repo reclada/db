@@ -32,7 +32,7 @@ DECLARE
     res           jsonb;
     affected      uuid[];
     inserted        uuid[];
-    _dupBehavior  dp_bhvr;
+    _dupBehavior  reclada.dp_bhvr;
     _isCascade      boolean;
     _uniField     text;
     _parent_guid  uuid;

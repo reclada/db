@@ -4,7 +4,7 @@ AS
     SELECT
         for_class,
         class_uuid,
-        CAST (dup_behavior AS dp_bhvr) AS dup_behavior,
+        CAST (dup_behavior AS reclada.dp_bhvr) AS dup_behavior,
         is_cascade,
         is_mandatory,
         uf as unifield,

@@ -9,7 +9,7 @@ DROP FUNCTION IF EXISTS reclada.get_duplicates;
 CREATE OR REPLACE FUNCTION reclada.get_duplicates(_attrs jsonb, _class_uuid uuid, exclude_uuid  uuid = NULL)
 RETURNS TABLE (
     obj_guid        uuid,
-    dup_behavior    dp_bhvr,
+    dup_behavior    reclada.dp_bhvr,
     is_cascade      boolean,
     dup_field       text) AS $$
     SELECT obj_id, dup_behavior, is_cascade, f1

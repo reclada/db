@@ -4,12 +4,12 @@
     to run text script of functions
 */
 
-CREATE TYPE dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert','Merge');
+CREATE TYPE reclada.dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert','Merge');
 
 CREATE TABLE reclada_object.cr_dup_behavior (
     parent_guid     uuid,
     transaction_id  int8,
-    dup_behavior    dp_bhvr,
+    dup_behavior    reclada.dp_bhvr,
     last_use        timestamp DEFAULT current_timestamp,
     PRIMARY KEY     (transaction_id, parent_guid)
 );
@@ -43,35 +43,35 @@ DROP VIEW reclada.v_pk_for_class;
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)
-WHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' and status = reclada_object.get_active_status_obj_id();
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('Cell')) and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{parentField}','"page"'::jsonb)
-WHERE guid='f5bcc7ad-1a9b-476d-985e-54cf01377530' and status = reclada_object.get_active_status_obj_id();
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('Table')) and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{parentField}','"document"'::jsonb)
-WHERE guid='3ed1c180-a508-4180-9281-2f9b9a9cd477' and status = reclada_object.get_active_status_obj_id();
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('Page')) and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{parentField}','"fileGUID"'::jsonb)
-WHERE guid='85d32073-4a00-4df7-9def-7de8d90b77e0' and status = reclada_object.get_active_status_obj_id();
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('Document')) and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)
-WHERE guid='7643b601-43c2-4125-831a-539b9e7418ec' and status = reclada_object.get_active_status_obj_id();
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('DataRow')) and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
-SET attributes = jsonb_set(attributes,'{dupBehavior}','"Update"'::jsonb)
-WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+SET attributes = jsonb_set(attributes,'{dupBehavior}','"Replace"'::jsonb)
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('File')) and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{isCascade}','true'::jsonb)
-WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('File')) and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{dupChecking}','[{"uniFields" : ["uri"], "isMandatory" : true}, {"uniFields" : ["checksum"], "isMandatory" : true}]'::jsonb)
-WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('File')) and status = reclada_object.get_active_status_obj_id();
 
 SELECT reclada_object.refresh_mv('uniFields');
 

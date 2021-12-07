@@ -60,7 +60,7 @@ DROP FUNCTION   reclada_object.remove_parent_guid;
 
 
 DROP TABLE reclada_object.cr_dup_behavior;
-DROP TYPE dp_bhvr;
+DROP TYPE reclada.dp_bhvr;
 
-DROP INDEX uri_index_;
-DROP INDEX checksum_index_;
+DROP INDEX reclada.uri_index_;
+DROP INDEX reclada.checksum_index_;

@@ -31,7 +31,7 @@ DECLARE
     _parent_guid  uuid;
     _parent_field   text;
     _obj_GUID       uuid;
-    _dupBehavior    dp_bhvr;
+    _dupBehavior    reclada.dp_bhvr;
     _uniField       text;
     _cnt            int;
 BEGIN
