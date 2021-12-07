@@ -36,12 +36,12 @@ DECLARE
     _cnt            int;
 BEGIN
 
-    _class_name := data->>'class';
+    _class_name := _data->>'class';
     IF (_class_name IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
     _class_uuid := reclada.try_cast_uuid(_class_name);
-    v_obj_id := data->>'GUID';
+    v_obj_id := _data->>'GUID';
     IF (v_obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no GUID';
     END IF;
@@ -52,13 +52,13 @@ BEGIN
     END IF;
 
     if _class_uuid is null then
-        SELECT reclada_object.get_schema(class_name) 
+        SELECT reclada_object.get_schema(_class_name) 
             INTO schema;
     else
         select v.data, v.for_class 
             from reclada.v_class v
                 where _class_uuid = v.obj_id
-            INTO schema;
+            INTO schema, _class_name;
     end if;
     -- TODO: don't allow update jsonschema
     IF (schema IS NULL) THEN
@@ -85,7 +85,7 @@ BEGIN
 
     SELECT parent_field
         FROM reclada.v_parent_field
-        WHERE for_class = class_name
+        WHERE for_class = _class_name
             INTO _parent_field;
 
     _parent_guid = (_data->>'parent_guid')::uuid;
@@ -186,7 +186,7 @@ BEGIN
                 v_obj_id,
                 v_attrs
             );
-    PERFORM reclada_object.refresh_mv(class_name);
+    PERFORM reclada_object.refresh_mv(_class_name);
 
     IF ( _class_name = 'jsonschema' AND jsonb_typeof(v_attrs->'dupChecking') = 'array') THEN
         PERFORM reclada_object.refresh_mv('unifields');
