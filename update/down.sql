@@ -1,6 +1,7 @@
 -- you you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
+
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
 WHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' and status = reclada_object.get_active_status_obj_id();
@@ -59,8 +60,17 @@ DROP FUNCTION   reclada_object.remove_parent_guid;
 --{function/reclada_object.list}
 
 
+--{function/reclada_object.list}
+--{function/reclada_object.get_query_condition_filter}
+--{function/api.reclada_object_create}
+--{function/reclada_object.delete}
+
+--{view/reclada.v_filter_avaliable_operator}
+
 DROP TABLE reclada_object.cr_dup_behavior;
 DROP TYPE dp_bhvr;
 
 DROP INDEX uri_index_;
 DROP INDEX checksum_index_;
+
+

@@ -29,6 +29,7 @@ DECLARE
     _need_flat       bool := false;
     _draft           bool;
     _guid            uuid;
+    _f_name          text := 'api.reclada_object_create';
 BEGIN
 
     _draft := draft != 'false';
@@ -46,6 +47,9 @@ BEGIN
                             then data_jsonb->>'{GUID}'
                     end;
         if _draft then
+            if _guid is null then
+                perform reclada.raise_exception('GUID is required.',_f_name);
+            end if;
             INSERT into reclada.draft(guid,data)
                 values(_guid,data_jsonb);
         else
