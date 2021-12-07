@@ -121,7 +121,7 @@ BEGIN
             LEFT JOIN reclada.v_filter_inner_operator iop
                 on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op, _f_name)
+    PERFORM reclada.raise_exception('Operator does not allowed ', _f_name)
         FROM mytable t
             WHERE t.op IS NULL;
 
@@ -207,9 +207,6 @@ BEGIN
                 AND t.rn = u.rn
                 AND (f.btwn or f.inop);
 
-    UPDATE mytable u
-        SET op = ' OPERATOR(reclada.##) '
-        WHERE op = ' XOR ';
 
     INSERT INTO mytable (lvl,rn)
         VALUES (0,0);
