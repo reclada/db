@@ -77,7 +77,7 @@ BEGIN
     )::jsonb
     INTO data;
 
-    IF (jsonb_array_length(data) = 1) THEN
+    IF (jsonb_array_length(data) <= 1) THEN
         data := data->0;
     END IF;
     
