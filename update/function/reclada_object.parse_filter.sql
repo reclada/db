@@ -67,11 +67,7 @@ AS $$
     SELECT 	r.lvl	,
             r.rn	,
             r.idx   ,
-            case upper(r.op) 
-                when ' XOR '
-                    then ' OPERATOR(reclada.##) ' 
-                else upper(r.op) 
-            end,
+            upper(r.op) ,
             r.prev  ,
             r.val	,
             r.parsed

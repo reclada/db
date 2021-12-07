@@ -1,273 +1,80 @@
--- version = 43
+-- version = 44
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
 
-create table reclada.draft(
-    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1),
-    guid uuid,
-    user_guid uuid DEFAULT reclada_object.get_default_user_obj_id(),
-    data jsonb not null
+CREATE TYPE dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert','Merge');
+
+CREATE TABLE reclada_object.cr_dup_behavior (
+    parent_guid     uuid,
+    transaction_id  int8,
+    dup_behavior    dp_bhvr,
+    last_use        timestamp DEFAULT current_timestamp,
+    PRIMARY KEY     (transaction_id, parent_guid)
 );
 
+DROP VIEW reclada.v_pk_for_class;
 
-\i 'function/api.reclada_object_create.sql'
-\i 'function/api.reclada_object_list.sql'
-\i 'function/api.reclada_object_delete.sql'
-\i 'function/api.reclada_object_update.sql'
+\i 'view/reclada.v_object_unifields.sql'
+\i 'view/reclada.v_parent_field.sql'
+\i 'function/reclada.get_unifield_index_name.sql'
+\i 'view/reclada.v_unifields_idx_cnt.sql'
+\i 'view/reclada.v_unifields_pivoted.sql'
 
-\i 'function/reclada_object.create.sql'
-\i 'function/reclada_object.datasource_insert.sql'
-\i 'function/reclada_object.list.sql'
 \i 'function/reclada_object.get_query_condition_filter.sql'
+\i 'function/reclada_object.merge.sql'
+\i 'function/reclada_object.update_json.sql'
+\i 'function/reclada_object.update_json_by_guid.sql'
+\i 'function/reclada_object.remove_parent_guid.sql'
+\i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.create_subclass.sql'
+\i 'function/reclada_object.delete.sql'
+\i 'function/reclada_object.update.sql'
+\i 'function/reclada_object.refresh_mv.sql'
+\i 'function/reclada_object.update.sql'
+\i 'function/reclada.get_childs.sql'
+\i 'function/reclada_object.datasource_insert.sql'
+\i 'function/reclada.get_duplicates.sql'
+\i 'function/reclada_object.add_cr_dup_mark.sql'
 \i 'function/reclada_object.parse_filter.sql'
 
-\i 'function/reclada.raise_exception.sql'
-\i 'view/reclada.v_filter_avaliable_operator.sql'
-\i 'view/reclada.v_default_display.sql'
-\i 'function/reclada_object.create_subclass.sql'
-\i 'view/reclada.v_ui_active_object.sql'
+\i 'function/reclada_object.list.sql'
+
+UPDATE reclada.object
+SET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)
+WHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' and status = reclada_object.get_active_status_obj_id();
+
+UPDATE reclada.object
+SET attributes = jsonb_set(attributes,'{parentField}','"page"'::jsonb)
+WHERE guid='f5bcc7ad-1a9b-476d-985e-54cf01377530' and status = reclada_object.get_active_status_obj_id();
+
+UPDATE reclada.object
+SET attributes = jsonb_set(attributes,'{parentField}','"document"'::jsonb)
+WHERE guid='3ed1c180-a508-4180-9281-2f9b9a9cd477' and status = reclada_object.get_active_status_obj_id();
+
+UPDATE reclada.object
+SET attributes = jsonb_set(attributes,'{parentField}','"fileGUID"'::jsonb)
+WHERE guid='85d32073-4a00-4df7-9def-7de8d90b77e0' and status = reclada_object.get_active_status_obj_id();
+
+UPDATE reclada.object
+SET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)
+WHERE guid='7643b601-43c2-4125-831a-539b9e7418ec' and status = reclada_object.get_active_status_obj_id();
+
+UPDATE reclada.object
+SET attributes = jsonb_set(attributes,'{dupBehavior}','"Update"'::jsonb)
+WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+
+UPDATE reclada.object
+SET attributes = jsonb_set(attributes,'{isCascade}','true'::jsonb)
+WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+
+UPDATE reclada.object
+SET attributes = jsonb_set(attributes,'{dupChecking}','[{"uniFields" : ["uri"], "isMandatory" : true}, {"uniFields" : ["checksum"], "isMandatory" : true}]'::jsonb)
+WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+
+SELECT reclada_object.refresh_mv('uniFields');
 
 
-
-SELECT reclada_object.create_subclass('{
-    "class": "DataSource",
-    "attributes": {
-        "newClass": "Asset"
-    }
-}'::jsonb);
-
-SELECT reclada_object.create_subclass('{
-    "class": "Asset",
-    "attributes": {
-        "newClass": "DBAsset"
-    }
-}'::jsonb);
-
-
-UPDATE reclada.OBJECT
-SET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,object,pattern}','"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"'::jsonb)
-WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
-
-UPDATE reclada.OBJECT
-SET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,subject,pattern}','"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"'::jsonb)
-WHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));
-
-
-DROP OPERATOR IF EXISTS reclada.#(boolean, boolean);
-CREATE OPERATOR reclada.## (
-    FUNCTION = reclada.xor,
-    LEFTARG = boolean,
-    RIGHTARG = boolean
-);
-
-delete from reclada.v_object_display;
-
-SELECT reclada_object.create(('{
-    "class":"ObjectDisplay",
-    "attributes":{
-        "classGUID": "'|| reclada_object.get_GUID_for_class('File') ||'",
-        "caption": "Files",
-        "table": {
-            "{attributes,name}:string": {
-                "caption": "File name",
-                "displayCSS": "name",
-                "width": 250,
-                "behavior":"preview"
-            },
-            "{attributes,tags}:array": {
-                "caption": "Tags",
-                "displayCSS": "arrayLink",
-                "width": 250,
-                "items": {
-                    "displayCSS": "link",
-                    "behavior": "preview",
-                    "class":"'|| reclada_object.get_GUID_for_class('tag') ||'"
-                }
-            },
-            "{attributes,mimeType}:string": {
-                "caption": "Mime type",
-                "width": 250,
-                "displayCSS": "mimeType"
-            },
-            "{attributes,checksum}:string": {
-                "caption": "Checksum",
-                "width": 250,
-                "displayCSS": "checksum"
-            },
-            "{status}:string":{
-                "caption": "Status",
-                "width": 250,
-                "displayCSS": "status"
-            },
-            "{createdTime}:string":{
-                "caption": "Created time",
-                "width": 250,
-                "displayCSS": "createdTime"
-            },
-            "{transactionID}:number":{
-                "caption": "Transaction",
-                "width": 250,
-                "displayCSS": "transactionID"
-            },
-            "{GUID}:string":{
-                "caption": "GUID",
-                "width": 250,
-                "displayCSS": "GUID"
-            },
-            "orderRow": [
-                {"{attributes,name}:string":"ASC"},
-                {"{attributes,mimeType}:string":"DESC"}
-            ],
-            "orderColumn": [
-                "{attributes,name}:string",
-                "{attributes,mimeType}:string",
-                "{attributes,tags}:array",
-                "{status}:string",
-                "{createdTime}:string",
-                "{transactionID}:number"
-            ]
-        },
-        "card":{
-            "orderRow": [
-                {"{attributes,name}:string":"ASC"},
-                {"{attributes,mimeType}:string":"DESC"}
-            ],
-            "orderColumn": [
-                "{attributes,name}:string",
-                "{attributes,mimeType}:string",
-                "{attributes,tags}:array",
-                "{status}:string",
-                "{createdTime}:string",
-                "{transactionID}:number"
-            ]
-        },
-        "preview":{
-            "orderRow": [
-                {"{attributes,name}:string":"ASC"},
-                {"{attributes,mimeType}:string":"DESC"}
-            ],
-            "orderColumn": [
-                "{attributes,name}:string",
-                "{attributes,mimeType}:string",
-                "{attributes,tags}:array",
-                "{status}:string",
-                "{createdTime}:string",
-                "{transactionID}:number"
-            ]
-        },
-        "list":{
-             "orderRow": [
-                {"{attributes,name}:string":"ASC"},
-                {"{attributes,mimeType}:string":"DESC"}
-            ],
-            "orderColumn": [
-                "{attributes,name}:string",
-                "{attributes,mimeType}:string",
-                "{attributes,tags}:array",
-                "{status}:string",
-                "{createdTime}:string",
-                "{transactionID}:number"
-            ]
-        }
-    }
-}')::jsonb);
-
-DO
-$do12$
-DECLARE
-	_guid uuid;
-    _json jsonb;
-BEGIN
-	select obj_id
-        from reclada.v_DTO_json_schema 
-            where function = 'reclada_object.list'
-            into _guid;
-    _json := '{
-        "status": "active",
-        "attributes": {
-            "schema": {
-                "type": "object",
-                "anyOf": [
-                    {
-                        "required": [
-                            "transactionID","class"
-                        ]
-                    },
-                    {
-                        "required": [
-                            "class"
-                        ]
-                    },
-                    {
-                        "required": [
-                            "filter","class"
-                        ]
-                    }
-                ],
-                "properties": {
-                    "class": {
-                        "type": "string"
-                    },
-                    "limit": {
-                        "anyOf": [
-                            {
-                                "enum": [
-                                    "ALL"
-                                ],
-                                "type": "string"
-                            },
-                            {
-                                "type": "integer"
-                            }
-                        ]
-                    },
-                    "filter": {
-                        "type": "object"
-                    },
-                    "offset": {
-                        "type": "integer"
-                    },
-                    "orderBy": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "required": [
-                                "field"
-                            ],
-                            "properties": {
-                                "field": {
-                                    "type": "string"
-                                },
-                                "order": {
-                                    "enum": [
-                                        "ASC",
-                                        "DESC"
-                                    ],
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "transactionID": {
-                        "type": "integer"
-                    }
-                }
-            },
-            "function": "reclada_object.list"
-        },
-        "parentGUID": null,
-        "createdTime": "2021-11-08T11:01:49.274513+00:00",
-        "transactionID": 61
-    }';
-    
-    _json := _json || ('{"GUID": "'||_guid::text||'"}')::jsonb;
-    select reclada_object.get_guid_for_class('DTOJsonSchema')
-        into _guid;
-    _json := _json || ('{"class": "' ||_guid::text|| '"}')::jsonb;
-    perform reclada_object.update(_json);
-    
-END
-$do12$;
-
+CREATE INDEX uri_index_ ON reclada.object USING HASH (((attributes->'uri')));
+CREATE INDEX checksum_index_ ON reclada.object USING HASH (((attributes->'checksum')));
