@@ -121,7 +121,7 @@ BEGIN
             LEFT JOIN reclada.v_filter_inner_operator iop
                 on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op, _f_name)
+    PERFORM reclada.raise_exception('Operator does not allowed ', _f_name)
         FROM mytable t
             WHERE t.op IS NULL;
 
@@ -265,7 +265,7 @@ BEGIN
         FROM mytable
             WHERE lvl = 0 AND rn = 0
         INTO _res;
-    -- perform reclada.raise_notice( _res);
+    perform reclada.raise_notice( _res);
     DROP TABLE mytable;
     RETURN _res;
 END 

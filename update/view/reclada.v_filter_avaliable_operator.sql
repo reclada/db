@@ -19,6 +19,7 @@ AS
     UNION SELECT ' OR '             , 'BOOL'                        , 'BOOL'    , NULL    
     UNION SELECT ' NOT '            , 'BOOL'                        , 'BOOL'    , NULL          
     UNION SELECT ' XOR '            , 'BOOL'                        , 'BOOL'    , NULL      -- XOR
+    UNION SELECT ' OPERATOR(reclada.##) ', 'BOOL'                   , 'BOOL'    , NULL      -- XOR
     UNION SELECT ' IS '             , 'JSONB'                       , 'BOOL'    , NULL    
     UNION SELECT ' IS NOT '         , 'JSONB'                       , 'BOOL'    , NULL     
     UNION SELECT ' IN '             , 'JSONB'                       , 'BOOL'    , ' , '   
