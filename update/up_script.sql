@@ -38,7 +38,7 @@ BEGIN
     WHERE v.attrs->>'name' = 'defaultDataSet'
 	    INTO dset_uuid, dset_data;
 	FOR dsrc_uuid IN (	SELECT DISTINCT jsonb_array_elements_text(attrs->'dataSources') 
-						FROM v_active_object vao 
+						FROM reclada.v_active_object vao 
 						WHERE obj_id = dset_uuid::uuid) LOOP
 		PERFORM reclada_object.create(
             format('{
