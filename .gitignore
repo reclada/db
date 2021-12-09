@@ -15,3 +15,5 @@ update/update_config.json
 update/publish_config.json
 update/__pycache__/
 update/update_to_dev7_reclada_k8s.bat
+update/current_dump.sql
+update/downgrade_dump.sql

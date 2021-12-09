@@ -63,7 +63,7 @@ DECLARE
     class               text;
     user_info           jsonb;
     result              jsonb;
-
+    _filter             jsonb;
 BEGIN
 
     class := data->>'class';
@@ -71,6 +71,26 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
+    _filter = data->'filter';
+
+    select format(  '{
+                        "filter":
+                        {
+                            "operator":"AND",
+                            "value":[
+                                {
+                                    "operator":"=",
+                                    "value":["{class}","%s"]
+                                },
+                                %s
+                            ]
+                        }
+                    }',
+            class,
+            _filter
+        )::jsonb 
+        into _filter;
+    data := data || _filter;
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 

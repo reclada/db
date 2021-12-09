@@ -13,16 +13,17 @@ with t as (
             obj.status  ,
             obj.created_time ,
             obj.created_by   ,
-            obj.transaction_id
+            obj.transaction_id,
+            obj.parent_guid
         FROM reclada.object obj
-        left join 
+        LEFT JOIN 
         (
-            select  (r.attributes->>'num')::bigint num,
+            SELECT  (r.attributes->>'num')::bigint num,
                     r.GUID 
-                from reclada.object r
-                    where class in (select reclada_object.get_GUID_for_class('revision'))
+            FROM reclada.object r
+                WHERE class IN (SELECT reclada_object.get_GUID_for_class('revision'))
         ) r
-            on r.GUID = NULLIF(obj.attributes ->> 'revision','')::uuid
+            ON r.GUID = NULLIF(obj.attributes ->> 'revision','')::uuid
 )
     SELECT  
             t.id                 ,
@@ -42,13 +43,15 @@ with t as (
                                 t.class      as class     ,
                                 os.caption   as status    ,
                                 t.attributes as attributes,
-                                t.transaction_id as "transactionID"
+                                t.transaction_id as "transactionID",
+                                t.parent_guid as "parent_guid"
                     ) as tmp
             )::jsonb as data,
             u.login as login_created_by,
             t.created_by as created_by,
             t.status,
-            t.transaction_id
+            t.transaction_id,
+            t.parent_guid
         FROM t
         left join reclada.v_object_status os
             on t.status = os.obj_id

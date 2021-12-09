@@ -28,6 +28,7 @@ LAMBDA_NAME = j["LAMBDA_NAME"]
 run_object_create = j["run_object_create"]
 version = j["version"]
 quick_install = j["quick_install"]
+downgrade_test = j["downgrade_test"]
 if version == 'latest':
     config_version = 999999999
 else:
@@ -97,7 +98,7 @@ def rmdir(top:str):
 
 def clone_db():
     rmdir('db')
-    os.system(f'git clone https://github.com/reclada/db')
+    os.system(f'git clone https://gitlab.reclada.com/developers/db.git')
     os.chdir('db')
     checkout(branch_db)
 

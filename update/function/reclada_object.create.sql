@@ -30,6 +30,7 @@ DECLARE
     obj_GUID      uuid;
     res           jsonb;
     affected      uuid[];
+    _parent_guid  uuid;
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -107,7 +108,9 @@ BEGIN
         END IF;
         --raise notice 'schema: %',schema;
 
-        INSERT INTO reclada.object(GUID,class,attributes,transaction_id)
+        _parent_guid = (data->>'parent_guid')::uuid;
+
+        INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)
             SELECT  CASE
                         WHEN obj_GUID IS NULL
                             THEN public.uuid_generate_v4()
@@ -115,7 +118,8 @@ BEGIN
                     END AS GUID,
                     class_uuid, 
                     _attrs,
-                    tran_id
+                    tran_id,
+                    _parent_guid
         RETURNING GUID INTO obj_GUID;
         affected := array_append( affected, obj_GUID);
 
