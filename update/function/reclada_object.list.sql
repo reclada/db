@@ -54,41 +54,6 @@
  *   "limit": 5,
  *   "offset": 2
  *   }::jsonb
- *   3. SELECT reclada_object.list(
- *       '{
- *           "filter": {
- *                   "operator":"or",
- *                       "value":[
- *                       {
- *                           "operator":"in",
- *                           "value":["{GUID}","(be193cf5-3156-4df4-8c9b-58b09524ce2f,67f37293-2dd6-469c-bc2d-923533991f77)"]
- *                       },
- *                       {
- *                           "operator":"=",
- *                           "value":["{class}","ObjectStatus"]
- *                       }
- *                   ]
- *               },
- *           "orderBy": [{"field": "id", "order": "DESC"}],
- *           "limit": 5,
- *           "offset": 0
- *       }'::jsonb)
- *   to make query:
- *       SELECT obj.data
- *           FROM reclada.v_active_object obj 
- *           WHERE (
- *                   (
- *                       data #>> '{GUID}' in 
- *                       (
- *                           'be193cf5-3156-4df4-8c9b-58b09524ce2f',
- *                           '67f37293-2dd6-469c-bc2d-923533991f77'
- *                       )
- *                   ) 
- *                   or (class_name = 'ObjectStatus')
- *               ) 
- *               ORDER BY obj.data#>'{id}' DESC 
- *               OFFSET 0 
- *               LIMIT 5
  *
 Comparison Operators
     >
@@ -121,8 +86,9 @@ Logical:
     AND
     OR
     NOT
+    # - XOR
 Other:
-    LIKE (second operand must be string)
+    LIKE / ~ / !~ / ~* / !~* / SIMILAR TO (second operand must be string) 
         {
             "operator":"LIKE",
             "value":["{class}","rev%"]
@@ -314,9 +280,18 @@ BEGIN
     		order_by_jsonb := format('[%s]', order_by_jsonb);
     END IF;
     SELECT string_agg(
-        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
+        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(ord.v, 'ASC')),
         ' , ')
     FROM jsonb_array_elements(order_by_jsonb) T
+    LEFT JOIN LATERAL
+    (
+        select upper(T.value->>'order') v
+    ) ord on true
+    LEFT JOIN LATERAL
+    (
+        SELECT reclada.raise_exception('order does not allowed '|| ord.v,'reclada_object.list')
+            where ord.v not in ('ASC', 'DESC')
+    ) V on true
     INTO order_by;
 
     limit_ := data->>'limit';

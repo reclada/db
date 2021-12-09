@@ -189,7 +189,7 @@ def run_test():
     os.chdir('QAAutotests')
     os.system(f'git checkout {branch_QAAutotests}')
     os.system(f'pip install -r requirements.txt')
-    os.system(f'pytest tests/components/database --alluredir results --log-file=test_output.log')
+    os.system(f'pytest tests/components/security/test_database_sql_injections.py tests/components/database --alluredir results --log-file=test_output.log')
     os.chdir('..')
     rmdir('QAAutotests')
 
