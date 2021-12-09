@@ -67,7 +67,7 @@ AS $$
     SELECT 	r.lvl	,
             r.rn	,
             r.idx   ,
-            r.op	,
+            upper(r.op) ,
             r.prev  ,
             r.val	,
             r.parsed

@@ -56,16 +56,17 @@ if __name__ == "__main__":
         if len(ldd) == len(lcd):
             d = []
             for i in range(len(ldd)):
-                prefix = "SELECT pg_catalog.setval('dev.ver_id_seq',"
                 suffix = ", true);\n"
-                if (ldd[i].startswith(prefix)
-                    and lcd[i].startswith(prefix)
-                    and ldd[i].endswith(suffix)
-                    and lcd[i].endswith(suffix)):
-                    continue
-                if (ldd[i] != lcd[i]):
-                    d.append(lcd[i])
-                    d.append(ldd[i])
+                for prefix in ["SELECT pg_catalog.setval('dev.ver_id_seq',","SELECT pg_catalog.setval('reclada."]:
+                    if (ldd[i].startswith(prefix)
+                        and lcd[i].startswith(prefix)
+                        and ldd[i].endswith(suffix)
+                        and lcd[i].endswith(suffix)):
+                        break
+                else:
+                    if (ldd[i] != lcd[i]):
+                        d.append(lcd[i])
+                        d.append(ldd[i])
             if len(d)>0:
                 print("down.sql invalid:")
                 for i in range(0,len(d),2):

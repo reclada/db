@@ -39,12 +39,13 @@ with t as (
                 select json_agg(tmp)->0
                     FROM 
                     (
-                        SELECT  t.GUID       as "GUID"    ,
-                                t.class      as class     ,
-                                os.caption   as status    ,
-                                t.attributes as attributes,
-                                t.transaction_id as "transactionID",
-                                t.parent_guid as "parentGUID"
+                        SELECT  t.GUID       as "GUID"              ,
+                                t.class      as "class"             ,
+                                os.caption   as "status"            ,
+                                t.attributes as "attributes"        ,
+                                t.transaction_id as "transactionID" ,
+                                t.parent_guid as "parentGUID"       ,
+                                t.created_time as "createdTime"
                     ) as tmp
             )::jsonb as data,
             u.login as login_created_by,
@@ -59,7 +60,7 @@ with t as (
             on u.obj_id = t.created_by
         left join reclada.v_class_lite cl
             on cl.obj_id = t.class
-            ;
+;
 
 -- select * from reclada.v_object where revision is not null
 -- select distinct status from reclada.object 

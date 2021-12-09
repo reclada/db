@@ -98,7 +98,7 @@ def rmdir(top:str):
 
 def clone_db():
     rmdir('db')
-    os.system(f'git clone https://gitlab.reclada.com/developers/db.git')
+    os.system(f'git clone https://github.com/reclada/db.git')
     os.chdir('db')
     checkout(branch_db)
 
@@ -189,7 +189,13 @@ def run_test():
     os.chdir('QAAutotests')
     os.system(f'git checkout {branch_QAAutotests}')
     os.system(f'pip install -r requirements.txt')
-    os.system(f'pytest tests/components/security/test_database_sql_injections.py tests/components/database --alluredir results --log-file=test_output.log')
+    os.system(f'pytest '
+        + 'tests/components/security/test_database_sql_injections.py '
+        + 'tests/components/database '
+        + '--alluredir results --log-file=test_output.log')
+    os.system(f'pytest '
+        + 'tests/components/postgrest '
+        + '--alluredir results --log-file=test_output.log')
     os.chdir('..')
     rmdir('QAAutotests')
 
