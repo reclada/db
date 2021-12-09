@@ -1,0 +1,25 @@
+{
+    "forClass": "DTOJsonSchema",
+    "schema": {
+        "properties": {
+            "function": {
+                "type": "string"
+            },
+            "schema": {
+                "type": "object"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "schema",
+            "function"
+        ],
+        "type": "object"
+    },
+    "version": "1"
+}
