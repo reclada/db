@@ -81,5 +81,5 @@ WHERE guid IN (SELECT reclada_object.get_guid_for_class('File')) and status = re
 SELECT reclada_object.refresh_mv('uniFields');
 
 
-CREATE INDEX uri_index_ ON reclada.object USING HASH (((attributes->'uri')));
-CREATE INDEX checksum_index_ ON reclada.object USING HASH (((attributes->'checksum')));
+CREATE INDEX uri_index_ ON reclada.object USING HASH (((attributes->>'uri')));
+CREATE INDEX checksum_index_ ON reclada.object USING HASH (((attributes->>'checksum')));

@@ -34,8 +34,6 @@ AS
             WHERE
                 attrs ->'dupChecking' is not null
             ) a
-        ORDER BY
-            uf
         ) b
 ;
 ANALYZE reclada.v_object_unifields;

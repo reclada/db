@@ -15,8 +15,22 @@ RETURNS TABLE (
     SELECT obj_id, dup_behavior, is_cascade, f1
         FROM reclada.v_active_object vao
         JOIN reclada.v_unifields_pivoted vup ON vao."class" = vup.class_uuid
-        WHERE (vao.attrs ->> f1) || COALESCE((vao.attrs ->> f2),'') || COALESCE((vao.attrs ->> f3),'') || COALESCE((vao.attrs ->> f4),'') || COALESCE((vao.attrs ->> f5),'') || COALESCE((vao.attrs ->> f6),'') || COALESCE((vao.attrs ->> f7),'') || COALESCE((vao.attrs ->> f8),'')
-            = (_attrs ->> f1) || COALESCE((_attrs ->> f2),'') || COALESCE((_attrs ->> f3),'') || COALESCE((_attrs ->> f4),'') || COALESCE((_attrs ->> f5),'') || COALESCE((_attrs ->> f6),'') || COALESCE((_attrs ->> f7),'') || COALESCE((_attrs ->> f8),'')
+        WHERE (vao.attrs ->> f1) 
+                || COALESCE((vao.attrs ->> f2),'') 
+                || COALESCE((vao.attrs ->> f3),'') 
+                || COALESCE((vao.attrs ->> f4),'') 
+                || COALESCE((vao.attrs ->> f5),'') 
+                || COALESCE((vao.attrs ->> f6),'') 
+                || COALESCE((vao.attrs ->> f7),'') 
+                || COALESCE((vao.attrs ->> f8),'')
+            = (_attrs ->> f1) 
+                || COALESCE((_attrs ->> f2),'') 
+                || COALESCE((_attrs ->> f3),'') 
+                || COALESCE((_attrs ->> f4),'') 
+                || COALESCE((_attrs ->> f5),'') 
+                || COALESCE((_attrs ->> f6),'') 
+                || COALESCE((_attrs ->> f7),'') 
+                || COALESCE((_attrs ->> f8),'')
             AND vao."class" = _class_uuid
             AND (vao.obj_id != exclude_uuid OR exclude_uuid IS NULL)
-$$ LANGUAGE SQL VOLATILE;
+$$ LANGUAGE SQL STABLE;
