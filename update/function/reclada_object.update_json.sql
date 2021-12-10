@@ -23,9 +23,6 @@ AS $function$
         IF (ltype = 'array' and rtype != 'array') THEN
             RETURN lobj || robj;
         END IF;
-        IF (ltype = 'object' and rtype = 'null') THEN
-            RETURN 'null';
-        END IF;
         IF (ltype != rtype) THEN
             RETURN robj;
         END IF;
