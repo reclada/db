@@ -33,6 +33,8 @@ prepare_db:
     reports:
       dotenv: prepare.env
   rules:
+    - if: $CI_COMMIT_REF_NAME == "main"
+      when: always
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
       when: always
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
@@ -40,8 +42,6 @@ prepare_db:
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
-      when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
       when: always
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -528,6 +528,8 @@ deploy-prod-env:
   tags:
       - k8s-devops
   rules:
+    - if: $CI_COMMIT_REF_NAME == "main"
+      when: always
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: never
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
@@ -536,8 +538,6 @@ deploy-prod-env:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
-      when: always
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
 
