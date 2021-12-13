@@ -7,7 +7,11 @@
  */
 
 DROP FUNCTION IF EXISTS reclada_object.add_cr_dup_mark;
-CREATE OR REPLACE FUNCTION reclada_object.add_cr_dup_mark(_parent_guid uuid,  _transaction_id int8, _dup_behavior reclada.dp_bhvr)
+CREATE OR REPLACE FUNCTION reclada_object.add_cr_dup_mark(
+    _parent_guid uuid,  
+    _transaction_id bigint, 
+    _dup_behavior reclada.dp_bhvr
+)
 RETURNS void AS $$
 BEGIN
     DELETE FROM reclada_object.cr_dup_behavior
