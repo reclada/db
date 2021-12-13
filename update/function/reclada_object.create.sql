@@ -91,15 +91,10 @@ BEGIN
             RAISE EXCEPTION '%','Field "id" not allow!!!';
         END IF;
 
-        SELECT parent_field
-        FROM reclada.v_parent_field
-        WHERE for_class = class_name
-            INTO _parent_field;
-
-        _parent_guid = (_data->>'parent_guid')::uuid;
-        IF (_parent_guid IS NULL AND _parent_field IS NOT NULL) THEN
-            _parent_guid = _attrs->>_parent_field;
-        END IF;
+        SELECT prnt_guid, prnt_field
+        FROM reclada_object.get_parent_guid(_data,class_name)
+            INTO _parent_guid,
+                _parent_field;
 
         IF _class_uuid IN (SELECT class_uuid FROM reclada.v_unifields_idx_cnt)
         THEN
@@ -157,7 +152,7 @@ BEGIN
                                 WHEN true
                                 THEN
                                     PERFORM reclada_object.delete(format('{"GUID": "%s"}', a)::jsonb)
-                                    FROM reclada.get_childs(_obj_GUID) a;
+                                    FROM reclada.get_children(_obj_GUID) a;
                                 WHEN false
                                 THEN
                                     PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_GUID)::jsonb);

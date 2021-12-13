@@ -83,15 +83,10 @@ BEGIN
     SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) 
         INTO revid;
 
-    SELECT parent_field
-        FROM reclada.v_parent_field
-        WHERE for_class = _class_name
-            INTO _parent_field;
-
-    _parent_guid = (_data->>'parent_guid')::uuid;
-    IF (_parent_guid IS NULL AND _parent_field IS NOT NULL) THEN
-        _parent_guid = v_attrs->>_parent_field;
-    END IF;
+    SELECT prnt_guid, prnt_field
+    FROM reclada_object.get_parent_guid(_data,_class_name)
+        INTO _parent_guid,
+            _parent_field;
 
     IF (_parent_guid IS NULL) THEN
         _parent_guid := old_obj->>'parentGUID';

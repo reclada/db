@@ -22,6 +22,7 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'view/reclada.v_unifields_idx_cnt.sql'
 \i 'view/reclada.v_unifields_pivoted.sql'
 
+\i 'function/reclada_object.get_parent_guid.sql'
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada_object.merge.sql'
 \i 'function/reclada_object.update_json.sql'
@@ -33,7 +34,7 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/reclada_object.update.sql'
 \i 'function/reclada_object.refresh_mv.sql'
 \i 'function/reclada_object.update.sql'
-\i 'function/reclada.get_childs.sql'
+\i 'function/reclada.get_children.sql'
 \i 'function/reclada_object.datasource_insert.sql'
 \i 'function/reclada.get_duplicates.sql'
 \i 'function/reclada_object.add_cr_dup_mark.sql'
