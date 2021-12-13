@@ -8,7 +8,7 @@ CREATE TYPE reclada.dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert'
 
 CREATE TABLE reclada_object.cr_dup_behavior (
     parent_guid     uuid,
-    transaction_id  int8,
+    transaction_id  bigint,
     dup_behavior    reclada.dp_bhvr,
     last_use        timestamp DEFAULT current_timestamp,
     PRIMARY KEY     (transaction_id, parent_guid)
