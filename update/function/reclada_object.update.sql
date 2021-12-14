@@ -20,20 +20,20 @@ RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $body$
 DECLARE
-    _class_name     text;
-    _class_uuid     uuid;
-    v_obj_id       uuid;
-    v_attrs        jsonb;
+    _class_name   text;
+    _class_uuid   uuid;
+    _obj_id       uuid;
+    _attrs        jsonb;
     schema        jsonb;
     old_obj       jsonb;
     branch        uuid;
     revid         uuid;
     _parent_guid  uuid;
-    _parent_field   text;
-    _obj_GUID       uuid;
-    _dupBehavior    reclada.dp_bhvr;
-    _uniField       text;
-    _cnt            int;
+    _parent_field text;
+    _obj_guid     uuid;
+    _dup_behavior reclada.dp_bhvr;
+    _uni_field    text;
+    _cnt          int;
 BEGIN
 
     _class_name := _data->>'class';
@@ -41,13 +41,13 @@ BEGIN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
     _class_uuid := reclada.try_cast_uuid(_class_name);
-    v_obj_id := _data->>'GUID';
-    IF (v_obj_id IS NULL) THEN
+    _obj_id := _data->>'GUID';
+    IF (_obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no GUID';
     END IF;
 
-    v_attrs := _data->'attributes';
-    IF (v_attrs IS NULL) THEN
+    _attrs := _data->'attributes';
+    IF (_attrs IS NULL) THEN
         RAISE EXCEPTION 'The reclada object must have attributes';
     END IF;
 
@@ -65,13 +65,17 @@ BEGIN
         RAISE EXCEPTION 'No json schema available for %', _class_name;
     END IF;
 
-    IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', v_attrs))) THEN
-        RAISE EXCEPTION 'JSON invalid: %', v_attrs;
+    IF (_class_uuid IS NULL) THEN
+        _class_uuid := (schema->>'GUID')::uuid;
+    END IF;
+    schema := schema #> '{attributes,schema}';
+    IF (NOT(public.validate_json_schema(schema, _attrs))) THEN
+        RAISE EXCEPTION 'JSON invalid: %', _attrs;
     END IF;
 
     SELECT 	v.data
         FROM reclada.v_object v
-	        WHERE v.obj_id = v_obj_id
+	        WHERE v.obj_id = _obj_id
                 AND v.class_name = _class_name 
 	    INTO old_obj;
 
@@ -80,7 +84,7 @@ BEGIN
     END IF;
 
     branch := _data->'branch';
-    SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) 
+    SELECT reclada_revision.create(user_info->>'sub', branch, _obj_id) 
         INTO revid;
 
     SELECT prnt_guid, prnt_field
@@ -91,45 +95,52 @@ BEGIN
     IF (_parent_guid IS NULL) THEN
         _parent_guid := old_obj->>'parentGUID';
     END IF;
-
-    IF (_class_uuid IS NULL) THEN
-        _class_uuid := (SCHEMA->>'GUID')::uuid;
-    END IF;
     
     IF EXISTS (SELECT 1 FROM reclada.v_unifields_idx_cnt WHERE class_uuid=_class_uuid)
     THEN
-        SELECT COUNT(DISTINCT obj_guid), MAX(dup_behavior)
-        FROM reclada.get_duplicates(v_attrs, _class_uuid, v_obj_id)
-            INTO _cnt, _dupBehavior;
-        IF (_cnt>1 AND _dupBehavior IN ('Update','Merge')) THEN
+        SELECT COUNT(DISTINCT obj_guid), dup_behavior
+        FROM reclada.get_duplicates(_attrs, _class_uuid, _obj_id)
+        GROUP BY dup_behavior
+            INTO _cnt, _dup_behavior;
+        IF (_cnt>1 AND _dup_behavior IN ('Update','Merge')) THEN
             RAISE EXCEPTION 'Found more than one duplicates. Resolve conflict manually.';
         END IF;
-        FOR _obj_GUID, _dupBehavior, _uniField IN (
-            SELECT obj_guid, dup_behavior, dup_field
-            FROM reclada.get_duplicates(v_attrs, _class_uuid, v_obj_id)) LOOP
-            IF _dupBehavior IN ('Update','Merge') THEN
+        FOR _obj_guid, _dup_behavior, _uni_field IN (
+                SELECT obj_guid, dup_behavior, dup_field
+                FROM reclada.get_duplicates(_attrs, _class_uuid, _obj_id)
+            ) LOOP
+            IF _dup_behavior IN ('Update','Merge') THEN
                 UPDATE reclada.object o
                     SET status = reclada_object.get_archive_status_obj_id()
-                WHERE o.GUID = v_obj_id
+                WHERE o.GUID = _obj_guid
                     AND status != reclada_object.get_archive_status_obj_id();
             END IF;
-            CASE _dupBehavior
+            CASE _dup_behavior
                 WHEN 'Replace' THEN
-                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_GUID)::jsonb);
+                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_guid)::jsonb);
                 WHEN 'Update' THEN                    
                     _data := reclada_object.remove_parent_guid(_data, _parent_field);
-                    _data = reclada_object.update_json_by_guid(_obj_GUID, _data);
+                    _data := reclada_object.update_json_by_guid(_obj_guid, _data);
                     RETURN reclada_object.update(_data);
                 WHEN 'Reject' THEN
-                    RAISE EXCEPTION 'Duplicate found (GUID: %). Object rejected.', _obj_GUID;
+                    RAISE EXCEPTION 'Duplicate found (GUID: %). Object rejected.', _obj_guid;
                 WHEN 'Copy'    THEN
-                    v_attrs = v_attrs || format('{"%s": "%s_%s"}', _uniField, v_attrs->> _uniField, nextval('reclada.object_id_seq'))::jsonb;
+                    _attrs = _attrs || format('{"%s": "%s_%s"}', _uni_field, _attrs->> _uni_field, nextval('reclada.object_id_seq'))::jsonb;
+                    IF (NOT(public.validate_json_schema(schema, _attrs))) THEN
+                        RAISE EXCEPTION 'JSON invalid: %', _attrs;
+                    END IF;
                 WHEN 'Insert' THEN
                     -- DO nothing
                 WHEN 'Merge' THEN                    
-                    RETURN reclada_object.update(reclada_object.merge(_data - 'class', vao.data, schema->'attributes'->'schema') || format('{"GUID": "%s"}', _obj_GUID)::jsonb)
-                    FROM reclada.v_active_object vao
-                    WHERE obj_id = _obj_GUID;
+                    RETURN reclada_object.update(
+                        reclada_object.merge(
+                            _data - 'class', 
+                            vao.data, 
+                            schema
+                        ) || format('{"GUID": "%s"}', _obj_guid)::jsonb
+                    )
+                        FROM reclada.v_active_object vao
+                            WHERE obj_id = _obj_guid;
             END CASE;
         END LOOP;
     END IF;
@@ -138,7 +149,7 @@ BEGIN
     (
         update reclada.object o
             set status = reclada_object.get_archive_status_obj_id()
-                where o.GUID = v_obj_id
+                where o.GUID = _obj_id
                     and status != reclada_object.get_archive_status_obj_id()
                         RETURNING id
     )
@@ -150,9 +161,9 @@ BEGIN
                                 parent_guid
                               )
         select  v.obj_id,
-                (schema->>'GUID')::uuid,
+                _class_uuid,
                 reclada_object.get_active_status_obj_id(),--status 
-                v_attrs || format('{"revision":"%s"}',revid)::jsonb,
+                _attrs || format('{"revision":"%s"}',revid)::jsonb,
                 transaction_id,
                 _parent_guid
             FROM reclada.v_object v
@@ -166,7 +177,7 @@ BEGIN
                         union 
                         select id, 2 as q
                             from reclada.object ro
-                                where ro.guid = v_obj_id
+                                where ro.guid = _obj_id
                                     ORDER BY ID DESC 
                                         LIMIT 1
                     ) ta
@@ -174,22 +185,22 @@ BEGIN
                         LIMIT 1
             ) as tt
                 on tt.id = v.id
-	            WHERE v.obj_id = v_obj_id;
+	            WHERE v.obj_id = _obj_id;
     PERFORM reclada_object.datasource_insert
             (
                 _class_name,
-                v_obj_id,
-                v_attrs
+                _obj_id,
+                _attrs
             );
     PERFORM reclada_object.refresh_mv(_class_name);
 
-    IF ( _class_name = 'jsonschema' AND jsonb_typeof(v_attrs->'dupChecking') = 'array') THEN
+    IF ( _class_name = 'jsonschema' AND jsonb_typeof(_attrs->'dupChecking') = 'array') THEN
         PERFORM reclada_object.refresh_mv('unifields');
     END IF; 
                   
     select v.data 
         FROM reclada.v_active_object v
-            WHERE v.obj_id = v_obj_id
+            WHERE v.obj_id = _obj_id
         into _data;
     PERFORM reclada_notification.send_object_notification('update', _data);
     RETURN _data;
