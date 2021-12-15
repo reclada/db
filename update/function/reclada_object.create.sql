@@ -128,7 +128,7 @@ BEGIN
                                 'Update');
                         END IF;
                         new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
-                        new_data = reclada_object.update_json_by_guid(_obj_guid, new_data);
+                        new_data := reclada_object.update_json_by_guid(_obj_guid, new_data);
                         SELECT reclada_object.update(new_data)
                             INTO res;
                         affected := array_append( affected, _obj_guid);
@@ -165,7 +165,7 @@ BEGIN
                                     'Update');
                             END IF;
                             new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
-                            new_data = reclada_object.update_json_by_guid(_obj_guid, new_data);
+                            new_data := reclada_object.update_json_by_guid(_obj_guid, new_data);
                             SELECT reclada_object.update(new_data)
                                 INTO res;
                             affected := array_append( affected, _obj_guid);
@@ -173,7 +173,7 @@ BEGIN
                         WHEN 'Reject' THEN
                             RAISE EXCEPTION 'Duplicate found (GUID: %). Object rejected.', _obj_guid;
                         WHEN 'Copy'    THEN
-                            _attrs = _attrs || format('{"%s": "%s_%s"}', _uni_field, _attrs->> _uni_field, nextval('reclada.object_id_seq'))::jsonb;
+                            _attrs := _attrs || format('{"%s": "%s_%s"}', _uni_field, _attrs->> _uni_field, nextval('reclada.object_id_seq'))::jsonb;
                         WHEN 'Insert' THEN
                             -- DO nothing
                         WHEN 'Merge' THEN
