@@ -18,31 +18,42 @@ CREATE OR REPLACE FUNCTION reclada_object.datasource_insert
 )
 RETURNS void AS $$
 DECLARE
-    dataset_guid  uuid;
-    uri           text;
-    environment   varchar;
-    rel_cnt       int;
-    dataset2ds_type text;
+    _pipeline_lite jsonb;
+    _task  jsonb;
+    _dataset_guid  uuid;
+    _pipeline_job_guid  uuid;
+    _uri           text;
+    _environment   varchar;
+    _rel_cnt       int;
+    _dataset2ds_type text;
+    _f_name text = 'reclada_object.datasource_insert';
 BEGIN
-    IF _class_name in 
-            ('DataSource','File') THEN
+    IF _class_name in ('DataSource','File') THEN
 
-        dataset2ds_type := 'defaultDataSet to DataSource';
+        _uri := attributes->>'uri';
+
+        _dataset2ds_type := 'defaultDataSet to DataSource';
 
         SELECT v.obj_id
         FROM reclada.v_active_object v
-	    WHERE v.attrs->>'name' = 'defaultDataSet'
-	    INTO dataset_guid;
+        WHERE v.attrs->>'name' = 'defaultDataSet'
+        INTO _dataset_guid;
 
         SELECT count(*)
         FROM reclada.v_active_object
         WHERE class_name = 'Relationship'
             AND (attrs->>'object')::uuid = _obj_id
-            AND (attrs->>'subject')::uuid = dataset_guid
-            AND attrs->>'type' = dataset2ds_type
-                INTO rel_cnt;
+            AND (attrs->>'subject')::uuid = _dataset_guid
+            AND attrs->>'type' = _dataset2ds_type
+                INTO _rel_cnt;
 
-        IF rel_cnt=0 THEN
+        SELECT attrs->>'Environment'
+            FROM reclada.v_active_object
+                WHERE class_name = 'Context'
+                ORDER BY created_time DESC
+                LIMIT 1
+            INTO _environment;
+        IF _rel_cnt=0 THEN
             PERFORM reclada_object.create(
                 format('{
                     "class": "Relationship",
@@ -51,30 +62,72 @@ BEGIN
                         "object": "%s",
                         "subject": "%s"
                         }
-                    }', dataset2ds_type, _obj_id, dataset_guid)::jsonb);
+                    }', _dataset2ds_type, _obj_id, _dataset_guid)::jsonb);
 
         END IF;
+        if _uri like '%inbox/jobs/%' then
+        
+            PERFORM reclada_object.create(
+                format('{
+                    "class": "Job",
+                    "attributes": {
+                        "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
+                        "status": "new",
+                        "type": "%s",
+                        "command": "./run_pipeline.sh",
+                        "inputParameters": [{"_uri": "%s"}, {"dataSourceId": "%s"}]
+                        }
+                    }', _environment, _uri, _obj_id)::jsonb);
+        
+        ELSE
+            
+            SELECT data 
+                FROM reclada.v_active_object
+                    where class in (select reclada_object.get_GUID_for_class('PipelineLite'))
+                into _pipeline_lite;
 
-        uri := attributes->>'uri';
-
-        SELECT attrs->>'Environment'
-        FROM reclada.v_active_object
-        WHERE class_name = 'Context'
-        ORDER BY created_time DESC
-        LIMIT 1
-        INTO environment;
-
-        PERFORM reclada_object.create(
-            format('{
-                "class": "Job",
-                "attributes": {
-                    "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
-                    "status": "new",
-                    "type": "%s",
-                    "command": "./run_pipeline.sh",
-                    "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
-                    }
-                }', environment, uri, _obj_id)::jsonb);
+            IF _uri like '%inbox/pipelines/%' then
+                -- s3://dev3-reclada-bucket/inbox/Tmtagg tes2t f1ile.xlsx
+                /*
+                    _pipeline_job_guid = reclada.try_cast_uuid(
+                                            SPLIT_PART(
+                                                SPLIT_PART(_uri,'inbox/pipelines/',1),
+                                                '/',
+                                                1
+                                            )
+                                        );
+                    if _pipeline_job_guid is null then 
+                        perform reclada.raise_exception('PIPELINE_JOB_GUID not found',_f_name);
+                    end if;
+                    SELECT data #>> '{attributes,task}'::uuid
+                        from reclada.v_active_object
+                            where obj_id = _pipeline_job_guid
+                        into _pipeline_task_guid;
+                */
+            ELSE
+                SELECT data 
+                    FROM reclada.v_active_object o
+                        where o.class in (select reclada_object.get_GUID_for_class('Task'))
+                            and o.obj_id = _pipeline_lite #>> '{attributes,tasks,0}'
+                    into _task;
+                );
+            END IF;
+            PERFORM reclada_object.create(
+                format('{
+                    "class": "Job",
+                    "attributes": {
+                        "task": "%s",
+                        "status": "new",
+                        "type": "%s",
+                        "command": "%s",
+                        "inputParameters": [{"_uri": "%s"}, {"dataSourceId": "%s"}]
+                        }
+                    }',
+                        _task->>'GUID',
+                        _environment, 
+                        _task->>'command',
+                        _uri, _obj_id
+                )::jsonb
 
     END IF;
 END;
