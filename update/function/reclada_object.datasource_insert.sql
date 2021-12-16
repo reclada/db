@@ -126,7 +126,7 @@ BEGIN
             ELSE
                 SELECT data 
                     FROM reclada.v_active_object o
-                        where o.class = 'Task'
+                        where o.class_name = 'Task'
                             and o.obj_id = (_pipeline_lite #>> '{attributes,tasks,0}')::uuid
                     into _task;
             END IF;
