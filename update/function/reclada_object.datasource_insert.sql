@@ -92,7 +92,7 @@ BEGIN
                         LIMIT 1
                 INTO _pipeline_lite;
 
-            IF _uri like '%inbox/pipelines/%' then
+            IF _uri like '%inbox/pipelines/%/%' then
                 
                 _stage := SPLIT_PART(
                                 SPLIT_PART(_uri,'inbox/pipelines/',2),
@@ -103,7 +103,7 @@ BEGIN
                 SELECT data 
                     FROM reclada.v_active_object o
                         where o.class_name = 'Task'
-                            and o.obj_id = _pipeline_lite #>> '{attributes,tasks,'||_stage||'}'
+                            and o.obj_id = (_pipeline_lite #>> ('{attributes,tasks,'||_stage||'}')::text[])::uuid
                     into _task;
                 
                 _pipeline_job_guid = reclada.try_cast_uuid(
@@ -143,7 +143,7 @@ BEGIN
                     }',
                         _task->>'GUID',
                         _environment, 
-                        _task->>'command',
+                        _task-> 'attributes' ->>'command',
                         _uri,
                         _obj_id
                 )::jsonb
