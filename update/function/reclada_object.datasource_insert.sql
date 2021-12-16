@@ -26,18 +26,18 @@ DECLARE
     _uri           text;
     _environment   varchar;
     _rel_cnt       int;
-    _dataset2ds_type text;
+    _dataset2ds_type text = 'defaultDataSet to DataSource';
     _f_name text = 'reclada_object.datasource_insert';
 BEGIN
     IF _class_name in ('DataSource','File') THEN
 
         _uri := attributes->>'uri';
 
-        _dataset2ds_type := 'defaultDataSet to DataSource';
 
         SELECT v.obj_id
         FROM reclada.v_active_object v
-        WHERE v.attrs->>'name' = 'defaultDataSet'
+        WHERE v.class_name = 'DataSet'
+            and v.attrs->>'name' = 'defaultDataSet'
         INTO _dataset_guid;
 
         SELECT count(*)
@@ -88,8 +88,9 @@ BEGIN
             
             SELECT data 
                 FROM reclada.v_active_object
-                    where class in (select reclada_object.get_GUID_for_class('PipelineLite'))
-                into _pipeline_lite;
+                    WHERE class_name = 'PipelineLite'
+                        LIMIT 1
+                INTO _pipeline_lite;
 
             IF _uri like '%inbox/pipelines/%' then
                 
@@ -101,7 +102,7 @@ BEGIN
                 _stage = replace(_stage,'.json','');
                 SELECT data 
                     FROM reclada.v_active_object o
-                        where o.class in (select reclada_object.get_GUID_for_class('Task'))
+                        where o.class_name = 'Task'
                             and o.obj_id = _pipeline_lite #>> '{attributes,tasks,'||_stage||'}'
                     into _task;
                 
@@ -125,7 +126,7 @@ BEGIN
             ELSE
                 SELECT data 
                     FROM reclada.v_active_object o
-                        where o.class in (select reclada_object.get_GUID_for_class('Task'))
+                        where o.class = 'Task'
                             and o.obj_id = (_pipeline_lite #>> '{attributes,tasks,0}')::uuid
                     into _task;
             END IF;
