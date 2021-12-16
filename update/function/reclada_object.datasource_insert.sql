@@ -126,7 +126,7 @@ BEGIN
                 SELECT data 
                     FROM reclada.v_active_object o
                         where o.class in (select reclada_object.get_GUID_for_class('Task'))
-                            and o.obj_id = _pipeline_lite #>> '{attributes,tasks,0}'
+                            and o.obj_id = (_pipeline_lite #>> '{attributes,tasks,0}')::uuid
                     into _task;
             END IF;
             PERFORM reclada_object.create(

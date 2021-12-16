@@ -9,6 +9,11 @@
 delete from reclada.object 
     where class in (select reclada_object.get_GUID_for_class('PipelineLite'));
 
+delete from reclada.object 
+    where class in (select reclada_object.get_GUID_for_class('Task'))
+        and attributes ->> 'type'    like 'PipelineLite stage %'
+        and attributes ->> 'command' like './pipeline/%';
+
 delete from reclada.object
     where class = reclada_object.get_jsonschema_GUID()
         and attributes ->> 'forClass' = 'PipelineLite';
