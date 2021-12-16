@@ -34,6 +34,7 @@ DECLARE
     _dupBehavior    reclada.dp_bhvr;
     _uniField       text;
     _cnt            int;
+    _guid_list      text;
 BEGIN
 
     _class_name := _data->>'class';
@@ -56,7 +57,7 @@ BEGIN
             INTO schema;
     else
         select v.data, v.for_class 
-            from reclada.v_class v
+            from reclada.v_class_lite v
                 where _class_uuid = v.obj_id
             INTO schema, _class_name;
     end if;
@@ -98,11 +99,11 @@ BEGIN
     
     IF EXISTS (SELECT 1 FROM reclada.v_unifields_idx_cnt WHERE class_uuid=_class_uuid)
     THEN
-        SELECT COUNT(DISTINCT obj_guid), MAX(dup_behavior)
+        SELECT COUNT(DISTINCT obj_guid), MAX(dup_behavior), string_agg(DISTINCT obj_guid)
         FROM reclada.get_duplicates(v_attrs, _class_uuid, v_obj_id)
-            INTO _cnt, _dupBehavior;
+            INTO _cnt, _dupBehavior, _guid_list;
         IF (_cnt>1 AND _dupBehavior IN ('Update','Merge')) THEN
-            RAISE EXCEPTION 'Found more than one duplicates. Resolve conflict manually.';
+            RAISE EXCEPTION 'Found more than one duplicates (GUIDs: %). Resolve conflict manually.', _guid_list;
         END IF;
         FOR _obj_GUID, _dupBehavior, _uniField IN (
             SELECT obj_guid, dup_behavior, dup_field

@@ -22,7 +22,7 @@ DECLARE
     uri           text;
     environment   varchar;
     rel_cnt       int;
-    dataset2ds_type text;
+    dataset2ds_type text:= 'defaultDataSet to DataSource';
 BEGIN
     IF _class_name in 
             ('DataSource','File') THEN
@@ -30,8 +30,6 @@ BEGIN
         IF (_obj_id IS NULL) THEN
             RAISE EXCEPTION 'Object GUID IS NULL';
         END IF;
-
-        dataset2ds_type := 'defaultDataSet to DataSource';
 
         SELECT v.obj_id
         FROM reclada.v_active_object v
@@ -51,16 +49,7 @@ BEGIN
                 INTO rel_cnt;
 
         IF rel_cnt=0 THEN
-            PERFORM reclada_object.create(
-                format('{
-                    "class": "Relationship",
-                    "attributes": {
-                        "type": "%s",
-                        "object": "%s",
-                        "subject": "%s"
-                        }
-                    }', dataset2ds_type, _obj_id, dataset_guid)::jsonb);
-
+            PERFORM reclada_object.create_relationship(dataset2ds_type, _obj_id, dataset_guid);
         END IF;
 
         uri := attributes->>'uri';

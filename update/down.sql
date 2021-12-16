@@ -43,7 +43,6 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 --{function/reclada_object.merge}
 --{function/reclada.get_children}
 --{function/reclada.get_duplicates}
---{function/reclada_object.add_cr_dup_mark}
 --{function/reclada_object.update_json_by_guid}
 --{function/reclada_object.update_json}
 --{function/reclada_object.remove_parent_guid}
@@ -59,6 +58,7 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 --{function/reclada_object.datasource_insert}
 --{function/reclada_object.parse_filter}
 --{function/reclada_object.list}
+--{function/reclada_object.create_relationship}
 
 
 --{function/reclada_object.list}
@@ -67,9 +67,11 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 --{function/reclada_object.delete}
 
 --{view/reclada.v_filter_avaliable_operator}
+--{view/reclada.v_object}
 
-DROP TABLE reclada_object.cr_dup_behavior;
 DROP TYPE reclada.dp_bhvr;
 
 DROP INDEX reclada.uri_index_;
 DROP INDEX reclada.checksum_index_;
+
+CREATE INDEX status_index ON reclada.object USING btree (status);

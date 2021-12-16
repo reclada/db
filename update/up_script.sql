@@ -6,14 +6,6 @@
 
 CREATE TYPE reclada.dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert','Merge');
 
-CREATE TABLE reclada_object.cr_dup_behavior (
-    parent_guid     uuid,
-    transaction_id  bigint,
-    dup_behavior    reclada.dp_bhvr,
-    last_use        timestamp DEFAULT current_timestamp,
-    PRIMARY KEY     (transaction_id, parent_guid)
-);
-
 DROP VIEW reclada.v_pk_for_class;
 
 \i 'view/reclada.v_object_unifields.sql'
@@ -28,6 +20,7 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/reclada_object.update_json.sql'
 \i 'function/reclada_object.update_json_by_guid.sql'
 \i 'function/reclada_object.remove_parent_guid.sql'
+\i 'function/reclada_object.create_relationship.sql'
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.create_subclass.sql'
 \i 'function/reclada_object.delete.sql'
@@ -37,7 +30,6 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/reclada.get_children.sql'
 \i 'function/reclada_object.datasource_insert.sql'
 \i 'function/reclada.get_duplicates.sql'
-\i 'function/reclada_object.add_cr_dup_mark.sql'
 \i 'function/reclada_object.parse_filter.sql'
 
 \i 'function/reclada_object.list.sql'
@@ -46,6 +38,7 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/reclada_object.delete.sql'
 
 \i 'view/reclada.v_filter_avaliable_operator.sql'
+\i 'view/reclada.v_object.sql'
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)
@@ -84,3 +77,5 @@ SELECT reclada_object.refresh_mv('uniFields');
 
 CREATE INDEX uri_index_ ON reclada.object USING HASH (((attributes->>'uri')));
 CREATE INDEX checksum_index_ ON reclada.object USING HASH (((attributes->>'checksum')));
+
+DROP INDEX reclada.status_index;

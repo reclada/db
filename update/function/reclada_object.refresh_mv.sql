@@ -15,7 +15,7 @@ CREATE OR REPLACE FUNCTION reclada_object.refresh_mv
 RETURNS void AS $$
 
 BEGIN
-    CASE lower(class_name)
+    CASE class_name
         WHEN 'objectstatus' THEN
             REFRESH MATERIALIZED VIEW reclada.v_object_status;
         WHEN 'user' THEN

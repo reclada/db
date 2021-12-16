@@ -17,6 +17,9 @@ AS $function$
         IF (lobj IS NOT NULL AND robj IS NULL) THEN
             RETURN lobj;
         END IF;
+        IF (ltype = 'null') THEN
+            RETURN robj;
+        END IF;
         IF (ltype != rtype) THEN
             RETURN lobj || robj;
         END IF;
