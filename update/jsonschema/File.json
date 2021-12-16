@@ -1,5 +1,5 @@
 {
-    "dupBehavior": "Update",
+    "dupBehavior": "Replace",
     "dupChecking": [
         {
             "isMandatory": true,

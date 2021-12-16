@@ -21,20 +21,20 @@ CREATE OR REPLACE FUNCTION reclada_object.create
 RETURNS jsonb AS $$
 DECLARE
     branch        uuid;
-    _data          jsonb;
-    new_data        jsonb;
+    _data         jsonb;
+    new_data      jsonb;
     class_name    text;
-    _class_uuid    uuid;
+    _class_uuid   uuid;
     tran_id       bigint;
-    _attrs         jsonb;
+    _attrs        jsonb;
     schema        jsonb;
-    _obj_GUID      uuid;
+    _obj_guid     uuid;
     res           jsonb;
     affected      uuid[];
-    inserted        uuid[];
-    _dupBehavior  reclada.dp_bhvr;
-    _isCascade      boolean;
-    _uniField     text;
+    inserted      uuid[];
+    _dup_behavior reclada.dp_bhvr;
+    _is_cascade   boolean;
+    _uni_field    text;
     _parent_guid  uuid;
     _parent_field   text;
     skip_insert     boolean;
@@ -141,20 +141,20 @@ BEGIN
                 IF (_cnt>1 AND _dupBehavior IN ('Update','Merge')) THEN
                     RAISE EXCEPTION 'Found more than one duplicates (GUIDs: %). Resolve conflict manually.', _guid_list;
                 END IF;
-                FOR _obj_GUID, _dupBehavior, _isCascade, _uniField IN (
+                FOR _obj_guid, _dup_behavior, _is_cascade, _uni_field IN (
                     SELECT obj_guid, dup_behavior, is_cascade, dup_field
                     FROM reclada.get_duplicates(_attrs, _class_uuid)) LOOP
                     new_data := _data;
-                    CASE _dupBehavior
+                    CASE _dup_behavior
                         WHEN 'Replace' THEN
-                            CASE _isCascade
+                            CASE _is_cascade
                                 WHEN true
                                 THEN
                                     PERFORM reclada_object.delete(format('{"GUID": "%s"}', a)::jsonb)
-                                    FROM reclada.get_children(_obj_GUID) a;
+                                    FROM reclada.get_children(_obj_guid) a;
                                 WHEN false
                                 THEN
-                                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_GUID)::jsonb);
+                                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_guid)::jsonb);
                             END CASE;
                         WHEN 'Update' THEN
                             IF _isCascade THEN
@@ -164,23 +164,23 @@ BEGIN
                                     new_data->>'GUID');
                             END IF;
                             new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
-                            new_data = reclada_object.update_json_by_guid(_obj_GUID, new_data);
+                            new_data := reclada_object.update_json_by_guid(_obj_guid, new_data);
                             SELECT reclada_object.update(new_data)
                                 INTO res;
-                            affected := array_append( affected, _obj_GUID);
+                            affected := array_append( affected, _obj_guid);
                             skip_insert := true;
                         WHEN 'Reject' THEN
-                            RAISE EXCEPTION 'Duplicate found (GUID: %). Object rejected.', _obj_GUID;
+                            RAISE EXCEPTION 'Duplicate found (GUID: %). Object rejected.', _obj_guid;
                         WHEN 'Copy'    THEN
-                            _attrs = _attrs || format('{"%s": "%s_%s"}', _uniField, _attrs->> _uniField, nextval('reclada.object_id_seq'))::jsonb;
+                            _attrs := _attrs || format('{"%s": "%s_%s"}', _uni_field, _attrs->> _uni_field, nextval('reclada.object_id_seq'))::jsonb;
                         WHEN 'Insert' THEN
                             -- DO nothing
                         WHEN 'Merge' THEN
-                            SELECT reclada_object.update(reclada_object.merge(new_data - 'class', data,schema->'attributes'->'schema') || format('{"GUID": "%s"}', _obj_GUID)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
+                            SELECT reclada_object.update(reclada_object.merge(new_data - 'class', data,schema->'attributes'->'schema') || format('{"GUID": "%s"}', _obj_guid)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
                             FROM reclada.v_active_object
-                            WHERE obj_id = _obj_GUID
+                            WHERE obj_id = _obj_guid
                                 INTO res;
-                            affected := array_append( affected, _obj_GUID);
+                            affected := array_append( affected, _obj_guid);
                             skip_insert := true;
                     END CASE;
                 END LOOP;
@@ -188,33 +188,33 @@ BEGIN
         END IF;
 
         IF (NOT skip_insert) THEN
-            _obj_GUID := (_data->>'GUID')::uuid;
+            _obj_guid := (_data->>'GUID')::uuid;
             IF EXISTS (
                 SELECT 1
                 FROM reclada.object 
-                WHERE GUID = _obj_GUID
+                WHERE GUID = _obj_guid
             ) THEN
-                RAISE EXCEPTION 'GUID: % is duplicate', _obj_GUID;
+                RAISE EXCEPTION 'GUID: % is duplicate', _obj_guid;
             END IF;
             --raise notice 'schema: %',schema;
 
             INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)
                 SELECT  CASE
-                            WHEN _obj_GUID IS NULL
+                            WHEN _obj_guid IS NULL
                                 THEN public.uuid_generate_v4()
-                            ELSE _obj_GUID
+                            ELSE _obj_guid
                         END AS GUID,
                         _class_uuid, 
                         _attrs,
                         tran_id,
                         _parent_guid
-            RETURNING GUID INTO _obj_GUID;
-            affected := array_append( affected, _obj_GUID);
-            inserted := array_append( inserted, _obj_GUID);
+            RETURNING GUID INTO _obj_guid;
+            affected := array_append( affected, _obj_guid);
+            inserted := array_append( inserted, _obj_guid);
             PERFORM reclada_object.datasource_insert
                 (
                     class_name,
-                    _obj_GUID,
+                    _obj_guid,
                     _attrs
                 );
 

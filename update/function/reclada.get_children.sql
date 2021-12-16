@@ -26,4 +26,4 @@ RETURNS SETOF uuid AS $$
         FROM v_active_object t2 JOIN temp1 t1 ON t1.obj_id=t2.parent_guid
     )
     SELECT obj_id FROM temp1
-$$ LANGUAGE SQL VOLATILE;
+$$ LANGUAGE SQL STABLE;
