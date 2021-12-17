@@ -40,15 +40,19 @@ res as
     select  t.obj_id,
             jsonb_object_agg
             (
-                '{'||t.key||'}:'||t.typ,
+                '{'||t.key||'}',
                 t.value
-            ) as data
+            ) as data,
+            array_agg(
+                '{'||t.key||'}:'||t.typ 
+            ) as display_key
         from t 
             where t.typ != 'object'
             group by t.obj_id
 )
 select  res.obj_id          , 
         res.data            ,
+        res.display_key     ,
         t.id                ,
         t.class             ,
         t.revision_num      ,
