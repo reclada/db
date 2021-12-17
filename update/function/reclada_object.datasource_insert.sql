@@ -21,6 +21,7 @@ DECLARE
     _pipeline_lite jsonb;
     _task  jsonb;
     _dataset_guid  uuid;
+    _new_guid  uuid;
     _pipeline_job_guid  uuid;
     _stage         text;
     _uri           text;
@@ -91,7 +92,7 @@ BEGIN
                     WHERE class_name = 'PipelineLite'
                         LIMIT 1
                 INTO _pipeline_lite;
-
+            _new_guid := public.uuid_generate_v4();
             IF _uri like '%inbox/pipelines/%/%' then
                 
                 _stage := SPLIT_PART(
@@ -129,23 +130,32 @@ BEGIN
                         where o.class_name = 'Task'
                             and o.obj_id = (_pipeline_lite #>> '{attributes,tasks,0}')::uuid
                     into _task;
+                _pipeline_job_guid := _new_guid;
             END IF;
+            
             PERFORM reclada_object.create(
                 format('{
+                    "GUID":"%s",
                     "class": "Job",
                     "attributes": {
                         "task": "%s",
                         "status": "new",
                         "type": "%s",
                         "command": "%s",
-                        "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
+                        "inputParameters": [
+                                { "uri"                 :"%s"   }, 
+                                { "dataSourceId"        :"%s"   },
+                                { "PipelineLiteJobGUID" :"%s"   }
+                            ]
                         }
                     }',
+                        _new_guid::text,
                         _task->>'GUID',
                         _environment, 
                         _task-> 'attributes' ->>'command',
                         _uri,
-                        _obj_id
+                        _obj_id,
+                        _pipeline_job_guid::text
                 )::jsonb
             );
 
