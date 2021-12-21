@@ -39,8 +39,7 @@ prepare_db:
   tags:
     - k8s-devops
 
-
- prepare_runtime:
+prepare_runtime:
   stage: runtime
   image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/curljq:01
   script:
