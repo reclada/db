@@ -7,6 +7,7 @@
 \i 'function/reclada_object.datasource_insert.sql'
 \i 'view/reclada.v_task.sql'
 \i 'view/reclada.v_pk_for_class.sql'
+\i 'view/reclada.v_object.sql'
 
 
 SELECT reclada_object.create_subclass('{
