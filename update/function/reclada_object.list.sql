@@ -261,6 +261,7 @@ DECLARE
     number_of_objects   int;
     objects             jsonb;
     res                 jsonb;
+    exec_text           text;
     query               text;
     class_uuid          uuid;
     last_change         text;
@@ -304,9 +305,6 @@ BEGIN
     
     IF (_filter IS NOT NULL) THEN
         query_conditions := reclada_object.get_query_condition_filter(_filter);
-        IF ver = '2' THEN
-            query_conditions := REPLACE(query_conditions,'#>','->');
-        end if;
     ELSEIF ver = '1' then
         class_uuid := reclada.try_cast_uuid(_class);
 
@@ -392,25 +390,20 @@ BEGIN
         query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;
     ELSE
         query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
+
+        exec_text := 'SELECT to_jsonb(array_agg(T.data))
+                        FROM (
+                            SELECT obj.data
+                            '
+                            || query
+                            ||
+                            ' ORDER BY ' || order_by ||
+                            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T';
     END IF;
 
-    -- RAISE NOTICE 'conds: %', '
-    --             SELECT obj.data
-    --             '
-    --             || query
-    --             ||
-    --             ' ORDER BY ' || order_by ||
-    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
-
-    EXECUTE E'SELECT to_jsonb(array_agg(T.data))
-        FROM (
-            SELECT obj.data
-            '
-            || query
-            ||
-            ' ORDER BY ' || order_by ||
-            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
-    INTO objects;
+    -- RAISE NOTICE 'conds: %', exec_text
+    EXECUTE exec_text
+        INTO objects;
     objects := coalesce(objects,'[]'::jsonb);
     IF gui THEN
 
