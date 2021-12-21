@@ -56,7 +56,6 @@ prepare_runtime:
 
   needs:
     - job: prepare_db
-    - job: prepare_scinlp
       artifacts: true
   rules:
     - if: $CI_COMMIT_MESSAGE =~ /^delenv/
