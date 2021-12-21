@@ -434,7 +434,7 @@ BEGIN
                         select jsonb_set(d.attributes,''{table}'', od.t || coalesce(d.table,''{}''::jsonb))
                             from on_data od
                             left join reclada.v_object_display d
-                                on d.class_guid = '''|| coalesce( class_uuid::text, '' ) ||''''
+                                on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||''''
             INTO _object_display;
 
         end if;
