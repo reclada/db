@@ -86,7 +86,7 @@ BEGIN
         ) LOOP
             IF ( jsonb_typeof(_uniFields) = 'array' ) THEN
                 SELECT
-                    get_unifield_index_name( array_agg(f ORDER BY f)) AS idx_name, 
+                    reclada.get_unifield_index_name( array_agg(f ORDER BY f)) AS idx_name, 
                     string_agg('(attributes ->> ''' || f || ''')','||' ORDER BY f) AS fields_list
                 FROM (
                     SELECT jsonb_array_elements_text (_uniFields::jsonb) f

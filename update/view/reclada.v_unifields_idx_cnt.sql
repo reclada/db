@@ -11,7 +11,7 @@ AS
         SELECT
             for_class,
             class_uuid,
-            get_unifield_index_name(array_agg(unifield ORDER BY field_number)) AS uni_code,
+            reclada.get_unifield_index_name(array_agg(unifield ORDER BY field_number)) AS uni_code,
             uni_number
         FROM
             reclada.v_object_unifields

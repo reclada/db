@@ -2,7 +2,7 @@ DROP FUNCTION IF EXISTS reclada_object.update_json;
 CREATE OR REPLACE FUNCTION reclada_object.update_json(lobj jsonb, robj jsonb)
     RETURNS jsonb
     LANGUAGE plpgsql
-    STABLE
+    IMMUTABLE
 AS $function$
     DECLARE
         res     jsonb;
@@ -22,9 +22,6 @@ AS $function$
         END IF;
         IF (ltype = 'array' and rtype != 'array') THEN
             RETURN lobj || robj;
-        END IF;
-        IF (ltype = 'object' and rtype = 'null') THEN
-            RETURN 'null';
         END IF;
         IF (ltype != rtype) THEN
             RETURN robj;
@@ -63,7 +60,7 @@ AS $function$
         WHEN 'boolean' THEN
             RETURN robj;
         WHEN 'null' THEN
-            RETURN '{}'::jsonb;                                    -- It should be Null
+            RETURN 'null'::jsonb;   
         ELSE
             RETURN null;
         END CASE;

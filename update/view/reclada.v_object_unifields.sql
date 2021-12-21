@@ -4,7 +4,7 @@ AS
     SELECT
         for_class,
         class_uuid,
-        CAST (dup_behavior AS dp_bhvr) AS dup_behavior,
+        CAST (dup_behavior AS reclada.dp_bhvr) AS dup_behavior,
         is_cascade,
         is_mandatory,
         uf as unifield,
@@ -34,8 +34,6 @@ AS
             WHERE
                 attrs ->'dupChecking' is not null
             ) a
-        ORDER BY
-            uf
         ) b
 ;
 ANALYZE reclada.v_object_unifields;

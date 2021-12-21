@@ -248,7 +248,7 @@ CREATE OR REPLACE FUNCTION reclada_object.list(
     gui boolean default false,
     ver text default '1' 
 )
-RETURNS text AS $$
+RETURNS jsonb AS $$
 DECLARE
     _f_name TEXT = 'reclada_object.list';
     _class              text;
@@ -261,6 +261,7 @@ DECLARE
     number_of_objects   int;
     objects             jsonb;
     res                 jsonb;
+    exec_text           text;
     query               text;
     class_uuid          uuid;
     last_change         text;
@@ -271,8 +272,13 @@ BEGIN
 
     perform reclada.validate_json(data, _f_name);
 
-    tran_id := (data->>'transactionID')::bigint;
-    _class := data->>'class';
+    if ver = '1' then
+        tran_id := (data->>'transactionID')::bigint;
+        _class := data->>'class';
+    elseif ver = '2' then
+        tran_id := (data->>'{transactionID}')::bigint;
+        _class := data->>'{class}';
+    end if;
     _filter = data->'filter';
 
     order_by_jsonb := data->'orderBy';
@@ -299,10 +305,7 @@ BEGIN
     
     IF (_filter IS NOT NULL) THEN
         query_conditions := reclada_object.get_query_condition_filter(_filter);
-        IF ver = '2' THEN
-            query_conditions := REPLACE(query_conditions,'#>','->');
-        end if;
-    ELSE
+    ELSEIF ver = '1' then
         class_uuid := reclada.try_cast_uuid(_class);
 
         IF (class_uuid IS NULL) THEN
@@ -313,7 +316,10 @@ BEGIN
                     limit 1 
             INTO class_uuid;
             IF (class_uuid IS NULL) THEN
-                RAISE EXCEPTION 'Class not found: %', _class;
+                perform reclada.raise_exception(
+                        format('Class not found: %s', _class),
+                        _f_name
+                    );
             END IF;
         end if;
 
@@ -379,50 +385,34 @@ BEGIN
             ) conds
         INTO query_conditions;
     END IF;
+    -- TODO: add ELSE
     IF ver = '2' THEN
         query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;
     ELSE
         query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
+
+        exec_text := 'SELECT to_jsonb(array_agg(T.data))
+                        FROM (
+                            SELECT obj.data
+                            '
+                            || query
+                            ||
+                            ' ORDER BY ' || order_by ||
+                            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T';
     END IF;
 
-
-
-    RAISE EXCEPTION 'conds: %', '
-                 SELECT obj.data
-                 '
-                 || query
-                 ||
-                 ' ORDER BY ' || order_by ||
-                 ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
-
-
-
-
-    EXECUTE E'SELECT to_jsonb(array_agg(T.data))
-        FROM (
-            SELECT obj.data
-            '
-            || query
-            ||
-            ' ORDER BY ' || order_by ||
-            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
-    INTO objects;
+    -- RAISE NOTICE 'conds: %', exec_text
+    EXECUTE exec_text
+        INTO objects;
     objects := coalesce(objects,'[]'::jsonb);
     IF gui THEN
 
+        class_uuid := objects->>'{0,class}';
         if ver = '2' then
-            -- raise notice 'od: %',_object_display;
             EXECUTE '   with recursive 
                         d as ( 
-                            select  obj_id, data
+                            select distinct unnest(display_key) v
                                 '|| query ||'
-                        ),
-                        t as
-                        (
-                            select distinct je.key v
-                                from d
-                                JOIN LATERAL jsonb_each(d.data) je
-                                    on true 
                         ),
                         on_data as 
                         (
@@ -430,14 +420,14 @@ BEGIN
                                         t.v, 
                                         replace(dd.template,''#@#attrname#@#'',t.v)::jsonb 
                                     ) t
-                                from t
+                                from d as t
                                 JOIN reclada.v_default_display dd
                                     on t.v like ''%'' || dd.json_type
                         )
-                        select od.t || coalesce(d.table,''{}''::jsonb)
+                        select jsonb_set(d.attributes,''{table}'', od.t || coalesce(d.table,''{}''::jsonb))
                             from on_data od
                             left join reclada.v_object_display d
-                                on d.class_guid = '''||class_uuid::text||''''
+                                on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||''''
             INTO _object_display;
 
         end if;
@@ -472,8 +462,7 @@ BEGIN
         res := objects;
     END IF;
 
-    --RETURN res;
+    RETURN res;
 
-return query_conditions;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
