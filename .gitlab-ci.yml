@@ -1,5 +1,6 @@
 stages:
   - prepare
+  - runtime
   - build
   - test
   - deploy
