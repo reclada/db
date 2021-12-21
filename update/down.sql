@@ -53,15 +53,14 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 --{view/reclada.v_pk_for_class}
 --{function/reclada_object.create}
 --{function/reclada_object.create_subclass}
---{function/reclada_object.delete}
 --{function/reclada_object.refresh_mv}
 --{function/reclada_object.update}
 --{function/reclada_object.datasource_insert}
 --{function/reclada_object.parse_filter}
---{function/reclada_object.list}
 
 
 --{function/reclada_object.list}
+--{function/api.reclada_object_list}
 --{function/reclada_object.get_query_condition_filter}
 --{function/api.reclada_object_create}
 --{function/reclada_object.delete}
@@ -74,3 +73,20 @@ DROP TYPE reclada.dp_bhvr;
 
 DROP INDEX reclada.uri_index_;
 DROP INDEX reclada.checksum_index_;
+
+--{ display
+with t as
+( 
+    update reclada.object
+        set status = reclada_object.get_active_status_obj_id()
+        where attributes->>'function' = 'reclada_object.list'
+            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
+            and status = reclada_object.get_archive_status_obj_id()
+        returning id
+)
+    update reclada.object
+        set status = reclada_object.get_archive_status_obj_id()
+        where attributes->>'function' = 'reclada_object.list'
+            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
+            and id not in (select id from t);
+--} display

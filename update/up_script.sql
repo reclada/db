@@ -42,6 +42,7 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/reclada_object.parse_filter.sql'
 
 \i 'function/reclada_object.list.sql'
+\i 'function/api.reclada_object_list.sql'
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/api.reclada_object_create.sql'
 \i 'function/reclada_object.delete.sql'
@@ -86,3 +87,20 @@ SELECT reclada_object.refresh_mv('uniFields');
 
 CREATE INDEX uri_index_ ON reclada.object USING HASH (((attributes->>'uri')));
 CREATE INDEX checksum_index_ ON reclada.object USING HASH (((attributes->>'checksum')));
+
+--{ display
+with t as
+( 
+    update reclada.object
+        set status = reclada_object.get_active_status_obj_id()
+        where attributes->>'function' = 'reclada_object.list'
+            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
+            and status = reclada_object.get_archive_status_obj_id()
+        returning id
+)
+    update reclada.object
+        set status = reclada_object.get_archive_status_obj_id()
+        where attributes->>'function' = 'reclada_object.list'
+            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
+            and id not in (select id from t);
+--} display
