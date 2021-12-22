@@ -294,6 +294,7 @@ delete-terraform-dynamic-env:
   tags:
     - k8s-devops
 
+    
 delete-branches-dynamic-env:
   stage: clean_branches
   image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/curljq:01
@@ -329,7 +330,7 @@ delete-branches-dynamic-env:
   tags:
     - k8s-devops
 
-    
+
 push-to-github:
   stage: push-to-github
   image: bitnami/git
