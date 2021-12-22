@@ -49,7 +49,6 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 --{function/reclada_object.get_parent_guid}
 
 --{function/reclada_object.get_query_condition_filter}
---{view/reclada.v_pk_for_class}
 --{function/reclada_object.create}
 --{function/reclada_object.create_subclass}
 --{function/reclada_object.delete}
@@ -67,7 +66,20 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 --{function/reclada_object.delete}
 
 --{view/reclada.v_filter_avaliable_operator}
+DROP VIEW reclada.v_ui_active_object;
+DROP VIEW reclada.v_revision;
+DROP VIEW reclada.v_import_info;
+DROP VIEW reclada.v_dto_json_schema;
+DROP VIEW reclada.v_class;
+DROP VIEW reclada.v_active_object;
 --{view/reclada.v_object}
+--{view/reclada.v_active_object}
+--{view/reclada.v_class}
+--{view/reclada.v_pk_for_class}
+--{view/reclada.v_dto_json_schema}
+--{view/reclada.v_import_info}
+--{view/reclada.v_revision}
+--{view/reclada.v_ui_active_object}
 
 DROP TYPE reclada.dp_bhvr;
 
@@ -75,3 +87,5 @@ DROP INDEX reclada.uri_index_;
 DROP INDEX reclada.checksum_index_;
 
 CREATE INDEX status_index ON reclada.object USING btree (status);
+
+ALTER TABLE reclada.draft DROP COLUMN IF EXISTS parent_guid;

@@ -57,7 +57,7 @@ BEGIN
             INTO schema;
     else
         select v.data, v.for_class 
-            from reclada.v_class_lite v
+            from reclada.v_class v
                 where _class_uuid = v.obj_id
             INTO schema, _class_name;
     end if;
@@ -99,7 +99,7 @@ BEGIN
     
     IF EXISTS (SELECT 1 FROM reclada.v_unifields_idx_cnt WHERE class_uuid=_class_uuid)
     THEN
-        SELECT COUNT(DISTINCT obj_guid), dup_behavior, string_agg(DISTINCT obj_guid)
+        SELECT COUNT(DISTINCT obj_guid), dup_behavior, string_agg(DISTINCT obj_guid::text, ',')
         FROM reclada.get_duplicates(_attrs, _class_uuid, _obj_id)
         GROUP BY dup_behavior
             INTO _cnt, _dup_behavior, _guid_list;

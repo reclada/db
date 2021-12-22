@@ -6,6 +6,8 @@
 
 CREATE TYPE reclada.dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert','Merge');
 
+ALTER TABLE reclada.draft ADD COLUMN IF NOT EXISTS parent_guid uuid;
+
 DROP VIEW reclada.v_pk_for_class;
 
 \i 'view/reclada.v_object_unifields.sql'

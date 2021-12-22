@@ -34,23 +34,14 @@ BEGIN
         SELECT v.obj_id
         FROM reclada.v_active_object v
 	    WHERE v.attrs->>'name' = 'defaultDataSet'
+            AND class_name = 'DataSet'
 	        INTO dataset_guid;
 
         IF (dataset_guid IS NULL) THEN
             RAISE EXCEPTION 'Can''t found defaultDataSet';
         END IF;
 
-        SELECT count(*)
-        FROM reclada.v_active_object
-        WHERE class_name = 'Relationship'
-            AND NULLIF(attrs->>'object','')::uuid   = _obj_id
-            AND NULLIF(attrs->>'subject','')::uuid  = dataset_guid
-            AND attrs->>'type'                      = dataset2ds_type
-                INTO rel_cnt;
-
-        IF rel_cnt=0 THEN
-            PERFORM reclada_object.create_relationship(dataset2ds_type, _obj_id, dataset_guid);
-        END IF;
+        PERFORM reclada_object.create_relationship(dataset2ds_type, _obj_id, dataset_guid);
 
         uri := attributes->>'uri';
 
