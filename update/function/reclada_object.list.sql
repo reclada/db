@@ -261,8 +261,9 @@ DECLARE
     number_of_objects   int;
     objects             jsonb;
     res                 jsonb;
-    exec_text           text;
-    query               text;
+    _exec_text           text;
+    _pre_query           text;
+    _from               text;
     class_uuid          uuid;
     last_change         text;
     tran_id             bigint;
@@ -387,60 +388,83 @@ BEGIN
     END IF;
     -- TODO: add ELSE
     IF ver = '2' THEN
-        query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;
+        _pre_query := (select val from reclada.v_ui_active_object);
+        _from := 'res AS obj';
+        _pre_query := REPLACE(_pre_query,'#@#@#where#@#@#', query_conditions  );
+
     ELSE
-        query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
-
-        exec_text := 'SELECT to_jsonb(array_agg(T.data))
-                        FROM (
-                            SELECT obj.data
-                            '
-                            || query
-                            ||
-                            ' ORDER BY ' || order_by ||
-                            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T';
+        _pre_query := '';
+        _from := 'reclada.v_active_object AS obj
+                            WHERE #@#@#where#@#@#';
+        _from := REPLACE(_from, '#@#@#where#@#@#', query_conditions  );
     END IF;
-
-    -- RAISE NOTICE 'conds: %', exec_text
-    EXECUTE exec_text
+    _exec_text := _pre_query ||
+                'SELECT to_jsonb(array_agg(t.data))
+                    FROM 
+                    (
+                        SELECT obj.data
+                            FROM '
+                            || _from
+                            || ' 
+                            ORDER BY #@#@#orderby#@#@#
+                            OFFSET #@#@#offset#@#@#
+                            LIMIT #@#@#limit#@#@#
+                    ) AS t';
+    _exec_text := REPLACE(_exec_text, '#@#@#orderby#@#@#'  , order_by          );
+    _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
+    _exec_text := REPLACE(_exec_text, '#@#@#limit#@#@#'    , limit_            );
+    -- RAISE NOTICE 'conds: %', _exec_text
+    EXECUTE _exec_text
         INTO objects;
     objects := coalesce(objects,'[]'::jsonb);
     IF gui THEN
 
         class_uuid := objects->>'{0,class}';
         if ver = '2' then
-            EXECUTE '   with recursive 
-                        d as ( 
-                            select distinct unnest(display_key) v
-                                '|| query ||'
-                        ),
-                        on_data as 
-                        (
-                            select  jsonb_object_agg(
-                                        t.v, 
-                                        replace(dd.template,''#@#attrname#@#'',t.v)::jsonb 
-                                    ) t
-                                from d as t
-                                JOIN reclada.v_default_display dd
-                                    on t.v like ''%'' || dd.json_type
-                        )
-                        select jsonb_set(d.attributes,''{table}'', od.t || coalesce(d.table,''{}''::jsonb))
-                            from on_data od
-                            left join reclada.v_object_display d
-                                on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||''''
-            INTO _object_display;
+            _exec_text := _pre_query ||',
+            dd as ( 
+                select distinct unnest(obj.display_key) v
+                    FROM '|| _from ||'
+            ),
+            on_data as 
+            (
+                select  jsonb_object_agg(
+                            t.v, 
+                            replace(dd.template,''#@#attrname#@#'',t.v)::jsonb 
+                        ) t
+                    from dd as t
+                    JOIN reclada.v_default_display dd
+                        on t.v like ''%'' || dd.json_type
+            )
+            select jsonb_set(d.attributes,''{table}'', od.t || coalesce(d.table,''{}''::jsonb))
+                from on_data od
+                left join reclada.v_object_display d
+                    on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||'''';
+            EXECUTE _exec_text
+                INTO _object_display;
 
         end if;
-        EXECUTE E'SELECT COUNT(1),
-                         TO_CHAR(
-                            MAX(
-                                GREATEST(obj.created_time, (
-                                    SELECT TO_TIMESTAMP(MAX(date_time),\'YYYY-MM-DD hh24:mi:ss.US TZH\')
-                                    FROM reclada.v_revision vr
-                                    WHERE vr.obj_id = UUID(obj.attrs ->>\'revision\'))
+
+        _exec_text := _pre_query || '
+            SELECT  COUNT(1),
+                    TO_CHAR(
+                        MAX(
+                            GREATEST(
+                                obj.created_time, 
+                                (
+                                    SELECT  TO_TIMESTAMP(
+                                                MAX(date_time),
+                                                ''YYYY-MM-DD hh24:mi:ss.US TZH''
+                                            )
+                                        FROM reclada.v_revision vr
+                                            WHERE vr.obj_id = UUID(obj.attrs ->>''revision'')
                                 )
-                            ),\'YYYY-MM-DD hh24:mi:ss.MS TZH\')
-            '|| query
+                            )
+                        ),
+                        ''YYYY-MM-DD hh24:mi:ss.MS TZH''
+                    )
+                    FROM '|| _from;
+        EXECUTE _exec_text
             INTO number_of_objects, last_change;
         
         IF _object_display IS NOT NULL then
