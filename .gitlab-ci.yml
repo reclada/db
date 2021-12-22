@@ -329,6 +329,7 @@ delete-branches-dynamic-env:
   tags:
     - k8s-devops
 
+    
 push-to-github:
   stage: push-to-github
   image: bitnami/git
