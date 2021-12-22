@@ -420,7 +420,7 @@ BEGIN
     IF gui THEN
 
         if ver = '2' then
-            class_uuid := coalesce(class_uuid, objects#>>'{0,"{class}"}');
+            class_uuid := coalesce(class_uuid, (objects#>>'{0,"{class}"}')::uuid);
             _exec_text := _pre_query ||',
             dd as ( 
                 select distinct unnest(obj.display_key) v
