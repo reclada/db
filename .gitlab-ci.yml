@@ -10,8 +10,6 @@ stages:
   - clean_branches
   - push-to-github
 
-
-
 prepare_db:
   stage: prepare
   image: bitnami/git
@@ -346,7 +344,7 @@ push-to-github:
     - git remote --verbose
     - git push origin HEAD:$CI_COMMIT_REF_NAME --force
   needs:
-    - job: prepare_db
+    - job: deploy-prod-env
       artifacts: true
 
   tags:
