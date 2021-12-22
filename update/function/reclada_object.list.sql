@@ -289,7 +289,15 @@ BEGIN
         order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
     END IF;
     SELECT string_agg(
-        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),
+        format(
+            E'obj.data#>''{%s}'' %s', 
+            case ver
+                when '2'
+                    then REPLACE(REPLACE(T.value->>'field','{', '"{' ),'}', '}"' )
+                else
+                    T.value->>'field'
+            end,
+            COALESCE(T.value->>'order', 'ASC')),
         ' , ')
         FROM jsonb_array_elements(order_by_jsonb) T
         INTO order_by;
