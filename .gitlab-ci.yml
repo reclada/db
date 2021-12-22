@@ -343,8 +343,8 @@ push-to-github:
     - git commit -am "${CI_COMMIT_MESSAGE}"
     - git remote --verbose
     - git push origin HEAD:$CI_COMMIT_REF_NAME --force
-  needs:
-    - job: deploy-prod-env
+  #needs:
+  #  - job: deploy-prod-env
   tags:
       - k8s-devops
   rules:
