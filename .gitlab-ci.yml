@@ -8,6 +8,7 @@ stages:
   - clean
   - clean_db
   - clean_branches
+  - push-to-github
 
 
 
