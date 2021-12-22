@@ -185,7 +185,6 @@ test-autotest-env:
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
     
-
 deploy-prod-env:
   stage: deploy
   image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
