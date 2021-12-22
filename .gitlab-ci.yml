@@ -235,7 +235,6 @@ delete-db-dynamic-env:
     - psql -h dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com -p 5432 -U reclada -d postgres -c "DROP DATABASE $ENV_reclada_k8s;" || true
   needs:
     - job: delete-terraform-dynamic-env
-    - job: delete-k8s-dynamic-env
     - job: prepare_db
       artifacts: true
   rules:
@@ -311,7 +310,6 @@ delete-branches-dynamic-env:
     - curl --request DELETE --header "PRIVATE-TOKEN:$DB_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/34/repository/branches/${CI_COMMIT_REF_NAME//\//%2F}" | jq
   needs:
     - job: delete-terraform-dynamic-env
-    - job: delete-k8s-dynamic-env
     - job: delete-db-dynamic-env
     - job: prepare_db
       artifacts: true
