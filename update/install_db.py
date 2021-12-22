@@ -13,12 +13,6 @@ def db_install():
     rmdir('db')
     clone_db()
     
-    if db_user != reclada_user_name:
-        if run_cmd_scalar(f"SELECT rolname FROM pg_roles WHERE rolname=\'{reclada_user_name}\'") != reclada_user_name:
-            run_cmd_scalar(f"CREATE ROLE {reclada_user_name} NOINHERIT")
-        if run_cmd_scalar(f"SELECT CASE WHEN pg_has_role(\'{db_user}\',\'{reclada_user_name}\',\'member\') THEN 1 ELSE 0 END") == '0':
-            run_cmd_scalar(f"GRANT {reclada_user_name} TO {db_user}")
-
     short_install = os.path.isfile(os.path.join('update','install_db.sql')) and quick_install
     use_dump = False
     if short_install:
@@ -55,6 +49,7 @@ def db_install():
     rmdir('db')
     return need_update, use_dump
 
+
 def runtime_install():
     rmdir('reclada.runtime')
     os.system(f'git clone https://github.com/reclada/reclada.runtime')
@@ -66,6 +61,7 @@ def runtime_install():
     os.chdir('..')
     rmdir('reclada.runtime')
 
+
 def scinlp_install():
     rmdir('SciNLP')
     os.system(f'git clone https://github.com/reclada/SciNLP')
@@ -73,10 +69,12 @@ def scinlp_install():
     os.system(f'git checkout {branch_SciNLP}')
     run_file('bdobjects.sql')
     run_file('nlpobjects.sql')
+    run_file('nlpatterns.sql')
     os.chdir('..')
     os.chdir('..')
     os.chdir('..')
     rmdir('SciNLP')
+
 
 if __name__ == "__main__":
     
