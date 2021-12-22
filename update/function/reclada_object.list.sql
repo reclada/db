@@ -419,8 +419,8 @@ BEGIN
     objects := coalesce(objects,'[]'::jsonb);
     IF gui THEN
 
-        class_uuid := objects->>'{0,class}';
         if ver = '2' then
+            class_uuid := coalesce(class_uuid, objects#>>'{0,"{class}"}');
             _exec_text := _pre_query ||',
             dd as ( 
                 select distinct unnest(obj.display_key) v
