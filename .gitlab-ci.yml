@@ -345,8 +345,6 @@ push-to-github:
     - git push origin HEAD:$CI_COMMIT_REF_NAME --force
   needs:
     - job: deploy-prod-env
-      artifacts: true
-
   tags:
       - k8s-devops
   rules:
