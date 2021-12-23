@@ -7,6 +7,7 @@
     "quick_install" : true,
     "LAMBDA_NAME" : "LAMBDA_NAME",
     "ENVIRONMENT_NAME" : "ENVIRONMENT_NAME",
+    "LAMBDA_REGION": "eu-west-1",
     "run_object_create" : true,
     "version": "latest",
     "downgrade_test":true

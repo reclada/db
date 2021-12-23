@@ -4,6 +4,8 @@ import stat
 from pathlib import Path
 import sys
 import urllib.parse
+import uuid
+import shutil
 
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -25,6 +27,7 @@ db_user = parsed.username
 db = db_URI.split('/')[-1]
 ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
 LAMBDA_NAME = j["LAMBDA_NAME"]
+LAMBDA_REGION = j["LAMBDA_REGION"]
 run_object_create = j["run_object_create"]
 version = j["version"]
 quick_install = j["quick_install"]
@@ -34,10 +37,12 @@ if version == 'latest':
 else:
     config_version = int(version)
 
+
 def psql_str(cmd:str,DB_URI:str = db_URI)->str:
     return f'psql -t -P pager=off {cmd} {DB_URI}'
 
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
+
 
 def json_schema_install(DB_URI=db_URI):
     file_name = 'patched.sql'
@@ -53,12 +58,13 @@ def json_schema_install(DB_URI=db_URI):
     rmdir('postgres-json-schema')
 
 
-def install_objects(l_name = LAMBDA_NAME, e_name = ENVIRONMENT_NAME, DB_URI = db_URI):
+def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
     file_name = 'object_create_patched.sql'
     with open('object_create.sql') as f:
         obj_cr = f.read()
 
     obj_cr = obj_cr.replace('#@#lname#@#', l_name)
+    obj_cr = obj_cr.replace('#@#lregion#@#', l_region)
     obj_cr = obj_cr.replace('#@#ename#@#', e_name)
 
     with open(file_name,'w') as f:
@@ -98,8 +104,16 @@ def rmdir(top:str):
 
 def clone_db():
     rmdir('db')
-    os.system(f'git clone https://github.com/reclada/db.git')
-    os.chdir('db')
+    os.chdir('..')
+    os.chdir('..')
+    folder_name = f'db_copy_{str(uuid.uuid4())}'
+    shutil.copytree('db',folder_name)
+    os.chdir(folder_name)
+    checkout('.')
+    os.chdir('..')
+    path = os.path.join('db','update','db')
+    shutil.move(folder_name, path)
+    os.chdir(path)
     checkout(branch_db)
 
 def get_commit_history(branch:str = branch_db, need_comment:bool = False):
@@ -143,8 +157,10 @@ def get_commit_history(branch:str = branch_db, need_comment:bool = False):
 
     return res
 
+
 def get_version_from_db(DB_URI=db_URI)->int:
     return int(run_cmd_scalar("select max(ver) from dev.ver;",DB_URI))
+
 
 def get_version_from_commit(commit = '', file_name = 'up_script.sql')->int:
     if commit != '':
@@ -192,12 +208,11 @@ def run_test():
     os.system(f'pytest '
         + 'tests/components/security/test_database_sql_injections.py '
         + 'tests/components/database '
-        + '--alluredir results --log-file=test_output.log')
-    os.system(f'pytest '
         + 'tests/components/postgrest '
         + '--alluredir results --log-file=test_output.log')
     os.chdir('..')
     rmdir('QAAutotests')
+
 
 if __name__ == "__main__":
         
