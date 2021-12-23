@@ -21,17 +21,10 @@ DECLARE
     object_name  varchar;
     file_type    varchar;
     file_size    varchar;
-    lambda_name  varchar;
+    context      jsonb;
     bucket_name  varchar;
     url          varchar;
     result       jsonb;
-
-
-    object       jsonb;
-    object_id    uuid;
-    object_path  varchar;
-    uri          varchar;
-
 
 BEGIN
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
@@ -49,20 +42,20 @@ BEGIN
         RAISE EXCEPTION 'Parameters objectName, fileType and fileSize must be present';
     END IF;
 
-    SELECT attrs->>'Lambda'
+    SELECT attrs
     FROM reclada.v_active_object
     WHERE class_name = 'Context'
-    ORDER BY created_time DESC
+    ORDER BY id DESC
     LIMIT 1
-    INTO lambda_name;
+    INTO context;
 
     bucket_name := data->>'bucketName';
 
     SELECT payload::jsonb
     FROM aws_lambda.invoke(
         aws_commons.create_lambda_function_arn(
-                format('%s', lambda_name),
-                'eu-west-1'
+                context->>'Lambda',
+                context->>'Region'
         ),
         format('{
             "type": "post",

@@ -18,7 +18,6 @@ AS
         FROM reclada.v_object as t
             -- объект не удален
             where t.status = reclada_object.get_active_status_obj_id()
-            ;
-
+;
 -- select * from reclada.v_active_object limit 300
 -- select * from reclada.object

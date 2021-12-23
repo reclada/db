@@ -23,15 +23,17 @@ DECLARE
 
 BEGIN
 
-    class := data->>'class';
+    class := coalesce(data ->> '{class}', data ->> 'class');
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    obj_id := data->>'GUID';
+    obj_id := coalesce(data ->> '{GUID}', data ->> 'GUID');
     IF (obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not delete object with no id';
     END IF;
+
+    data := data || ('{"GUID":"'|| obj_id ||'","class":"'|| class ||'"}')::jsonb;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
@@ -41,6 +43,11 @@ BEGIN
     END IF;
 
     SELECT reclada_object.delete(data, user_info) INTO result;
+
+    if reclada_object.need_flat(class) then 
+        RETURN '{"status":"OK"}'::jsonb;
+    end if;
+
     RETURN result;
 
 END;
