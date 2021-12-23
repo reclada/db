@@ -90,3 +90,18 @@ with t as
             and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
             and id not in (select id from t);
 --} display
+
+--{view/reclada.v_class_lite}
+--{view/reclada.v_object_status}
+--{view/reclada.v_user}
+--{view/reclada.v_object}
+--{view/reclada.v_active_object}
+--{view/reclada.v_dto_json_schema}
+--{view/reclada.v_ui_active_object}
+--{view/reclada.v_revision}
+--{view/reclada.v_import_info}
+--{view/reclada.v_class}
+--{view/reclada.v_parent_field}
+--{view/reclada.v_object_unifields}
+--{view/reclada.v_unifields_pivoted}
+--{view/reclada.v_unifields_idx_cnt}

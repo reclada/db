@@ -67,30 +67,6 @@ default_field AS
             ) def
         GROUP BY obj_id
 )
-
-/*,
-default_field1 AS
-(
-    SELECT
-            CASE
-                WHEN array_length(t.path_head, 1) >= 4
-                    THEN
-                        reclada_object.built_nested_jsonb(
-                        t.path_head[array_position(t.path_head, 'properties') + 2 : ], -- {schema,properties,nested_1,nested_2,nested_3} -> {nested_2,nested_3}
-                        t.path_tail->>'default'
-                        )
-                ELSE t.path_tail->'default'
-            END AS default_value,
-            t.path_head[array_position(t.path_head, 'properties') + 1] AS default_key,
-            t.obj_id
-        FROM paths_to_default t
-        WHERE t.path_tail->'default' IS NOT NULL
-)
-SELECT   format('{"attributes":%s}', json_object_agg(default_key, default_value))::jsonb AS default_value,
-         obj_id
-    FROM default_field
-    GROUP BY obj_id;
-*/
 SELECT
         obj.id,
         obj.obj_id,
@@ -107,10 +83,3 @@ ANALYZE reclada.v_class_lite;
 
 --SELECT * FROM reclada.v_class_lite;
 --SELECT * FROM reclada.v_active_object
-
---select reclada_object.built_nested_jsonb(ARRAY['attributes','nested_1','nested_2','nested_3'], 'a')
---select jsonb_set('{}'::jsonb, '{attributes, b}', '"a"'::jsonb)
-
---select '{"a":false}'::jsonb->>'a'
---select ('{"a":false}'::jsonb->>'a')::jsonb
---select to_jsonb('{"a":false}'::jsonb->>'a')

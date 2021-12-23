@@ -195,7 +195,7 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 \i 'view/reclada.v_user.sql'
 \i 'view/reclada.v_object.sql'
 \i 'view/reclada.v_active_object.sql'
-\i 'view/reclada.v_DTO_json_schema.sql'
+\i 'view/reclada.v_dto_json_schema.sql'
 \i 'view/reclada.v_ui_active_object.sql'
 \i 'view/reclada.v_revision.sql'
 \i 'view/reclada.v_import_info.sql'
