@@ -39,13 +39,13 @@ prepare_db:
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
       when: always
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main" && $CI_COMMIT_MESSAGE !~ /^delenv/
       when: always
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
+    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test" && $CI_COMMIT_MESSAGE !~ /^delenv/
       when: always
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
       when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
+    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ 
       when: always
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -377,7 +377,7 @@ push-to-github:
   image: bitnami/git
   script:
     - echo "Run push to github"
-    - git remote set-url origin https://gitlab:${MY_GITHUB_TOKEN}@github.com/reclada/reclada.runtime.git
+    - git remote set-url origin https://gitlab:${MY_GITHUB_TOKEN}@github.com/reclada/${CI_PROJECT_NAME}.git
     - rm -rf .gitlab-ci.yml
     - rm -rf devops/
     - git config --global user.email "Gitlab@reclada.com"
@@ -386,8 +386,8 @@ push-to-github:
     - git commit -am "${CI_COMMIT_MESSAGE}"
     - git remote --verbose
     - git push origin HEAD:$CI_COMMIT_REF_NAME --force
-  #needs:
-  #  - job: deploy-prod-env
+  needs:
+    - job: prepare_db
   tags:
       - k8s-devops
   rules:
