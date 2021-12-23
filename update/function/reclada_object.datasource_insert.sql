@@ -18,6 +18,7 @@ CREATE OR REPLACE FUNCTION reclada_object.datasource_insert
 )
 RETURNS void AS $$
 DECLARE
+
     _pipeline_lite jsonb;
     _task  jsonb;
     _dataset_guid  uuid;
@@ -29,46 +30,28 @@ DECLARE
     _rel_cnt       int;
     _dataset2ds_type text = 'defaultDataSet to DataSource';
     _f_name text = 'reclada_object.datasource_insert';
+    dataset_guid  uuid;
+    uri           text;
+    environment   varchar;
+    rel_cnt       int;
+    dataset2ds_type text:= 'defaultDataSet to DataSource';
 BEGIN
     IF _class_name in ('DataSource','File') THEN
 
         _uri := attributes->>'uri';
-
 
         SELECT v.obj_id
         FROM reclada.v_active_object v
         WHERE v.class_name = 'DataSet'
             and v.attrs->>'name' = 'defaultDataSet'
         INTO _dataset_guid;
-
-        SELECT count(*)
-        FROM reclada.v_active_object
-        WHERE class_name = 'Relationship'
-            AND (attrs->>'object')::uuid = _obj_id
-            AND (attrs->>'subject')::uuid = _dataset_guid
-            AND attrs->>'type' = _dataset2ds_type
-                INTO _rel_cnt;
-
+        PERFORM reclada_object.create_relationship(dataset2ds_type, _obj_id, _dataset_guid);
         SELECT attrs->>'Environment'
             FROM reclada.v_active_object
                 WHERE class_name = 'Context'
                 ORDER BY created_time DESC
                 LIMIT 1
             INTO _environment;
-        IF _rel_cnt=0 THEN
-            PERFORM reclada_object.create(
-                    format('{
-                        "class": "Relationship",
-                        "attributes": {
-                            "type": "%s",
-                            "object": "%s",
-                            "subject": "%s"
-                            }
-                        }', _dataset2ds_type, _obj_id, _dataset_guid
-                    )::jsonb
-                );
-
-        END IF;
         if _uri like '%inbox/jobs/%' then
         
             PERFORM reclada_object.create(
@@ -158,7 +141,8 @@ BEGIN
                         _pipeline_job_guid::text
                 )::jsonb
             );
-
+        IF (dataset_guid IS NULL) THEN
+            RAISE EXCEPTION 'Can''t found defaultDataSet';
         END IF;
     END IF;
 END;

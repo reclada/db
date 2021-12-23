@@ -16,7 +16,7 @@ AS
             t.transaction_id    ,
             t.parent_guid
         FROM reclada.v_object as t
-            -- объект не удален
+            -- object wasn't deleted
             where t.status = reclada_object.get_active_status_obj_id()
 ;
 -- select * from reclada.v_active_object limit 300
