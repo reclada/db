@@ -1,0 +1,45 @@
+{
+    "forClass": "PipelineLite",
+    "schema": {
+        "properties": {
+            "command": {
+                "type": "string"
+            },
+            "inputParameters": {
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                "type": "string"
+            },
+            "outputParameters": {
+                "items": {
+                    "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "tasks": {
+                "items": {
+                    "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
+                    "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+            },
+            "type": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "tasks",
+            "command",
+            "type"
+        ],
+        "type": "object"
+    },
+    "version": "1"
+}
