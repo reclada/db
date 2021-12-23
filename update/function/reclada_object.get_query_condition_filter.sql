@@ -77,34 +77,34 @@ result:
 DROP FUNCTION IF EXISTS reclada_object.get_query_condition_filter;
 CREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data JSONB)
 RETURNS TEXT AS $$
-DECLARE 
+DECLARE
     _count   INT;
     _res     TEXT;
     _f_name TEXT = 'reclada_object.get_query_condition_filter';
-BEGIN 
-    
+BEGIN
+
     perform reclada.validate_json(data, _f_name);
     -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE
     CREATE TEMP TABLE mytable AS
-        SELECT  res.lvl              AS lvl         , 
-                res.rn               AS rn          , 
+        SELECT  res.lvl              AS lvl         ,
+                res.rn               AS rn          ,
                 res.idx              AS idx         ,
-                res.prev             AS prev        , 
-                res.val              AS val         ,  
-                res.parsed           AS parsed      , 
+                res.prev             AS prev        ,
+                res.val              AS val         ,
+                res.parsed           AS parsed      ,
                 coalesce(
-                    po.inner_operator, 
+                    po.inner_operator,
                     op.operator
-                )                   AS op           , 
+                )                   AS op           ,
                 coalesce
                 (
                     iop.input_type,
                     op.input_type
                 )                   AS input_type   ,
-                case 
-                    when iop.input_type is not NULL 
-                        then NULL 
-                    else 
+                case
+                    when iop.input_type is not NULL
+                        then NULL
+                    else
                         op.output_type
                 end                 AS output_type  ,
                 po.operator         AS po           ,
@@ -129,44 +129,51 @@ BEGIN
     UPDATE mytable u
         SET parsed = to_jsonb(p.v)
             FROM mytable t
-            JOIN LATERAL 
+            JOIN LATERAL
             (
                 SELECT  t.parsed #>> '{}' v
             ) as pt
                 ON TRUE
             LEFT JOIN reclada.v_filter_mapping fm
                 ON pt.v = fm.pattern
-            JOIN LATERAL 
+            JOIN LATERAL
             (
-                SELECT CASE 
+                SELECT CASE
                         WHEN t.op LIKE '%<@%' AND t.idx=1 AND jsonb_typeof(t.parsed)='string'
-                            THEN format('data #> ''%s''!= ''[]''::jsonb AND data #> ''%s''!= ''{}''::jsonb AND data #> ''%s''', pt.v, pt.v, pt.v)
-                        WHEN fm.repl is not NULL 
-                            then 
-                                case 
+                            THEN --format('data #> ''%s''!= ''[]''::jsonb AND data #> ''%s''!= ''{}''::jsonb AND data #> ''%s''', pt.v, pt.v, pt.v)
+                            format('(COALESCE(data #> ''%s'', default_value #> ''%s'')) != ''[]''::jsonb
+                                AND (COALESCE(data #> ''%s'', default_value #> ''%s'')) != ''{}''::jsonb
+                                AND (COALESCE(data #> ''%s'', default_value #> ''%s''))',
+                                pt.v, pt.v, pt.v, pt.v, pt.v, pt.v)
+                        WHEN fm.repl is not NULL
+                            then
+                                case
                                     when t.input_type in ('TEXT')
                                         then fm.repl || '::TEXT'
                                     else '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)
                                 end
                         WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')
-                            then 
-                                case 
+                            then
+                                case
                                     when t.input_type in ('NUMERIC','INT')
                                         then pt.v
                                     else '''' || pt.v || '''::jsonb'
                                 end
-                        WHEN jsonb_typeof(t.parsed) = 'string' 
-                            then    
+                        WHEN jsonb_typeof(t.parsed) = 'string'
+                            then
                                 case
                                     WHEN pt.v LIKE '{%}'
                                         THEN
                                             case
                                                 when t.input_type = 'TEXT'
-                                                    then format('(data #>> ''%s'')', pt.v)
+                                                    --then format('(data #>> ''%s'')', pt.v)
+                                                    then format('(COALESCE(data #>> ''%s'', default_value #>> ''%s''))', pt.v, pt.v)
                                                 when t.input_type = 'JSONB' or t.input_type is null
-                                                    then format('data #> ''%s''', pt.v)
+                                                    --then format('data #> ''%s''', pt.v)
+                                                    then format('(COALESCE(data #> ''%s'', default_value #> ''%s''))', pt.v, pt.v)
                                                 else
-                                                    format('(data #>> ''%s'')::', pt.v) || t.input_type
+                                                    --format('(data #>> ''%s'')::', pt.v) || t.input_type
+                                                    format('(COALESCE(data #>> ''%s'', default_value #>> ''%s''))::', pt.v, pt.v) || t.input_type
                                             end
                                     when t.input_type = 'TEXT'
                                         then ''''||REPLACE(pt.v,'''','''''')||''''

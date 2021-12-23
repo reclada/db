@@ -34,6 +34,7 @@ paths_to_default AS
         FROM objects_schemas o
         CROSS JOIN LATERAL jsonb_each(o.attributes) row_attrs_base
         WHERE jsonb_typeof(row_attrs_base.value) = 'object'
+            AND attributes::text LIKE '%default%'
     UNION ALL
     SELECT   p.path_head || row_attrs_rec.key AS path_head, -- {schema,properties,nested_1,nested_2,nested_3}
              row_attrs_rec.value AS path_tail, ---{"type": "integer", "default": 100}
@@ -47,7 +48,7 @@ tmp AS
     SELECT
             reclada_object.built_nested_jsonb(
                 t.path_head[array_position(t.path_head, 'properties') + 1 : ], -- {schema,properties,nested_1,nested_2,nested_3} -> {nested_1,nested_2,nested_3}
-                t.path_tail->>'default'
+                t.path_tail->'default'
             ) AS default_jsonb,
             t.obj_id
         FROM paths_to_default t
@@ -66,6 +67,7 @@ default_field AS
             ) def
         GROUP BY obj_id
 )
+
 /*,
 default_field1 AS
 (
@@ -101,9 +103,14 @@ SELECT
     FROM objects_schemas obj
         LEFT JOIN default_field def
         ON def.obj_id = obj.obj_id;
+ANALYZE reclada.v_class_lite;
 
 --SELECT * FROM reclada.v_class_lite;
 --SELECT * FROM reclada.v_active_object
 
 --select reclada_object.built_nested_jsonb(ARRAY['attributes','nested_1','nested_2','nested_3'], 'a')
 --select jsonb_set('{}'::jsonb, '{attributes, b}', '"a"'::jsonb)
+
+--select '{"a":false}'::jsonb->>'a'
+--select ('{"a":false}'::jsonb->>'a')::jsonb
+--select to_jsonb('{"a":false}'::jsonb->>'a')

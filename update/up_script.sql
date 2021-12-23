@@ -1,4 +1,4 @@
--- version = 44
+-- version = 45
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
@@ -132,9 +132,10 @@ SET attributes = '{
                 },
                 {
                   "$ref": "expr"
-                },{
-                        "type": "boolean"
-                      },
+                },
+                {
+                  "type": "boolean"
+                },
                 {
                   "type": "array",
                   "items": {
@@ -170,6 +171,7 @@ AND attributes->>'forClass' != 'jsonschema';
 --------------------------------------------------
 -- v_class_lite, v_class, v_object, v_active_object
 \i 'function/reclada_object.built_nested_jsonb.sql'
+\i 'function/reclada_object.get_query_condition_filter.sql'
 
 DROP VIEW IF EXISTS reclada.v_unifields_idx_cnt;
 DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
@@ -202,3 +204,6 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 \i 'view/reclada.v_object_unifields.sql'
 \i 'view/reclada.v_unifields_pivoted.sql'
 \i 'view/reclada.v_unifields_idx_cnt.sql'
+
+--reclada_object.get_query_condition_filter.sql
+--reclada_object.create_subclass.sql -- can't use default for name field

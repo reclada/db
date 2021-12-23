@@ -248,7 +248,7 @@ CREATE OR REPLACE FUNCTION reclada_object.list(
     gui boolean default false,
     ver text default '1' 
 )
-RETURNS jsonb AS $$
+RETURNS text AS $$
 DECLARE
     _f_name TEXT = 'reclada_object.list';
     _class              text;
@@ -486,7 +486,8 @@ BEGIN
         res := objects;
     END IF;
 
-    RETURN res;
+    --RETURN res;
+    return query_conditions;
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

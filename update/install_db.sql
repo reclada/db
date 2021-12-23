@@ -1,10 +1,10 @@
 -- version = 44
--- 2021-12-22 11:27:31.147512--
+-- 2021-12-22 13:20:22.651570--
 -- PostgreSQL database dump
 --
 
 -- Dumped from database version 13.3
--- Dumped by pg_dump version 13.3
+-- Dumped by pg_dump version 13.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -116,20 +116,6 @@ COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UU
 
 
 --
--- Name: dp_bhvr; Type: TYPE; Schema: reclada; Owner: -
---
-
-CREATE TYPE reclada.dp_bhvr AS ENUM (
-    'Replace',
-    'Update',
-    'Reject',
-    'Copy',
-    'Insert',
-    'Merge'
-);
-
-
---
 -- Name: auth_get_login_url(jsonb); Type: FUNCTION; Schema: api; Owner: -
 --
 
@@ -193,7 +179,6 @@ DECLARE
     _need_flat       bool := false;
     _draft           bool;
     _guid            uuid;
-    _f_name          text := 'api.reclada_object_create';
 BEGIN
 
     _draft := draft != 'false';
@@ -211,9 +196,6 @@ BEGIN
                             then data_jsonb->>'{GUID}'
                     end;
         if _draft then
-            if _guid is null then
-                perform reclada.raise_exception('GUID is required.',_f_name);
-            end if;
             INSERT into reclada.draft(guid,data)
                 values(_guid,data_jsonb);
         else
@@ -483,17 +465,19 @@ BEGIN
                 _filter
             )::jsonb 
             INTO _filter;
-            data := data || _filter;
-        
-    ELSEIF ver = '2' then
-        SELECT format( '{
-                            "operator":"=",
-                            "value":["{class}","%s"]
-                        }',
-                _class
-            )::jsonb 
-            INTO _filter;
-        data := Jsonb_set(data,'{filter}', _filter);
+        data := data || _filter;
+    ELSE
+        data := data || ('{"class":"'|| _class ||'"}')::jsonb;
+    --     select format(  '{
+    --                         "filter":{
+    --                             "operator":"=",
+    --                             "value":["{class}","%s"]
+    --                         }
+    --                     }',
+    --             class,
+    --             _filter
+    --         )::jsonb 
+    --         INTO _filter;
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
@@ -977,66 +961,6 @@ $$;
 
 
 --
--- Name: get_children(uuid); Type: FUNCTION; Schema: reclada; Owner: -
---
-
-CREATE FUNCTION reclada.get_children(_obj_id uuid) RETURNS SETOF uuid
-    LANGUAGE sql STABLE
-    AS $$
-    WITH RECURSIVE temp1 (id,obj_id,parent,class_name,level) AS (
-        SELECT
-            id,
-            obj_id,
-            parent_guid,
-            class_name,
-            1
-        FROM v_active_object vao 
-        WHERE obj_id =_obj_id
-            UNION 
-        SELECT
-            t2.id,
-            t2.obj_id,
-            t2.parent_guid,
-            t2.class_name,
-            level+1
-        FROM v_active_object t2 JOIN temp1 t1 ON t1.obj_id=t2.parent_guid
-    )
-    SELECT obj_id FROM temp1
-$$;
-
-
---
--- Name: get_duplicates(jsonb, uuid, uuid); Type: FUNCTION; Schema: reclada; Owner: -
---
-
-CREATE FUNCTION reclada.get_duplicates(_attrs jsonb, _class_uuid uuid, exclude_uuid uuid DEFAULT NULL::uuid) RETURNS TABLE(obj_guid uuid, dup_behavior reclada.dp_bhvr, is_cascade boolean, dup_field text)
-    LANGUAGE sql STABLE
-    AS $$
-    SELECT obj_id, dup_behavior, is_cascade, f1
-        FROM reclada.v_active_object vao
-        JOIN reclada.v_unifields_pivoted vup ON vao."class" = vup.class_uuid
-        WHERE (vao.attrs ->> f1) 
-                || COALESCE((vao.attrs ->> f2),'') 
-                || COALESCE((vao.attrs ->> f3),'') 
-                || COALESCE((vao.attrs ->> f4),'') 
-                || COALESCE((vao.attrs ->> f5),'') 
-                || COALESCE((vao.attrs ->> f6),'') 
-                || COALESCE((vao.attrs ->> f7),'') 
-                || COALESCE((vao.attrs ->> f8),'')
-            = (_attrs ->> f1) 
-                || COALESCE((_attrs ->> f2),'') 
-                || COALESCE((_attrs ->> f3),'') 
-                || COALESCE((_attrs ->> f4),'') 
-                || COALESCE((_attrs ->> f5),'') 
-                || COALESCE((_attrs ->> f6),'') 
-                || COALESCE((_attrs ->> f7),'') 
-                || COALESCE((_attrs ->> f8),'')
-            AND vao."class" = _class_uuid
-            AND (vao.obj_id != exclude_uuid OR exclude_uuid IS NULL)
-$$;
-
-
---
 -- Name: get_transaction_id(); Type: FUNCTION; Schema: reclada; Owner: -
 --
 
@@ -1075,17 +999,6 @@ BEGIN
 
     return tran_id_;
 END
-$$;
-
-
---
--- Name: get_unifield_index_name(text[]); Type: FUNCTION; Schema: reclada; Owner: -
---
-
-CREATE FUNCTION reclada.get_unifield_index_name(fields text[]) RETURNS text
-    LANGUAGE sql STABLE
-    AS $$
-	SELECT array_to_string(fields,'_')||'_index_';
 $$;
 
 
@@ -1350,39 +1263,6 @@ $_$;
 
 
 --
--- Name: add_cr_dup_mark(uuid, bigint, reclada.dp_bhvr); Type: FUNCTION; Schema: reclada_object; Owner: -
---
-
-CREATE FUNCTION reclada_object.add_cr_dup_mark(_parent_guid uuid, _transaction_id bigint, _dup_behavior reclada.dp_bhvr) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    DELETE FROM reclada_object.cr_dup_behavior
-    WHERE transaction_id IN (
-        SELECT transaction_id
-        FROM (
-            SELECT MAX(last_use) AS max_last_use,
-                transaction_id
-            FROM reclada_object.cr_dup_behavior
-            WHERE dup_behavior = _dup_behavior
-            GROUP BY transaction_id
-        ) A
-        WHERE max_last_use < current_timestamp - interval '1 day'
-    );
-
-    INSERT INTO reclada_object.cr_dup_behavior
-        (parent_guid,  transaction_id, dup_behavior)
-    VALUES
-        (_parent_guid,  _transaction_id, _dup_behavior)
-    ON CONFLICT (transaction_id, parent_guid)
-        DO UPDATE 
-        SET dup_behavior = _dup_behavior,
-            last_use = current_timestamp;
-END;
-$$;
-
-
---
 -- Name: cast_jsonb_to_postgres(text, text, text); Type: FUNCTION; Schema: reclada_object; Owner: -
 --
 
@@ -1420,62 +1300,52 @@ CREATE FUNCTION reclada_object."create"(data_jsonb jsonb, user_info jsonb DEFAUL
     AS $$
 DECLARE
     branch        uuid;
-    _data         jsonb;
-    new_data      jsonb;
+    data          jsonb;
     class_name    text;
-    _class_uuid   uuid;
+    class_uuid    uuid;
     tran_id       bigint;
-    _attrs        jsonb;
+    _attrs         jsonb;
     schema        jsonb;
-    _obj_guid     uuid;
+    obj_GUID      uuid;
     res           jsonb;
     affected      uuid[];
-    inserted      uuid[];
-    _dup_behavior reclada.dp_bhvr;
-    _is_cascade   boolean;
-    _uni_field    text;
     _parent_guid  uuid;
-    _last_use     timestamp;
-    _parent_field text;
-    skip_insert   boolean;
-    notify_res    jsonb;
-    _cnt          int;
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
         data_jsonb := '[]'::jsonb || data_jsonb;
     END IF;
-    /*TODO: check if some objects have revision AND others do not */
+    /*TODO: check if some objects have revision and others do not */
     branch:= data_jsonb->0->'branch';
 
-    FOR _data IN SELECT jsonb_array_elements(data_jsonb) 
+    FOR data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
-        skip_insert := false;
-        class_name := _data->>'class';
+
+        class_name := data->>'class';
 
         IF (class_name IS NULL) THEN
             RAISE EXCEPTION 'The reclada object class is not specified';
         END IF;
-        _class_uuid := reclada.try_cast_uuid(class_name);
+        class_uuid := reclada.try_cast_uuid(class_name);
 
-        _attrs := _data->'attributes';
+        _attrs := data->'attributes';
         IF (_attrs IS NULL) THEN
             RAISE EXCEPTION 'The reclada object must have attributes';
         END IF;
 
-        tran_id := (_data->>'transactionID')::bigint;
+        tran_id := (data->>'transactionID')::bigint;
         if tran_id is null then
             tran_id := reclada.get_transaction_id();
         end if;
 
-        IF _class_uuid IS NULL THEN
+        IF class_uuid IS NULL THEN
             SELECT reclada_object.get_schema(class_name) 
             INTO schema;
-            _class_uuid := (schema->>'GUID')::uuid;
+            class_uuid := (schema->>'GUID')::uuid;
         ELSE
             SELECT v.data 
             FROM reclada.v_class v
-            WHERE _class_uuid = v.obj_id
+            WHERE class_uuid = v.obj_id
             INTO schema;
         END IF;
         IF (schema IS NULL) THEN
@@ -1486,140 +1356,60 @@ BEGIN
             RAISE EXCEPTION 'JSON invalid: %', _attrs;
         END IF;
         
-        IF _data->>'id' IS NOT NULL THEN
+        IF data->>'id' IS NOT NULL THEN
             RAISE EXCEPTION '%','Field "id" not allow!!!';
         END IF;
 
-        SELECT prnt_guid, prnt_field
-        FROM reclada_object.get_parent_guid(_data,class_name)
-            INTO _parent_guid,
-                _parent_field;
-
-        IF _class_uuid IN (SELECT class_uuid FROM reclada.v_unifields_idx_cnt)
+        IF class_uuid IN (SELECT guid FROM reclada.v_PK_for_class)
         THEN
-            SELECT dup_behavior, last_use                      
-            FROM reclada_object.cr_dup_behavior         
-            WHERE parent_guid       = _parent_guid
-                AND transaction_id  = tran_id
-                INTO _dup_behavior,  _last_use;
-
-            IF (_dup_behavior = 'Update') THEN
-                IF (_last_use < current_timestamp - interval '1 hour') THEN
-                    UPDATE reclada_object.cr_dup_behavior
-                    SET last_use = current_timestamp
-                    WHERE parent_guid       = _parent_guid
-                        AND transaction_id  = tran_id;
-                END IF;
-                SELECT count(*)
-                FROM reclada.get_duplicates(_attrs, _class_uuid)
-                    INTO _cnt;
-                IF (_cnt >1) THEN
-                    RAISE EXCEPTION 'Found more than one duplicates. Resolve conflict manually.';
-                END IF;
-                FOR _obj_guid, _is_cascade IN (
-                    SELECT obj_guid, is_cascade
-                    FROM reclada.get_duplicates(_attrs, _class_uuid)) LOOP
-                        new_data := _data;
-                        IF (_is_cascade) THEN
-                            PERFORM reclada_object.add_cr_dup_mark(
-                                (_data->>'GUID')::uuid,
-                                tran_id,
-                                'Update');
-                        END IF;
-                        new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
-                        new_data := reclada_object.update_json_by_guid(_obj_guid, new_data);
-                        SELECT reclada_object.update(new_data)
-                            INTO res;
-                        affected := array_append( affected, _obj_guid);
-                        skip_insert := true;
-                END LOOP;
-            END IF;
-            IF (NOT skip_insert) THEN
-                SELECT COUNT(DISTINCT obj_guid), MAX(dup_behavior)
-                FROM reclada.get_duplicates(_attrs, _class_uuid)
-                    INTO _cnt, _dup_behavior;
-                IF (_cnt>1 AND _dup_behavior IN ('Update','Merge')) THEN
-                    RAISE EXCEPTION 'Found more than one duplicates. Resolve conflict manually.';
-                END IF;
-                FOR _obj_guid, _dup_behavior, _is_cascade, _uni_field IN (
-                    SELECT obj_guid, dup_behavior, is_cascade, dup_field
-                    FROM reclada.get_duplicates(_attrs, _class_uuid)) LOOP
-                    new_data := _data;
-                    CASE _dup_behavior
-                        WHEN 'Replace' THEN
-                            CASE _is_cascade
-                                WHEN true
-                                THEN
-                                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', a)::jsonb)
-                                    FROM reclada.get_children(_obj_guid) a;
-                                WHEN false
-                                THEN
-                                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_guid)::jsonb);
-                            END CASE;
-                        WHEN 'Update' THEN
-                            IF _is_cascade THEN
-                                PERFORM reclada_object.add_cr_dup_mark(
-                                    (new_data->>'GUID')::uuid,
-                                    tran_id,
-                                    'Update');
-                            END IF;
-                            new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
-                            new_data := reclada_object.update_json_by_guid(_obj_guid, new_data);
-                            SELECT reclada_object.update(new_data)
-                                INTO res;
-                            affected := array_append( affected, _obj_guid);
-                            skip_insert := true;
-                        WHEN 'Reject' THEN
-                            RAISE EXCEPTION 'Duplicate found (GUID: %). Object rejected.', _obj_guid;
-                        WHEN 'Copy'    THEN
-                            _attrs := _attrs || format('{"%s": "%s_%s"}', _uni_field, _attrs->> _uni_field, nextval('reclada.object_id_seq'))::jsonb;
-                        WHEN 'Insert' THEN
-                            -- DO nothing
-                        WHEN 'Merge' THEN
-                            SELECT reclada_object.update(reclada_object.merge(new_data - 'class', data,schema->'attributes'->'schema') || format('{"GUID": "%s"}', _obj_guid)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
-                            FROM reclada.v_active_object
-                            WHERE obj_id = _obj_guid
-                                INTO res;
-                            affected := array_append( affected, _obj_guid);
-                            skip_insert := true;
-                    END CASE;
-                END LOOP;
+            SELECT o.obj_id
+                FROM reclada.v_object o
+                JOIN reclada.v_PK_for_class pk
+                    on pk.guid = o.class
+                        and class_uuid = o.class
+                where o.attrs->>pk.pk = _attrs ->> pk.pk
+                LIMIT 1
+            INTO obj_GUID;
+            IF obj_GUID IS NOT NULL THEN
+                SELECT reclada_object.update(data || format('{"GUID": "%s"}', obj_GUID)::jsonb)
+                    INTO res;
+                    RETURN '[]'::jsonb || res;
             END IF;
         END IF;
 
-        IF (NOT skip_insert) THEN
-            _obj_guid := (_data->>'GUID')::uuid;
-            IF EXISTS (
-                SELECT 1
-                FROM reclada.object 
-                WHERE GUID = _obj_guid
-            ) THEN
-                RAISE EXCEPTION 'GUID: % is duplicate', _obj_guid;
-            END IF;
-            --raise notice 'schema: %',schema;
-
-            INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)
-                SELECT  CASE
-                            WHEN _obj_guid IS NULL
-                                THEN public.uuid_generate_v4()
-                            ELSE _obj_guid
-                        END AS GUID,
-                        _class_uuid, 
-                        _attrs,
-                        tran_id,
-                        _parent_guid
-            RETURNING GUID INTO _obj_guid;
-            affected := array_append( affected, _obj_guid);
-            inserted := array_append( inserted, _obj_guid);
-            PERFORM reclada_object.datasource_insert
-                (
-                    class_name,
-                    _obj_guid,
-                    _attrs
-                );
-
-            PERFORM reclada_object.refresh_mv(class_name);
+        obj_GUID := (data->>'GUID')::uuid;
+        IF EXISTS (
+            SELECT 1
+            FROM reclada.object 
+            WHERE GUID = obj_GUID
+        ) THEN
+            RAISE EXCEPTION 'GUID: % is duplicate', obj_GUID;
         END IF;
+        --raise notice 'schema: %',schema;
+
+        _parent_guid = (data->>'parent_guid')::uuid;
+
+        INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)
+            SELECT  CASE
+                        WHEN obj_GUID IS NULL
+                            THEN public.uuid_generate_v4()
+                        ELSE obj_GUID
+                    END AS GUID,
+                    class_uuid, 
+                    _attrs,
+                    tran_id,
+                    _parent_guid
+        RETURNING GUID INTO obj_GUID;
+        affected := array_append( affected, obj_GUID);
+
+        PERFORM reclada_object.datasource_insert
+            (
+                class_name,
+                obj_GUID,
+                _attrs
+            );
+
+        PERFORM reclada_object.refresh_mv(class_name);
     END LOOP;
 
     res := array_to_json
@@ -1630,15 +1420,6 @@ BEGIN
                     FROM reclada.v_active_object o
                     WHERE o.obj_id = ANY (affected)
                 )
-            )::jsonb;
-    notify_res := array_to_json
-            (
-                array
-                (
-                    SELECT o.data 
-                    FROM reclada.v_active_object o
-                    WHERE o.obj_id = ANY (inserted)
-                )
             )::jsonb; 
     
     delete from reclada.draft 
@@ -1647,7 +1428,7 @@ BEGIN
     PERFORM reclada_notification.send_object_notification
         (
             'create',
-            notify_res
+            res
         );
     RETURN res;
 
@@ -1667,12 +1448,8 @@ DECLARE
     new_class       text;
     attrs           jsonb;
     class_schema    jsonb;
-    version_        integer;
-    class_guid      uuid;
-    _uniFields      jsonb;
-    _idx_name       text;
-    _f_list         text;
-    _idx_cnt        int;
+    version_         integer;
+    class_guid    uuid;
 BEGIN
 
     class := data->>'class';
@@ -1730,30 +1507,6 @@ BEGIN
         ) el) arr),
     class_guid
     )::jsonb);
-
-    IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
-        FOR _uniFields IN (
-            SELECT jsonb_array_elements(attrs->'dupChecking')->'uniFields'
-        ) LOOP
-            IF ( jsonb_typeof(_uniFields) = 'array' ) THEN
-                SELECT
-                    reclada.get_unifield_index_name( array_agg(f ORDER BY f)) AS idx_name, 
-                    string_agg('(attributes ->> ''' || f || ''')','||' ORDER BY f) AS fields_list
-                FROM (
-                    SELECT jsonb_array_elements_text (_uniFields::jsonb) f
-                ) a
-                    INTO _idx_name, _f_list;
-                SELECT count(*) 
-                FROM pg_catalog.pg_indexes pi2 
-                WHERE schemaname ='reclada' AND tablename ='object' AND indexname =_idx_name
-                    INTO _idx_cnt;
-                IF (_idx_cnt = 0 ) THEN
-                    EXECUTE E'CREATE INDEX ' || _idx_name || ' ON reclada.object USING HASH ((' || _f_list || '))';
-                END IF;
-            END IF;
-        END LOOP;
-        PERFORM reclada_object.refresh_mv('uniFields');
-    END IF;
 
 END;
 $$;
@@ -1851,8 +1604,7 @@ DECLARE
     class               text;
     class_uuid          uuid;
     list_id             bigint[];
-    _for_class           text;
-    _uniFields_index_name          text;
+
 BEGIN
 
     v_obj_id := data->>'GUID';
@@ -1865,17 +1617,6 @@ BEGIN
 
     class_uuid := reclada.try_cast_uuid(class);
 
-
-
-    IF (class = 'jsonschema') THEN
-        SELECT for_class
-        FROM reclada.v_class
-        WHERE obj_id = v_obj_id
-            INTO _for_class;
-        FOR _uniFields_index_name IN (SELECT unifields_index_name FROM reclada.v_unifields_idx_cnt WHERE for_class=_for_class AND cnt=1) LOOP
-            DROP INDEX IF EXISTS _uniFields_index_name;
-        END LOOP;
-    END IF;
     WITH t AS
     (    
         UPDATE reclada.object u
@@ -1918,7 +1659,7 @@ BEGIN
     )::jsonb
     INTO data;
 
-    IF (jsonb_array_length(data) <= 1) THEN
+    IF (jsonb_array_length(data) = 1) THEN
         data := data->0;
     END IF;
     
@@ -2018,33 +1759,6 @@ CREATE FUNCTION reclada_object.get_jsonschema_guid() RETURNS uuid
                             where class is not null 
                     limit 1
                 )
-$$;
-
-
---
--- Name: get_parent_guid(jsonb, text); Type: FUNCTION; Schema: reclada_object; Owner: -
---
-
-CREATE FUNCTION reclada_object.get_parent_guid(_data jsonb, _class_name text) RETURNS TABLE(prnt_guid uuid, prnt_field text)
-    LANGUAGE plpgsql STABLE
-    AS $$
-DECLARE
-    _parent_field   text;
-    _parent_guid    uuid;
-BEGIN
-    SELECT parent_field
-    FROM reclada.v_parent_field
-    WHERE for_class = _class_name
-        INTO _parent_field;
-
-    _parent_guid = (_data->>'parent_guid')::uuid;
-    IF (_parent_guid IS NULL AND _parent_field IS NOT NULL) THEN
-        _parent_guid = _data->'attributes'->>_parent_field;
-    END IF;
-    RETURN QUERY
-    SELECT _parent_guid,
-        _parent_field;
-END;
 $$;
 
 
@@ -2157,7 +1871,7 @@ BEGIN
             LEFT JOIN reclada.v_filter_inner_operator iop
                 on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('Operator does not allowed ', _f_name)
+    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op, _f_name)
         FROM mytable t
             WHERE t.op IS NULL;
 
@@ -2175,8 +1889,6 @@ BEGIN
             JOIN LATERAL 
             (
                 SELECT CASE 
-                        WHEN t.op LIKE '%<@%' AND t.idx=1 AND jsonb_typeof(t.parsed)='string'
-                            THEN format('data #> ''%s''!= ''[]''::jsonb AND data #> ''%s''!= ''{}''::jsonb AND data #> ''%s''', pt.v, pt.v, pt.v)
                         WHEN fm.repl is not NULL 
                             then 
                                 case 
@@ -2242,7 +1954,6 @@ BEGIN
             WHERE t.lvl = u.lvl
                 AND t.rn = u.rn
                 AND (f.btwn or f.inop);
-
 
     INSERT INTO mytable (lvl,rn)
         VALUES (0,0);
@@ -2475,9 +2186,7 @@ DECLARE
     number_of_objects   int;
     objects             jsonb;
     res                 jsonb;
-    _exec_text           text;
-    _pre_query           text;
-    _from               text;
+    query               text;
     class_uuid          uuid;
     last_change         text;
     tran_id             bigint;
@@ -2487,13 +2196,8 @@ BEGIN
 
     perform reclada.validate_json(data, _f_name);
 
-    if ver = '1' then
-        tran_id := (data->>'transactionID')::bigint;
-        _class := data->>'class';
-    elseif ver = '2' then
-        tran_id := (data->>'{transactionID}')::bigint;
-        _class := data->>'{class}';
-    end if;
+    tran_id := (data->>'transactionID')::bigint;
+    _class := data->>'class';
     _filter = data->'filter';
 
     order_by_jsonb := data->'orderBy';
@@ -2520,7 +2224,10 @@ BEGIN
     
     IF (_filter IS NOT NULL) THEN
         query_conditions := reclada_object.get_query_condition_filter(_filter);
-    ELSEIF ver = '1' then
+        IF ver = '2' THEN
+            query_conditions := REPLACE(query_conditions,'#>','->');
+        end if;
+    ELSE
         class_uuid := reclada.try_cast_uuid(_class);
 
         IF (class_uuid IS NULL) THEN
@@ -2531,10 +2238,7 @@ BEGIN
                     limit 1 
             INTO class_uuid;
             IF (class_uuid IS NULL) THEN
-                perform reclada.raise_exception(
-                        format('Class not found: %s', _class),
-                        _f_name
-                    );
+                RAISE EXCEPTION 'Class not found: %', _class;
             END IF;
         end if;
 
@@ -2552,10 +2256,10 @@ BEGIN
                 SELECT
                     format('obj.class_name = ''%s''', _class) AS condition
                         where _class is not null
+                            and class_uuid is null
                 UNION
                     SELECT format('obj.class = ''%s''', class_uuid) AS condition
                         where class_uuid is not null
-                            and _class is null
                 UNION
                     SELECT format('obj.transaction_id = %s', tran_id) AS condition
                         where tran_id is not null
@@ -2600,85 +2304,73 @@ BEGIN
             ) conds
         INTO query_conditions;
     END IF;
-    -- TODO: add ELSE
     IF ver = '2' THEN
-        _pre_query := (select val from reclada.v_ui_active_object);
-        _from := 'res AS obj';
-        _pre_query := REPLACE(_pre_query,'#@#@#where#@#@#', query_conditions  );
-
+        query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;
     ELSE
-        _pre_query := '';
-        _from := 'reclada.v_active_object AS obj
-                            WHERE #@#@#where#@#@#';
-        _from := REPLACE(_from, '#@#@#where#@#@#', query_conditions  );
+        query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;
     END IF;
-    _exec_text := _pre_query ||
-                'SELECT to_jsonb(array_agg(t.data))
-                    FROM 
-                    (
-                        SELECT obj.data
-                            FROM '
-                            || _from
-                            || ' 
-                            ORDER BY #@#@#orderby#@#@#
-                            OFFSET #@#@#offset#@#@#
-                            LIMIT #@#@#limit#@#@#
-                    ) AS t';
-    _exec_text := REPLACE(_exec_text, '#@#@#orderby#@#@#'  , order_by          );
-    _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
-    _exec_text := REPLACE(_exec_text, '#@#@#limit#@#@#'    , limit_            );
-    -- RAISE NOTICE 'conds: %', _exec_text
-    EXECUTE _exec_text
-        INTO objects;
+
+    -- RAISE NOTICE 'conds: %', '
+    --             SELECT obj.data
+    --             '
+    --             || query
+    --             ||
+    --             ' ORDER BY ' || order_by ||
+    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;
+
+    EXECUTE E'SELECT to_jsonb(array_agg(T.data))
+        FROM (
+            SELECT obj.data
+            '
+            || query
+            ||
+            ' ORDER BY ' || order_by ||
+            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'
+    INTO objects;
     objects := coalesce(objects,'[]'::jsonb);
     IF gui THEN
 
         if ver = '2' then
-            class_uuid := coalesce(class_uuid, (objects#>>'{0,"{class}"}')::uuid);
-            _exec_text := _pre_query ||',
-            dd as ( 
-                select distinct unnest(obj.display_key) v
-                    FROM '|| _from ||'
-            ),
-            on_data as 
-            (
-                select  jsonb_object_agg(
-                            t.v, 
-                            replace(dd.template,''#@#attrname#@#'',t.v)::jsonb 
-                        ) t
-                    from dd as t
-                    JOIN reclada.v_default_display dd
-                        on t.v like ''%'' || dd.json_type
-            )
-            select jsonb_set(d.attributes,''{table}'', od.t || coalesce(d.table,''{}''::jsonb))
-                from on_data od
-                left join reclada.v_object_display d
-                    on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||'''';
-            EXECUTE _exec_text
-                INTO _object_display;
+            -- raise notice 'od: %',_object_display;
+            EXECUTE '   with recursive 
+                        d as ( 
+                            select  obj_id, data
+                                '|| query ||'
+                        ),
+                        t as
+                        (
+                            select distinct je.key v
+                                from d
+                                JOIN LATERAL jsonb_each(d.data) je
+                                    on true 
+                        ),
+                        on_data as 
+                        (
+                            select  jsonb_object_agg(
+                                        t.v, 
+                                        replace(dd.template,''#@#attrname#@#'',t.v)::jsonb 
+                                    ) t
+                                from t
+                                JOIN reclada.v_default_display dd
+                                    on t.v like ''%'' || dd.json_type
+                        )
+                        select od.t || coalesce(d.table,''{}''::jsonb)
+                            from on_data od
+                            left join reclada.v_object_display d
+                                on d.class_guid = '''||class_uuid::text||''''
+            INTO _object_display;
 
         end if;
-
-        _exec_text := _pre_query || '
-            SELECT  COUNT(1),
-                    TO_CHAR(
-                        MAX(
-                            GREATEST(
-                                obj.created_time, 
-                                (
-                                    SELECT  TO_TIMESTAMP(
-                                                MAX(date_time),
-                                                ''YYYY-MM-DD hh24:mi:ss.US TZH''
-                                            )
-                                        FROM reclada.v_revision vr
-                                            WHERE vr.obj_id = UUID(obj.attrs ->>''revision'')
+        EXECUTE E'SELECT COUNT(1),
+                         TO_CHAR(
+                            MAX(
+                                GREATEST(obj.created_time, (
+                                    SELECT TO_TIMESTAMP(MAX(date_time),\'YYYY-MM-DD hh24:mi:ss.US TZH\')
+                                    FROM reclada.v_revision vr
+                                    WHERE vr.obj_id = UUID(obj.attrs ->>\'revision\'))
                                 )
-                            )
-                        ),
-                        ''YYYY-MM-DD hh24:mi:ss.MS TZH''
-                    )
-                    FROM '|| _from;
-        EXECUTE _exec_text
+                            ),\'YYYY-MM-DD hh24:mi:ss.MS TZH\')
+            '|| query
             INTO number_of_objects, last_change;
         
         IF _object_display IS NOT NULL then
@@ -2945,91 +2637,6 @@ $$;
 
 
 --
--- Name: merge(jsonb, jsonb, jsonb); Type: FUNCTION; Schema: reclada_object; Owner: -
---
-
-CREATE FUNCTION reclada_object.merge(lobj jsonb, robj jsonb, schema jsonb DEFAULT NULL::jsonb) RETURNS jsonb
-    LANGUAGE plpgsql STABLE
-    AS $$
-    DECLARE
-        res     jsonb;
-        ltype    text;
-        rtype    text;
-    BEGIN
-        ltype := jsonb_typeof(lobj);
-        rtype := jsonb_typeof(robj);
-        IF (lobj IS NULL AND robj IS NOT NULL) THEN
-            RETURN robj;
-        END IF;
-        IF (lobj IS NOT NULL AND robj IS NULL) THEN
-            RETURN lobj;
-        END IF;
-        IF (ltype != rtype) THEN
-            RETURN lobj || robj;
-        END IF;
-        IF reclada_object.is_equal(lobj,robj) THEN
-            RETURN lobj;
-        END IF;
-        CASE ltype 
-        WHEN 'object' THEN
-            SELECT jsonb_object_agg(key,val)
-            FROM (
-                SELECT key, reclada_object.merge(lval,rval) as val
-                    FROM (                     -- Using joining operators compatible with merge or hash join is obligatory
-                    SELECT (a.rec).key as key,
-                        (a.rec).value AS lval,
-                        (b.rec).value AS rval                                        --    with FULL OUTER JOIN. merge is compatible only with NESTED LOOPS
-                    FROM (SELECT jsonb_each(lobj) AS rec) a         --    so I use LEFT JOIN UNION ALL RIGHT JOIN insted of FULL OUTER JOIN.
-                    LEFT JOIN
-                        (SELECT jsonb_each(robj) AS rec) b
-                    ON (a.rec).key = (b.rec).key
-                UNION
-                    SELECT (a.rec).key as key,
-                        (b.rec).value AS lval,
-                        (a.rec).value AS rval
-                    FROM (SELECT jsonb_each(robj) AS rec) a
-                    LEFT JOIN
-                        (SELECT jsonb_each(lobj) AS rec) b
-                    ON (a.rec).key = (b.rec).key
-                ) a
-            ) b
-                INTO res;
-            IF schema IS NOT NULL AND NOT validate_json_schema(schema, res) THEN
-                RAISE EXCEPTION 'Objects aren''t mergeable. Solve duplicate conflicate manually.';
-            END IF;
-            RETURN res;
-        WHEN 'array' THEN
-            SELECT to_jsonb(array_agg(rec)) FROM (
-                SELECT COALESCE(a.rec, b.rec) as rec
-                FROM (SELECT jsonb_array_elements (lobj) AS rec) a
-                LEFT JOIN
-                    (SELECT jsonb_array_elements (robj) AS rec) b
-                ON reclada_object.is_equal((a.rec), (b.rec))
-                UNION
-                SELECT COALESCE(a.rec, b.rec) as rec
-                FROM (SELECT jsonb_array_elements (robj) AS rec) a
-                LEFT JOIN
-                    (SELECT jsonb_array_elements (lobj) AS rec) b
-                ON reclada_object.is_equal((a.rec), (b.rec))
-            ) a
-                INTO res;
-            RETURN res;
-        WHEN 'string' THEN
-            RETURN lobj || robj;
-        WHEN 'number' THEN
-            RETURN lobj || robj;
-        WHEN 'boolean' THEN
-            RETURN lobj || robj;
-        WHEN 'null' THEN
-            RETURN '{}'::jsonb;                                    -- It should be Null
-        ELSE
-            RETURN null;
-        END CASE;
-    END;
-$$;
-
-
---
 -- Name: need_flat(text); Type: FUNCTION; Schema: reclada_object; Owner: -
 --
 
@@ -3134,17 +2741,14 @@ $$;
 CREATE FUNCTION reclada_object.refresh_mv(class_name text) RETURNS void
     LANGUAGE plpgsql
     AS $$
-
 BEGIN
-    CASE lower(class_name)
-        WHEN 'objectstatus' THEN
+    CASE class_name
+        WHEN 'ObjectStatus' THEN
             REFRESH MATERIALIZED VIEW reclada.v_object_status;
-        WHEN 'user' THEN
+        WHEN 'User' THEN
             REFRESH MATERIALIZED VIEW reclada.v_user;
         WHEN 'jsonschema' THEN
             REFRESH MATERIALIZED VIEW reclada.v_class_lite;
-        WHEN 'unifields' THEN
-            REFRESH MATERIALIZED VIEW reclada.v_object_unifields;
         ELSE
             NULL;
     END CASE;
@@ -3153,69 +2757,49 @@ $$;
 
 
 --
--- Name: remove_parent_guid(jsonb, text); Type: FUNCTION; Schema: reclada_object; Owner: -
---
-
-CREATE FUNCTION reclada_object.remove_parent_guid(_data jsonb, parent_field text) RETURNS jsonb
-    LANGUAGE plpgsql STABLE
-    AS $$
-    BEGIN
-        IF (parent_field IS NOT NULL) THEN
-            _data := _data #- format('{attributes,%s}',parent_field)::text[];
-        END IF;
-        _data := _data - 'parent_guid';
-        _data := _data - 'GUID';
-        RETURN _data;
-    END;
-$$;
-
-
---
 -- Name: update(jsonb, jsonb); Type: FUNCTION; Schema: reclada_object; Owner: -
 --
 
-CREATE FUNCTION reclada_object.update(_data jsonb, user_info jsonb DEFAULT '{}'::jsonb) RETURNS jsonb
+CREATE FUNCTION reclada_object.update(data jsonb, user_info jsonb DEFAULT '{}'::jsonb) RETURNS jsonb
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    _class_name   text;
-    _class_uuid   uuid;
-    _obj_id       uuid;
-    _attrs        jsonb;
+    _class_name     text;
+    class_uuid     uuid;
+    v_obj_id       uuid;
+    v_attrs        jsonb;
     schema        jsonb;
     old_obj       jsonb;
     branch        uuid;
     revid         uuid;
-    _parent_guid  uuid;
-    _parent_field text;
-    _obj_guid     uuid;
-    _dup_behavior reclada.dp_bhvr;
-    _uni_field    text;
-    _cnt          int;
+
 BEGIN
 
-    _class_name := _data->>'class';
+    _class_name := data->>'class';
     IF (_class_name IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
     END IF;
-    _class_uuid := reclada.try_cast_uuid(_class_name);
-    _obj_id := _data->>'GUID';
-    IF (_obj_id IS NULL) THEN
+    class_uuid := reclada.try_cast_uuid(_class_name);
+    v_obj_id := data->>'GUID';
+    IF (v_obj_id IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no GUID';
     END IF;
 
-    _attrs := _data->'attributes';
-    IF (_attrs IS NULL) THEN
+    v_attrs := data->'attributes';
+    IF (v_attrs IS NULL) THEN
         RAISE EXCEPTION 'The reclada object must have attributes';
     END IF;
 
-    if _class_uuid is null then
+    SELECT reclada_object.get_schema(_class_name) 
+        INTO schema;
+
+    if class_uuid is null then
         SELECT reclada_object.get_schema(_class_name) 
             INTO schema;
     else
         select v.data, v.for_class 
             from reclada.v_class v
-                where _class_uuid = v.obj_id
+                where class_uuid = v.obj_id
             INTO schema, _class_name;
     end if;
     -- TODO: don't allow update jsonschema
@@ -3223,17 +2807,13 @@ BEGIN
         RAISE EXCEPTION 'No json schema available for %', _class_name;
     END IF;
 
-    IF (_class_uuid IS NULL) THEN
-        _class_uuid := (schema->>'GUID')::uuid;
-    END IF;
-    schema := schema #> '{attributes,schema}';
-    IF (NOT(public.validate_json_schema(schema, _attrs))) THEN
-        RAISE EXCEPTION 'JSON invalid: %', _attrs;
+    IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', v_attrs))) THEN
+        RAISE EXCEPTION 'JSON invalid: %', v_attrs;
     END IF;
 
     SELECT 	v.data
         FROM reclada.v_object v
-	        WHERE v.obj_id = _obj_id
+	        WHERE v.obj_id = v_obj_id
                 AND v.class_name = _class_name 
 	    INTO old_obj;
 
@@ -3241,73 +2821,15 @@ BEGIN
         RAISE EXCEPTION 'Could not update object, no such id';
     END IF;
 
-    branch := _data->'branch';
-    SELECT reclada_revision.create(user_info->>'sub', branch, _obj_id) 
+    branch := data->'branch';
+    SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) 
         INTO revid;
-
-    SELECT prnt_guid, prnt_field
-    FROM reclada_object.get_parent_guid(_data,_class_name)
-        INTO _parent_guid,
-            _parent_field;
-
-    IF (_parent_guid IS NULL) THEN
-        _parent_guid := old_obj->>'parentGUID';
-    END IF;
     
-    IF EXISTS (SELECT 1 FROM reclada.v_unifields_idx_cnt WHERE class_uuid=_class_uuid)
-    THEN
-        SELECT COUNT(DISTINCT obj_guid), dup_behavior
-        FROM reclada.get_duplicates(_attrs, _class_uuid, _obj_id)
-        GROUP BY dup_behavior
-            INTO _cnt, _dup_behavior;
-        IF (_cnt>1 AND _dup_behavior IN ('Update','Merge')) THEN
-            RAISE EXCEPTION 'Found more than one duplicates. Resolve conflict manually.';
-        END IF;
-        FOR _obj_guid, _dup_behavior, _uni_field IN (
-                SELECT obj_guid, dup_behavior, dup_field
-                FROM reclada.get_duplicates(_attrs, _class_uuid, _obj_id)
-            ) LOOP
-            IF _dup_behavior IN ('Update','Merge') THEN
-                UPDATE reclada.object o
-                    SET status = reclada_object.get_archive_status_obj_id()
-                WHERE o.GUID = _obj_guid
-                    AND status != reclada_object.get_archive_status_obj_id();
-            END IF;
-            CASE _dup_behavior
-                WHEN 'Replace' THEN
-                    PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_guid)::jsonb);
-                WHEN 'Update' THEN                    
-                    _data := reclada_object.remove_parent_guid(_data, _parent_field);
-                    _data := reclada_object.update_json_by_guid(_obj_guid, _data);
-                    RETURN reclada_object.update(_data);
-                WHEN 'Reject' THEN
-                    RAISE EXCEPTION 'Duplicate found (GUID: %). Object rejected.', _obj_guid;
-                WHEN 'Copy'    THEN
-                    _attrs = _attrs || format('{"%s": "%s_%s"}', _uni_field, _attrs->> _uni_field, nextval('reclada.object_id_seq'))::jsonb;
-                    IF (NOT(public.validate_json_schema(schema, _attrs))) THEN
-                        RAISE EXCEPTION 'JSON invalid: %', _attrs;
-                    END IF;
-                WHEN 'Insert' THEN
-                    -- DO nothing
-                WHEN 'Merge' THEN                    
-                    RETURN reclada_object.update(
-                        reclada_object.merge(
-                            _data - 'class', 
-                            vao.data, 
-                            schema
-                        ) || format('{"GUID": "%s"}', _obj_guid)::jsonb
-                    )
-                        FROM reclada.v_active_object vao
-                            WHERE obj_id = _obj_guid;
-            END CASE;
-        END LOOP;
-    END IF;
-
     with t as 
     (
         update reclada.object o
             set status = reclada_object.get_archive_status_obj_id()
-                where o.GUID = _obj_id
+                where o.GUID = v_obj_id
                     and status != reclada_object.get_archive_status_obj_id()
                         RETURNING id
     )
@@ -3315,15 +2837,13 @@ BEGIN
                                 class,
                                 status,
                                 attributes,
-                                transaction_id,
-                                parent_guid
+                                transaction_id
                               )
         select  v.obj_id,
-                _class_uuid,
+                (schema->>'GUID')::uuid,
                 reclada_object.get_active_status_obj_id(),--status 
-                _attrs || format('{"revision":"%s"}',revid)::jsonb,
-                transaction_id,
-                _parent_guid
+                v_attrs || format('{"revision":"%s"}',revid)::jsonb,
+                transaction_id
             FROM reclada.v_object v
             JOIN 
             (   
@@ -3335,7 +2855,7 @@ BEGIN
                         union 
                         select id, 2 as q
                             from reclada.object ro
-                                where ro.guid = _obj_id
+                                where ro.guid = v_obj_id
                                     ORDER BY ID DESC 
                                         LIMIT 1
                     ) ta
@@ -3343,110 +2863,22 @@ BEGIN
                         LIMIT 1
             ) as tt
                 on tt.id = v.id
-	            WHERE v.obj_id = _obj_id;
+	            WHERE v.obj_id = v_obj_id;
     PERFORM reclada_object.datasource_insert
             (
                 _class_name,
-                _obj_id,
-                _attrs
+                v_obj_id,
+                v_attrs
             );
-    PERFORM reclada_object.refresh_mv(_class_name);
-
-    IF ( _class_name = 'jsonschema' AND jsonb_typeof(_attrs->'dupChecking') = 'array') THEN
-        PERFORM reclada_object.refresh_mv('unifields');
-    END IF; 
+    PERFORM reclada_object.refresh_mv(_class_name);  
                   
     select v.data 
         FROM reclada.v_active_object v
-            WHERE v.obj_id = _obj_id
-        into _data;
-    PERFORM reclada_notification.send_object_notification('update', _data);
-    RETURN _data;
+            WHERE v.obj_id = v_obj_id
+        into data;
+    PERFORM reclada_notification.send_object_notification('update', data);
+    RETURN data;
 END;
-$$;
-
-
---
--- Name: update_json(jsonb, jsonb); Type: FUNCTION; Schema: reclada_object; Owner: -
---
-
-CREATE FUNCTION reclada_object.update_json(lobj jsonb, robj jsonb) RETURNS jsonb
-    LANGUAGE plpgsql IMMUTABLE
-    AS $$
-    DECLARE
-        res     jsonb;
-        ltype    text;
-        rtype    text;
-    BEGIN
-        ltype := jsonb_typeof(lobj);
-        rtype := jsonb_typeof(robj);
-        IF (robj IS NULL) THEN
-            RETURN lobj;
-        END IF;
-        IF (lobj IS NULL) THEN
-            RETURN robj;
-        END IF;
-        IF reclada_object.is_equal(lobj,robj) THEN
-            RETURN lobj;
-        END IF;
-        IF (ltype = 'array' and rtype != 'array') THEN
-            RETURN lobj || robj;
-        END IF;
-        IF (ltype != rtype) THEN
-            RETURN robj;
-        END IF;
-        CASE ltype 
-        WHEN 'object' THEN
-            SELECT jsonb_object_agg(key,val)
-            FROM (
-                SELECT key, reclada_object.update_json(lval,rval) AS val
-                FROM (                     -- Using joining operators compatible with update_json or hash join is obligatory
-                    SELECT (a.rec).key as key,
-                        (a.rec).value AS lval,
-                        (b.rec).value AS rval                                        --    with FULL OUTER JOIN. update_json is compatible only with NESTED LOOPS
-                    FROM (SELECT jsonb_each(lobj) AS rec) a         --    so I use LEFT JOIN UNION ALL RIGHT JOIN insted of FULL OUTER JOIN.
-                    LEFT JOIN
-                        (SELECT jsonb_each(robj) AS rec) b
-                    ON (a.rec).key = (b.rec).key
-                UNION
-                    SELECT (a.rec).key as key,
-                        (b.rec).value AS lval,
-                        (a.rec).value AS rval
-                    FROM (SELECT jsonb_each(robj) AS rec) a
-                    LEFT JOIN
-                        (SELECT jsonb_each(lobj) AS rec) b
-                    ON (a.rec).key = (b.rec).key
-                ) a
-            ) b
-                INTO res;
-            RETURN res;
-        WHEN 'array' THEN
-            RETURN robj;
-        WHEN 'string' THEN
-            RETURN robj;
-        WHEN 'number' THEN
-            RETURN robj;
-        WHEN 'boolean' THEN
-            RETURN robj;
-        WHEN 'null' THEN
-            RETURN 'null'::jsonb;   
-        ELSE
-            RETURN null;
-        END CASE;
-    END;
-$$;
-
-
---
--- Name: update_json_by_guid(uuid, jsonb); Type: FUNCTION; Schema: reclada_object; Owner: -
---
-
-CREATE FUNCTION reclada_object.update_json_by_guid(lobj uuid, robj jsonb) RETURNS jsonb
-    LANGUAGE sql STABLE
-    AS $$
-    SELECT reclada_object.update_json(data, robj)
-    FROM reclada.v_active_object
-    WHERE obj_id = lobj;
 $$;
 
 
@@ -4002,11 +3434,6 @@ UNION
     'BOOL'::text AS output_type,
     NULL::text AS inner_operator
 UNION
- SELECT ' OPERATOR(reclada.##) '::text AS operator,
-    'BOOL'::text AS input_type,
-    'BOOL'::text AS output_type,
-    NULL::text AS inner_operator
-UNION
  SELECT ' IS '::text AS operator,
     'JSONB'::text AS input_type,
     'BOOL'::text AS output_type,
@@ -4263,46 +3690,19 @@ CREATE VIEW reclada.v_object_display AS
 
 
 --
--- Name: v_object_unifields; Type: MATERIALIZED VIEW; Schema: reclada; Owner: -
+-- Name: v_pk_for_class; Type: VIEW; Schema: reclada; Owner: -
 --
 
-CREATE MATERIALIZED VIEW reclada.v_object_unifields AS
- SELECT b.for_class,
-    b.class_uuid,
-    (b.dup_behavior)::reclada.dp_bhvr AS dup_behavior,
-    b.is_cascade,
-    b.is_mandatory,
-    b.uf AS unifield,
-    b.uni_number,
-    row_number() OVER (PARTITION BY b.for_class, b.uni_number ORDER BY b.uf) AS field_number
-   FROM ( SELECT a.for_class,
-            a.obj_id AS class_uuid,
-            a.dup_behavior,
-            (a.is_cascade)::boolean AS is_cascade,
-            ((a.dc ->> 'isMandatory'::text))::boolean AS is_mandatory,
-            jsonb_array_elements_text((a.dc -> 'uniFields'::text)) AS uf,
-            (a.dc -> 'uniFields'::text) AS field_list,
-            row_number() OVER (PARTITION BY a.for_class ORDER BY (a.dc -> 'uniFields'::text)) AS uni_number
-           FROM ( SELECT vc.for_class,
-                    (vc.attrs ->> 'dupBehavior'::text) AS dup_behavior,
-                    (vc.attrs ->> 'isCascade'::text) AS is_cascade,
-                    jsonb_array_elements((vc.attrs -> 'dupChecking'::text)) AS dc,
-                    vc.obj_id
-                   FROM reclada.v_class vc
-                  WHERE ((vc.attrs -> 'dupChecking'::text) IS NOT NULL)) a) b
-  WITH NO DATA;
-
-
---
--- Name: v_parent_field; Type: VIEW; Schema: reclada; Owner: -
---
-
-CREATE VIEW reclada.v_parent_field AS
- SELECT v_class.for_class,
-    v_class.obj_id AS class_uuid,
-    (v_class.attrs ->> 'parentField'::text) AS parent_field
-   FROM reclada.v_class
-  WHERE ((v_class.attrs ->> 'parentField'::text) IS NOT NULL);
+CREATE VIEW reclada.v_pk_for_class AS
+ SELECT obj.obj_id AS guid,
+    obj.for_class,
+    pk.pk
+   FROM (reclada.v_class obj
+     JOIN ( SELECT 'File'::text AS class_name,
+            'uri'::text AS pk
+        UNION
+         SELECT 'DTOJsonSchema'::text AS text,
+            'function'::text AS text) pk ON ((pk.class_name = obj.for_class)));
 
 
 --
@@ -4333,166 +3733,52 @@ CREATE VIEW reclada.v_revision AS
 --
 
 CREATE VIEW reclada.v_ui_active_object AS
- SELECT 'with recursive 
-d as ( 
-    select  data, 
-            obj_id
-        FROM reclada.v_active_object obj 
-            where #@#@#where#@#@#
-),
-t as
-(
-    SELECT  je.key,
-            jsonb_typeof(je.value) typ,
+ WITH RECURSIVE d AS (
+         SELECT obj.data,
+            obj.obj_id
+           FROM reclada.v_active_object obj
+        ), t AS (
+         SELECT je.key,
+            jsonb_typeof(je.value) AS typ,
             d.obj_id,
             je.value
-        from d 
-        JOIN LATERAL jsonb_each(d.data) je
-            on true
-        where jsonb_typeof(je.value) != ''null''
-    union
-    SELECT 
-            d.key ||'',''|| je.key as key ,
-            jsonb_typeof(je.value) typ,
+           FROM (d
+             JOIN LATERAL jsonb_each(d.data) je(key, value) ON (true))
+          WHERE (jsonb_typeof(je.value) <> 'null'::text)
+        UNION
+         SELECT ((d.key || ','::text) || je.key) AS key,
+            jsonb_typeof(je.value) AS typ,
             d.obj_id,
             je.value
-        from (
-            select  d.data -> t.key as data, 
-                    t.key,
-                    d.obj_id
-            from d 
-            join t
-                on t.typ = ''object''
-        ) d
-        JOIN LATERAL jsonb_each(d.data) je
-            on true
-        where jsonb_typeof(je.value) != ''null''
-),
-res as
-(
-    select  rr.obj_id,
-            rr.data,
-            rr.display_key,
-            o.attrs,
-            o.created_time
-        from
-        (
-            select  t.obj_id,
-                    jsonb_object_agg
-                    (
-                        ''{''||t.key||''}'',
-                        t.value
-                    ) as data,
-                    array_agg(
-                        ''{''||t.key||''}:''||t.typ 
-                    ) as display_key
-                from t 
-                    where t.typ != ''object''
-                    group by t.obj_id
-        ) rr
-        join reclada.v_active_object o
-            on o.obj_id = rr.obj_id
-)
-'::text AS val;
-
-
---
--- Name: v_unifields_idx_cnt; Type: VIEW; Schema: reclada; Owner: -
---
-
-CREATE VIEW reclada.v_unifields_idx_cnt AS
- SELECT a.uni_code AS unifields_index_name,
-    a.for_class,
-    a.class_uuid,
-    count(*) OVER (PARTITION BY a.uni_code) AS cnt
-   FROM ( SELECT v_object_unifields.for_class,
-            v_object_unifields.class_uuid,
-            reclada.get_unifield_index_name(array_agg(v_object_unifields.unifield ORDER BY v_object_unifields.field_number)) AS uni_code,
-            v_object_unifields.uni_number
-           FROM reclada.v_object_unifields
-          GROUP BY v_object_unifields.for_class, v_object_unifields.class_uuid, v_object_unifields.uni_number) a;
-
-
---
--- Name: v_unifields_pivoted; Type: VIEW; Schema: reclada; Owner: -
---
-
-CREATE VIEW reclada.v_unifields_pivoted AS
- SELECT vou.class_uuid,
-    vou.uni_number,
-    vou.dup_behavior,
-    vou.is_cascade,
-    max(
-        CASE
-            WHEN (vou.field_number = 1) THEN vou.unifield
-            ELSE NULL::text
-        END) AS f1,
-    max(
-        CASE
-            WHEN (vou.field_number = 2) THEN vou.unifield
-            ELSE NULL::text
-        END) AS f2,
-    max(
-        CASE
-            WHEN (vou.field_number = 3) THEN vou.unifield
-            ELSE NULL::text
-        END) AS f3,
-    max(
-        CASE
-            WHEN (vou.field_number = 4) THEN vou.unifield
-            ELSE NULL::text
-        END) AS f4,
-    max(
-        CASE
-            WHEN (vou.field_number = 5) THEN vou.unifield
-            ELSE NULL::text
-        END) AS f5,
-    max(
-        CASE
-            WHEN (vou.field_number = 6) THEN vou.unifield
-            ELSE NULL::text
-        END) AS f6,
-    max(
-        CASE
-            WHEN (vou.field_number = 7) THEN vou.unifield
-            ELSE NULL::text
-        END) AS f7,
-    max(
-        CASE
-            WHEN (vou.field_number = 8) THEN vou.unifield
-            ELSE NULL::text
-        END) AS f8
-   FROM reclada.v_object_unifields vou
-  WHERE vou.is_mandatory
-  GROUP BY vou.class_uuid, vou.uni_number, vou.dup_behavior, vou.is_cascade
-  ORDER BY vou.class_uuid, vou.uni_number, vou.dup_behavior;
-
-
---
--- Name: cr_dup_behavior; Type: TABLE; Schema: reclada_object; Owner: -
---
-
-CREATE TABLE reclada_object.cr_dup_behavior (
-    id bigint NOT NULL,
-    parent_guid uuid NOT NULL,
-    transaction_id bigint NOT NULL,
-    dup_behavior reclada.dp_bhvr,
-    last_use timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
---
--- Name: cr_dup_behavior_id_seq; Type: SEQUENCE; Schema: reclada_object; Owner: -
---
-
-ALTER TABLE reclada_object.cr_dup_behavior ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME reclada_object.cr_dup_behavior_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
+           FROM (( SELECT (d_1.data -> t_1.key) AS data,
+                    t_1.key,
+                    d_1.obj_id
+                   FROM (d d_1
+                     JOIN t t_1 ON ((t_1.typ = 'object'::text)))) d
+             JOIN LATERAL jsonb_each(d.data) je(key, value) ON (true))
+          WHERE (jsonb_typeof(je.value) <> 'null'::text)
+        ), res AS (
+         SELECT t_1.obj_id,
+            jsonb_object_agg(((('{'::text || t_1.key) || '}:'::text) || t_1.typ), t_1.value) AS data
+           FROM t t_1
+          WHERE (t_1.typ <> 'object'::text)
+          GROUP BY t_1.obj_id
+        )
+ SELECT res.obj_id,
+    res.data,
+    t.id,
+    t.class,
+    t.revision_num,
+    t.status,
+    t.status_caption,
+    t.revision,
+    t.created_time,
+    t.class_name,
+    t.attrs,
+    t.transaction_id,
+    t.parent_guid
+   FROM (res
+     JOIN reclada.v_active_object t ON ((t.obj_id = res.obj_id)));
 
 
 --
@@ -4552,7 +3838,6 @@ COPY dev.ver (id, ver, ver_str, upgrade_script, downgrade_script, run_at) FROM s
 42	41	\N	begin;\nSET CLIENT_ENCODING TO 'utf8';\nCREATE TEMP TABLE var_table\n    (\n        ver int,\n        upgrade_script text,\n        downgrade_script text\n    );\n    \ninsert into var_table(ver)\t\n    select max(ver) + 1\n        from dev.VER;\n        \nselect reclada.raise_exception('Can not apply this version!') \n    where not exists\n    (\n        select ver from var_table where ver = 41 --!!! write current version HERE !!!\n    );\n\nCREATE TEMP TABLE tmp\n(\n    id int GENERATED ALWAYS AS IDENTITY,\n    str text\n);\n--{ logging upgrade script\nCOPY tmp(str) FROM  'up.sql' delimiter E'';\nupdate var_table set upgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\ndelete from tmp;\n--} logging upgrade script\t\n\n--{ create downgrade script\nCOPY tmp(str) FROM  'down.sql' delimiter E'';\nupdate tmp set str = drp.v || scr.v\n    from tmp ttt\n    inner JOIN LATERAL\n    (\n        select substring(ttt.str from 4 for length(ttt.str)-4) as v\n    )  obj_file_name ON TRUE\n    inner JOIN LATERAL\n    (\n        select \tsplit_part(obj_file_name.v,'/',1) typ,\n                split_part(obj_file_name.v,'/',2) nam\n    )  obj ON TRUE\n        inner JOIN LATERAL\n    (\n        select case\n                when obj.typ = 'trigger'\n                    then\n                        (select 'DROP '|| obj.typ || ' IF EXISTS '|| obj.nam ||' ON ' || schm||'.'||tbl ||';' || E'\n'\n                        from (\n                            select n.nspname as schm,\n                                   c.relname as tbl\n                            from pg_trigger t\n                                join pg_class c on c.oid = t.tgrelid\n                                join pg_namespace n on n.oid = c.relnamespace\n                            where t.tgname = 'datasource_insert_trigger') o)\n                else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'\n                end as v\n    )  drp ON TRUE\n    inner JOIN LATERAL\n    (\n        select case \n                when obj.typ in ('function', 'procedure')\n                    then\n                        case \n                            when EXISTS\n                                (\n                                    SELECT 1 a\n                                        FROM pg_proc p \n                                        join pg_namespace n \n                                            on p.pronamespace = n.oid \n                                            where n.nspname||'.'||p.proname = obj.nam\n                                        LIMIT 1\n                                ) \n                                then (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))||';'\n                            else ''\n                        end\n                when obj.typ = 'view'\n                    then\n                        case \n                            when EXISTS\n                                (\n                                    select 1 a \n                                        from pg_views v \n                                            where v.schemaname||'.'||v.viewname = obj.nam\n                                        LIMIT 1\n                                ) \n                                then E'CREATE OR REPLACE VIEW '\n                                        || obj.nam\n                                        || E'\nAS\n'\n                                        || (select pg_get_viewdef(obj.nam, true))\n                            else ''\n                        end\n                when obj.typ = 'trigger'\n                    then\n                        case\n                            when EXISTS\n                                (\n                                    select 1 a\n                                        from pg_trigger v\n                                            where v.tgname = obj.nam\n                                        LIMIT 1\n                                )\n                                then (select pg_catalog.pg_get_triggerdef(oid, true)\n                                        from pg_trigger\n                                        where tgname = obj.nam)||';'\n                            else ''\n                        end\n                else \n                    ttt.str\n            end as v\n    )  scr ON TRUE\n    where ttt.id = tmp.id\n        and tmp.str like '--{%/%}';\n    \nupdate var_table set downgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\t\n--} create downgrade script\ndrop table tmp;\n\n\n--{!!! write upgrare script HERE !!!\n\n--\tyou can use "i 'function/reclada_object.get_schema.sql'"\n--\tto run text script of functions\n \n/*\n    you can use "i 'function/reclada_object.get_schema.sql'"\n    to run text script of functions\n*/\n\n\ni 'view/reclada.v_PK_for_class.sql'\ni 'view/reclada.v_DTO_json_schema.sql'\ni 'view/reclada.v_filter_between.sql'\n\nSELECT reclada_object.create_subclass('{\n    "class": "RecladaObject",\n    "attributes": {\n        "newClass": "DTOJsonSchema",\n        "properties": {\n            "function": {"type": "string"},\n            "schema":{"type": "object"}\n        },\n        "required": ["function","schema"]\n    }\n}'::jsonb);\n\nSELECT reclada_object.create(\n    '{\n        "class": "DTOJsonSchema",\n        "attributes": {\n            "function":"reclada_object.get_query_condition_filter",\n            "schema":{\n                "type": "object",\n                "id": "expr",\n                "properties": {\n                    "value": {\n                        "type": "array",\n                        "items": {\n                            "anyOf": [\n                                {\n                                    "type": "string"\n                                },\n                                {\n                                    "type": "null"\n                                },\n                                {\n                                    "type": "number"\n                                },\n                                {\n                                    "$ref": "expr"\n                                },\n                                {\n                                    "type": "array",\n                                    "items":{\n                                        "anyOf": [\n                                            {\n                                                "type": "string"\n                                            },\n                                            {\n                                                "type": "number"\n                                            }\n                                        ]\n                                    }\n                                }\n                            ]\n                        },\n                        "minItems": 1\n                    },\n                    "operator": {\n                        "type": "string"\n                    }\n                },\n                "required": ["value","operator"]\n            }\n        }\n    }'\n);\n\ni 'function/reclada.validate_json.sql'\ni 'function/reclada_object.get_query_condition_filter.sql'\ni 'function/api.reclada_object_list.sql'\n\nSELECT reclada_object.create(\n    '{\n        "class": "DTOJsonSchema",\n        "attributes": {\n            "function":"reclada_object.list",\n            "schema":{\n                "type": "object",\n                "properties": {\n                    "transactionID": {\n                        "type": "integer"\n                    },\n                    "class": {\n                        "type": "string"\n                    },\n                    "filter": {\n                        "type": "object"\n                    },\n                    "orderBy":{\n                        "type": "array",\n                        "items":{\n                            "type":"object",\n                            "properties": {\n                                "field":{\n                                    "type":"string"\n                                },\n                                "order":{\n                                    "type":"string",\n                                    "enum": ["ASC", "DESC"]\n                                }\n                            },\n                            "required": ["field"]\n                        }\n                    },\n                    "limit":{\n                        "anyOf": [\n                            {\n                                "type": "string",\n                                "enum": ["ALL"]\n                            },\n                            {\n                                "type": "integer"\n                            }\n                        ]\n                    },\n                    "offset":{\n                        "type": "integer"\n                    }\n                },\n                "anyOf": [\n                    {\n                        "required": [\n                            "transactionID"\n                        ]\n                    },\n                    {\n                        "required": [\n                            "class"\n                        ]\n                    },\n                    {\n                        "required": [\n                            "filter"\n                        ]\n                    }\n                ]\n            }\n        }\n    }'\n);\n\ni 'function/reclada_object.list.sql'\ni 'function/reclada_object.parse_filter.sql'\ni 'view/reclada.v_object.sql'\ni 'view/reclada.v_filter_avaliable_operator.sql'\ni 'view/reclada.v_filter_inner_operator.sql'\n\n\n\n\n--}!!! write upgrare script HERE !!!\n\ninsert into dev.ver(ver,upgrade_script,downgrade_script)\n    select ver, upgrade_script, downgrade_script\n        from var_table;\n\n--{ testing downgrade script\nSAVEPOINT sp;\n    select dev.downgrade_version();\nROLLBACK TO sp;\n--} testing downgrade script\n\nselect reclada.raise_notice('OK, curren version: ' \n                            || (select ver from var_table)::text\n                          );\ndrop table var_table;\n\ncommit;	-- you you can use "--{function/reclada_object.get_schema}"\n-- to add current version of object to downgrade script\n\n\nDROP view IF EXISTS reclada.v_pk_for_class ;\nCREATE OR REPLACE VIEW reclada.v_pk_for_class\nAS\n SELECT obj.obj_id AS guid,\n    obj.for_class,\n    pk.pk\n   FROM v_class obj\n     JOIN ( SELECT 'File'::text AS class_name,\n            'uri'::text AS pk) pk ON pk.class_name = obj.for_class;\nDROP view IF EXISTS reclada.v_DTO_json_schema ;\n\n\ndelete from reclada.object \n    where class in (select reclada_object.get_GUID_for_class('DTOJsonSchema'));\n\ndelete from reclada.object \n    where guid in (select reclada_object.get_GUID_for_class('DTOJsonSchema'));\n\nDROP function IF EXISTS reclada.validate_json ;\n\nDROP function IF EXISTS reclada_object.get_query_condition_filter ;\nCREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data jsonb)\n RETURNS text\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE \r\n    _count   INT;\r\n    _res     TEXT;\r\nBEGIN \r\n    -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE\r\n    CREATE TEMP TABLE mytable AS\r\n        SELECT  lvl             ,  rn   , idx  ,\r\n                upper(op) as op ,  prev , val  ,  \r\n                parsed\r\n            FROM reclada_object.parse_filter(data);\r\n\r\n    PERFORM reclada.raise_exception('operator does not allowed ' || t.op,'reclada_object.get_query_condition_filter')\r\n        FROM mytable t\r\n        LEFT JOIN reclada.v_filter_avaliable_operator op\r\n            ON t.op = op.operator\r\n            WHERE op.operator IS NULL;\r\n\r\n    UPDATE mytable u\r\n        SET parsed = to_jsonb(p.v)\r\n            FROM mytable t\r\n            left join reclada.v_filter_avaliable_operator o\r\n                on o.operator = t.op\r\n            JOIN LATERAL \r\n            (\r\n                SELECT  t.parsed #>> '{}' v\r\n            ) as pt\r\n                ON TRUE\r\n            LEFT JOIN reclada.v_filter_mapping fm\r\n                ON pt.v = fm.pattern\r\n            JOIN LATERAL \r\n            (\r\n                SELECT CASE \r\n                        WHEN fm.repl is not NULL \r\n                            then '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)\r\n                        -- WHEN pt.v LIKE '{attributes,%}'\r\n                        --     THEN format('attrs #> ''%s''', REPLACE(pt.v,'{attributes,','{'))\r\n                        WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')\r\n                            then \r\n                                case \r\n                                    when o.input_type in ('NUMERIC','INT')\r\n                                        then pt.v\r\n                                    else '''' || pt.v || '''::jsonb'\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) = 'string' \r\n                            then    \r\n                                case\r\n                                    WHEN pt.v LIKE '{%}'\r\n                                        THEN\r\n                                            case\r\n                                                when o.input_type = 'TEXT'\r\n                                                    then format('(data #>> ''%s'')', pt.v)\r\n                                                when o.input_type = 'NUMERIC'\r\n                                                    then format('(data #>> ''%s'')::NUMERIC', pt.v)\r\n                                                when o.input_type = 'INT'\r\n                                                    then format('(data #>> ''%s'')::INT', pt.v)\r\n                                                else\r\n                                                    format('data #> ''%s''', pt.v)\r\n                                            end\r\n                                    when o.input_type = 'TEXT'\r\n                                        then ''''||REPLACE(pt.v,'''','''''')||''''\r\n                                    else\r\n                                        '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) = 'null'\r\n                            then 'null'\r\n                        WHEN jsonb_typeof(t.parsed) = 'array'\r\n                            then ''''||REPLACE(pt.v,'''','''''')||'''::jsonb'\r\n                        ELSE\r\n                            pt.v\r\n                    END AS v\r\n            ) as p\r\n                ON TRUE\r\n            WHERE t.lvl = u.lvl\r\n                AND t.rn = u.rn\r\n                AND t.parsed IS NOT NULL;\r\n                \r\n\r\n    INSERT INTO mytable (lvl,rn)\r\n        VALUES (0,0);\r\n    \r\n    _count := 1;\r\n    \r\n    WHILE (_count>0) LOOP\r\n        WITH r AS \r\n        (\r\n            UPDATE mytable\r\n                SET parsed = to_json(t.converted)::JSONB \r\n                FROM \r\n                (\r\n                    SELECT     \r\n                            res.lvl-1 lvl,\r\n                            res.prev rn,\r\n                            res.op,\r\n                            1 q,\r\n                            CASE COUNT(1) \r\n                                WHEN 1\r\n                                    THEN \r\n                                        CASE o.output_type\r\n                                            when 'NUMERIC'\r\n                                                then format('(%s %s)::TEXT::JSONB', res.op, min(res.parsed #>> '{}') )\r\n                                            else \r\n                                                format('(%s %s)', res.op, min(res.parsed #>> '{}') )\r\n                                        end\r\n                                ELSE\r\n                                    CASE \r\n                                        when o.output_type = 'TEXT'\r\n                                            then '(''"''||'||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||'||''"'')::JSONB'\r\n                                        when o.output_type in ('NUMERIC','INT')\r\n                                            then '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||')::TEXT::JSONB'\r\n                                        else\r\n                                            '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op)||')'\r\n                                    end\r\n                            end AS converted\r\n                        FROM mytable res \r\n                        LEFT JOIN reclada.v_filter_avaliable_operator o\r\n                            ON o.operator = res.op\r\n                            WHERE res.parsed IS NOT NULL\r\n                                AND res.lvl = (SELECT max(lvl)+1 FROM mytable WHERE parsed IS NULL)\r\n                            GROUP BY  res.prev, res.op, res.lvl, o.input_type, o.output_type\r\n                ) t\r\n                WHERE\r\n                    t.lvl = mytable.lvl\r\n                        AND t.rn = mytable.rn\r\n                RETURNING 1\r\n        )\r\n            SELECT COUNT(1) \r\n                FROM r\r\n                INTO _count;\r\n    END LOOP;\r\n    \r\n    SELECT parsed #>> '{}' \r\n        FROM mytable\r\n            WHERE lvl = 0 AND rn = 0\r\n        INTO _res;\r\n    perform reclada.raise_notice( _res);\r\n    DROP TABLE mytable;\r\n    RETURN _res;\r\nEND \r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_list ;\nCREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE\nAS $function$\r\nDECLARE\r\n    class               text;\r\n    user_info           jsonb;\r\n    result              jsonb;\r\n    _filter             jsonb;\r\nBEGIN\r\n\r\n    class := data->>'class';\r\n    IF(class IS NULL) THEN\r\n        RAISE EXCEPTION 'reclada object class not specified';\r\n    END IF;\r\n\r\n    _filter = data->'filter';\r\n\r\n    select format(  '{\r\n                        "filter":\r\n                        {\r\n                            "operator":"AND",\r\n                            "value":[\r\n                                {\r\n                                    "operator":"=",\r\n                                    "value":["{class}","%s"]\r\n                                },\r\n                                %s\r\n                            ]\r\n                        }\r\n                    }',\r\n            class,\r\n            _filter\r\n        )::jsonb \r\n        into _filter;\r\n    data := data || _filter;\r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'list', class))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;\r\n    END IF;\r\n\r\n    SELECT reclada_object.list(data, true) INTO result;\r\n\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.list ;\nCREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, gui boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE\nAS $function$\r\nDECLARE\r\n    class               text;\r\n    attrs               jsonb;\r\n    order_by_jsonb      jsonb;\r\n    order_by            text;\r\n    limit_              text;\r\n    offset_             text;\r\n    query_conditions    text;\r\n    number_of_objects   int;\r\n    objects             jsonb;\r\n    res                 jsonb;\r\n    query               text;\r\n    class_uuid          uuid;\r\n    last_change         text;\r\n    tran_id             bigint;\r\n    _filter             JSONB;\r\nBEGIN\r\n\r\n    tran_id := (data->>'transactionID')::bigint;\r\n    class := data->>'class';\r\n    _filter = data->'filter';\r\n    IF (class IS NULL and tran_id IS NULL and _filter IS NULL) THEN\r\n        RAISE EXCEPTION 'The reclada object class, transactionID and filter are not specified';\r\n    END IF;\r\n\r\n    order_by_jsonb := data->'orderBy';\r\n    IF ((order_by_jsonb IS NULL) OR\r\n        (order_by_jsonb = 'null'::jsonb) OR\r\n        (order_by_jsonb = '[]'::jsonb)) THEN\r\n        order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;\r\n    END IF;\r\n    IF (jsonb_typeof(order_by_jsonb) != 'array') THEN\r\n    \t\torder_by_jsonb := format('[%s]', order_by_jsonb);\r\n    END IF;\r\n    SELECT string_agg(\r\n        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(ord.v, 'ASC')),\r\n        ' , ')\r\n    FROM jsonb_array_elements(order_by_jsonb) T\r\n    LEFT JOIN LATERAL\r\n    (\r\n        select upper(T.value->>'order') v\r\n    ) ord on true\r\n    LEFT JOIN LATERAL\r\n    (\r\n        SELECT reclada.raise_exception('order does not allowed '|| ord.v,'reclada_object.list')\r\n            where ord.v not in ('ASC', 'DESC')\r\n    ) V on true\r\n    INTO order_by;\r\n\r\n    limit_ := data->>'limit';\r\n    IF (limit_ IS NULL) THEN\r\n        limit_ := 500;\r\n    END IF;\r\n    IF ((limit_ ~ '(\\D+)') AND (limit_ != 'ALL')) THEN\r\n    \t\tRAISE EXCEPTION 'The limit must be an integer number or "ALL"';\r\n    END IF;\r\n\r\n    offset_ := data->>'offset';\r\n    IF (offset_ IS NULL) THEN\r\n        offset_ := 0;\r\n    END IF;\r\n    IF (offset_ ~ '(\\D+)') THEN\r\n    \t\tRAISE EXCEPTION 'The offset must be an integer number';\r\n    END IF;\r\n\r\n    IF (_filter IS NOT NULL) THEN\r\n        query_conditions := reclada_object.get_query_condition_filter(_filter);\r\n    ELSE\r\n        class_uuid := reclada.try_cast_uuid(class);\r\n\r\n        if class_uuid is not null then\r\n            select v.for_class \r\n                from reclada.v_class_lite v\r\n                    where class_uuid = v.obj_id\r\n            into class;\r\n\r\n            IF (class IS NULL) THEN\r\n                RAISE EXCEPTION 'Class not found by GUID: %', class_uuid::text;\r\n            END IF;\r\n        end if;\r\n\r\n        attrs := data->'attributes' || '{}'::jsonb;\r\n\r\n        SELECT\r\n            string_agg(\r\n                format(\r\n                    E'(%s)',\r\n                    condition\r\n                ),\r\n                ' AND '\r\n            )\r\n            FROM (\r\n                SELECT\r\n                    format('obj.class_name = ''%s''', class) AS condition\r\n                        where class is not null\r\n                            and class_uuid is null\r\n                UNION\r\n                    SELECT format('obj.class = ''%s''', class_uuid) AS condition\r\n                        where class_uuid is not null\r\n                UNION\r\n                    SELECT format('obj.transaction_id = %s', tran_id) AS condition\r\n                        where tran_id is not null\r\n                UNION\r\n                    SELECT CASE\r\n                            WHEN jsonb_typeof(data->'GUID') = 'array' THEN\r\n                            (\r\n                                SELECT string_agg\r\n                                    (\r\n                                        format(\r\n                                            E'(%s)',\r\n                                            reclada_object.get_query_condition(cond, E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)\r\n                                        ),\r\n                                        ' AND '\r\n                                    )\r\n                                    FROM jsonb_array_elements(data->'GUID') AS cond\r\n                            )\r\n                            ELSE reclada_object.get_query_condition(data->'GUID', E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)\r\n                        END AS condition\r\n                    WHERE coalesce(data->'GUID','null'::jsonb) != 'null'::jsonb\r\n                UNION\r\n                SELECT\r\n                    CASE\r\n                        WHEN jsonb_typeof(value) = 'array'\r\n                            THEN\r\n                                (\r\n                                    SELECT string_agg\r\n                                        (\r\n                                            format\r\n                                            (\r\n                                                E'(%s)',\r\n                                                reclada_object.get_query_condition(cond, format(E'attrs->%L', key))\r\n                                            ),\r\n                                            ' AND '\r\n                                        )\r\n                                        FROM jsonb_array_elements(value) AS cond\r\n                                )\r\n                        ELSE reclada_object.get_query_condition(value, format(E'attrs->%L', key))\r\n                    END AS condition\r\n                FROM jsonb_each(attrs)\r\n                WHERE attrs != ('{}'::jsonb)\r\n            ) conds\r\n        INTO query_conditions;\r\n    END IF;\r\n    query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;\r\n\r\n    -- RAISE NOTICE 'conds: %', '\r\n    --             SELECT obj.data\r\n    --             '\r\n    --             || query\r\n    --             ||\r\n    --             ' ORDER BY ' || order_by ||\r\n    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;\r\n    EXECUTE E'SELECT to_jsonb(array_agg(T.data))\r\n        FROM (\r\n            SELECT obj.data\r\n            '\r\n            || query\r\n            ||\r\n            ' ORDER BY ' || order_by ||\r\n            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'\r\n    INTO objects;\r\n    IF gui THEN\r\n\r\n        EXECUTE E'SELECT count(1)\r\n        '|| query\r\n        INTO number_of_objects;\r\n\r\n        EXECUTE E'SELECT TO_CHAR(\r\n\tMAX(\r\n\t\tGREATEST(obj.created_time, (\r\n\t\t\tSELECT TO_TIMESTAMP(MAX(date_time),\\'YYYY-MM-DD hh24:mi:ss.US TZH\\')\r\n\t\t\tFROM reclada.v_revision vr\r\n\t\t\tWHERE vr.obj_id = UUID(obj.attrs ->>\\'revision\\'))\r\n\t\t)\r\n\t),\\'YYYY-MM-DD hh24:mi:ss.MS TZH\\')\r\n        '|| query\r\n        INTO last_change;\r\n\r\n        res := jsonb_build_object(\r\n        'last_change', last_change,    \r\n        'number', number_of_objects,\r\n        'objects', objects);\r\n    ELSE\r\n        res := objects;\r\n    END IF;\r\n\r\n    RETURN res;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.parse_filter ;\nCREATE OR REPLACE FUNCTION reclada_object.parse_filter(data jsonb)\n RETURNS TABLE(lvl integer, rn bigint, idx bigint, op text, prev bigint, val jsonb, parsed jsonb)\n LANGUAGE sql\n IMMUTABLE\nAS $function$\r\n    WITH RECURSIVE f AS \r\n    (\r\n        SELECT data AS v\r\n    ),\r\n    pr AS \r\n    (\r\n        SELECT \tformat(' %s ',f.v->>'operator') AS op, \r\n                val.v AS val,\r\n                1 AS lvl,\r\n                row_number() OVER(ORDER BY idx) AS rn,\r\n                val.idx idx,\r\n                0::BIGINT prev\r\n            FROM f, jsonb_array_elements(f.v->'value') WITH ordinality AS val(v, idx)\r\n    ),\r\n    res AS\r\n    (\t\r\n        SELECT \tpr.lvl\t,\r\n                pr.rn\t,\r\n                pr.idx  ,\r\n                pr.op\t,\r\n                pr.prev ,\r\n                pr.val\t,\r\n                CASE jsonb_typeof(pr.val) \r\n                    WHEN 'object'\t\r\n                        THEN NULL\r\n                    ELSE pr.val\r\n                END AS parsed\r\n            FROM pr\r\n            WHERE prev = 0 \r\n                AND lvl = 1\r\n        UNION ALL\r\n        SELECT \tttt.lvl\t,\r\n                ROW_NUMBER() OVER(ORDER BY ttt.idx) AS rn,\r\n                ttt.idx,\r\n                ttt.op\t,\r\n                ttt.prev,\r\n                ttt.val ,\r\n                CASE jsonb_typeof(ttt.val) \r\n                    WHEN 'object'\t\r\n                        THEN NULL\r\n                    ELSE ttt.val\r\n                end AS parsed\r\n            FROM\r\n            (\r\n                SELECT \tres.lvl + 1 AS lvl,\r\n                        format(' %s ',res.val->>'operator') AS op,\r\n                        res.rn AS prev\t,\r\n                        val.v  AS val,\r\n                        val.idx\r\n                    FROM res, \r\n                         jsonb_array_elements(res.val->'value') WITH ordinality AS val(v, idx)\r\n            ) ttt\r\n    )\r\n    SELECT \tr.lvl\t,\r\n            r.rn\t,\r\n            r.idx   ,\r\n            r.op\t,\r\n            r.prev  ,\r\n            r.val\t,\r\n            r.parsed\r\n        FROM res r\r\n$function$\n;\n\n\nDROP VIEW IF EXISTS reclada.v_revision;\nDROP VIEW IF EXISTS reclada.v_import_info;\nDROP VIEW IF EXISTS reclada.v_pk_for_class;\nDROP VIEW IF EXISTS reclada.v_class;\nDROP VIEW IF EXISTS reclada.v_active_object;\nDROP VIEW IF EXISTS reclada.v_object;\n\nDROP view IF EXISTS reclada.v_object ;\nCREATE OR REPLACE VIEW reclada.v_object\nAS\n WITH t AS (\n         SELECT obj.id,\n            obj.guid,\n            obj.class,\n            r.num,\n            NULLIF(obj.attributes ->> 'revision'::text, ''::text)::uuid AS revision,\n            obj.attributes,\n            obj.status,\n            obj.created_time,\n            obj.created_by,\n            obj.transaction_id,\n            obj.parent_guid\n           FROM object obj\n             LEFT JOIN ( SELECT (r_1.attributes ->> 'num'::text)::bigint AS num,\n                    r_1.guid\n                   FROM object r_1\n                  WHERE (r_1.class IN ( SELECT reclada_object.get_guid_for_class('revision'::text) AS get_guid_for_class))) r ON r.guid = NULLIF(obj.attributes ->> 'revision'::text, ''::text)::uuid\n        )\n SELECT t.id,\n    t.guid AS obj_id,\n    t.class,\n    t.num AS revision_num,\n    os.caption AS status_caption,\n    t.revision,\n    t.created_time,\n    t.attributes AS attrs,\n    cl.for_class AS class_name,\n    (( SELECT json_agg(tmp.*) -> 0\n           FROM ( SELECT t.guid AS "GUID",\n                    t.class,\n                    os.caption AS status,\n                    t.attributes,\n                    t.transaction_id AS "transactionID",\n                    t.parent_guid AS "parentGUID") tmp))::jsonb AS data,\n    u.login AS login_created_by,\n    t.created_by,\n    t.status,\n    t.transaction_id,\n    t.parent_guid\n   FROM t\n     LEFT JOIN v_object_status os ON t.status = os.obj_id\n     LEFT JOIN v_user u ON u.obj_id = t.created_by\n     LEFT JOIN v_class_lite cl ON cl.obj_id = t.class;\nDROP view IF EXISTS reclada.v_active_object ;\nCREATE OR REPLACE VIEW reclada.v_active_object\nAS\n SELECT t.id,\n    t.obj_id,\n    t.class,\n    t.revision_num,\n    t.status,\n    t.status_caption,\n    t.revision,\n    t.created_time,\n    t.class_name,\n    t.attrs,\n    t.data,\n    t.transaction_id,\n    t.parent_guid\n   FROM v_object t\n  WHERE t.status = reclada_object.get_active_status_obj_id();\nDROP view IF EXISTS reclada.v_class ;\nCREATE OR REPLACE VIEW reclada.v_class\nAS\n SELECT obj.id,\n    obj.obj_id,\n    obj.attrs ->> 'forClass'::text AS for_class,\n    (obj.attrs ->> 'version'::text)::bigint AS version,\n    obj.revision_num,\n    obj.status_caption,\n    obj.revision,\n    obj.created_time,\n    obj.attrs,\n    obj.status,\n    obj.data,\n    obj.parent_guid\n   FROM v_active_object obj\n  WHERE obj.class_name = 'jsonschema'::text;\nDROP view IF EXISTS reclada.v_pk_for_class ;\nCREATE OR REPLACE VIEW reclada.v_pk_for_class\nAS\n SELECT obj.obj_id AS guid,\n    obj.for_class,\n    pk.pk\n   FROM v_class obj\n     JOIN ( SELECT 'File'::text AS class_name,\n            'uri'::text AS pk) pk ON pk.class_name = obj.for_class;\nDROP view IF EXISTS reclada.v_import_info ;\nCREATE OR REPLACE VIEW reclada.v_import_info\nAS\n SELECT obj.id,\n    obj.obj_id AS guid,\n    (obj.attrs ->> 'tranID'::text)::bigint AS tran_id,\n    obj.attrs ->> 'name'::text AS name,\n    obj.revision_num,\n    obj.status_caption,\n    obj.revision,\n    obj.created_time,\n    obj.attrs,\n    obj.status,\n    obj.data\n   FROM v_active_object obj\n  WHERE obj.class_name = 'ImportInfo'::text;\nDROP view IF EXISTS reclada.v_revision ;\nCREATE OR REPLACE VIEW reclada.v_revision\nAS\n SELECT obj.id,\n    obj.obj_id,\n    (obj.attrs ->> 'num'::text)::bigint AS num,\n    obj.attrs ->> 'branch'::text AS branch,\n    obj.attrs ->> 'user'::text AS "user",\n    obj.attrs ->> 'dateTime'::text AS date_time,\n    obj.attrs ->> 'old_num'::text AS old_num,\n    obj.revision_num,\n    obj.status_caption,\n    obj.revision,\n    obj.created_time,\n    obj.attrs,\n    obj.status,\n    obj.data\n   FROM v_active_object obj\n  WHERE obj.class_name = 'revision'::text;\nDROP view IF EXISTS reclada.v_filter_between ;\n\n\nDROP view IF EXISTS reclada.v_filter_avaliable_operator ;\nCREATE OR REPLACE VIEW reclada.v_filter_avaliable_operator\nAS\n SELECT ' = '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' LIKE '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' NOT LIKE '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' || '::text AS operator,\n    'TEXT'::text AS input_type,\n    'TEXT'::text AS output_type\nUNION\n SELECT ' ~ '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' !~ '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' ~* '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' !~* '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' SIMILAR TO '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' > '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' < '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' <= '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' != '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' >= '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' AND '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' OR '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' NOT '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' # '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' IS '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' IS NOT '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' IN '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' , '::text AS operator,\n    'TEXT'::text AS input_type,\n    NULL::text AS output_type\nUNION\n SELECT ' @> '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' <@ '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type\nUNION\n SELECT ' + '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' - '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' * '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' / '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' % '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' ^ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' |/ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' ||/ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' !! '::text AS operator,\n    'INT'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' @ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type\nUNION\n SELECT ' & '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type\nUNION\n SELECT ' | '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type\nUNION\n SELECT ' << '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type\nUNION\n SELECT ' >> '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type;\nDROP view IF EXISTS reclada.v_filter_inner_operator ;\n	2021-11-08 11:01:49.274513+00
 43	42	\N	begin;\nSET CLIENT_ENCODING TO 'utf8';\nCREATE TEMP TABLE var_table\n    (\n        ver int,\n        upgrade_script text,\n        downgrade_script text\n    );\n    \ninsert into var_table(ver)\t\n    select max(ver) + 1\n        from dev.VER;\n        \nselect reclada.raise_exception('Can not apply this version!') \n    where not exists\n    (\n        select ver from var_table where ver = 42 --!!! write current version HERE !!!\n    );\n\nCREATE TEMP TABLE tmp\n(\n    id int GENERATED ALWAYS AS IDENTITY,\n    str text\n);\n--{ logging upgrade script\nCOPY tmp(str) FROM  'up.sql' delimiter E'';\nupdate var_table set upgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\ndelete from tmp;\n--} logging upgrade script\t\n\n--{ create downgrade script\nCOPY tmp(str) FROM  'down.sql' delimiter E'';\nupdate tmp set str = drp.v || scr.v\n    from tmp ttt\n    inner JOIN LATERAL\n    (\n        select substring(ttt.str from 4 for length(ttt.str)-4) as v\n    )  obj_file_name ON TRUE\n    inner JOIN LATERAL\n    (\n        select \tsplit_part(obj_file_name.v,'/',1) typ,\n                split_part(obj_file_name.v,'/',2) nam\n    )  obj ON TRUE\n        inner JOIN LATERAL\n    (\n        select case\n                when obj.typ = 'trigger'\n                    then\n                        (select 'DROP '|| obj.typ || ' IF EXISTS '|| obj.nam ||' ON ' || schm||'.'||tbl ||';' || E'\n'\n                        from (\n                            select n.nspname as schm,\n                                   c.relname as tbl\n                            from pg_trigger t\n                                join pg_class c on c.oid = t.tgrelid\n                                join pg_namespace n on n.oid = c.relnamespace\n                            where t.tgname = 'datasource_insert_trigger') o)\n                else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'\n                end as v\n    )  drp ON TRUE\n    inner JOIN LATERAL\n    (\n        select case \n                when obj.typ in ('function', 'procedure')\n                    then\n                        case \n                            when EXISTS\n                                (\n                                    SELECT 1 a\n                                        FROM pg_proc p \n                                        join pg_namespace n \n                                            on p.pronamespace = n.oid \n                                            where n.nspname||'.'||p.proname = obj.nam\n                                        LIMIT 1\n                                ) \n                                then (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))||';'\n                            else ''\n                        end\n                when obj.typ = 'view'\n                    then\n                        case \n                            when EXISTS\n                                (\n                                    select 1 a \n                                        from pg_views v \n                                            where v.schemaname||'.'||v.viewname = obj.nam\n                                        LIMIT 1\n                                ) \n                                then E'CREATE OR REPLACE VIEW '\n                                        || obj.nam\n                                        || E'\nAS\n'\n                                        || (select pg_get_viewdef(obj.nam, true))\n                            else ''\n                        end\n                when obj.typ = 'trigger'\n                    then\n                        case\n                            when EXISTS\n                                (\n                                    select 1 a\n                                        from pg_trigger v\n                                            where v.tgname = obj.nam\n                                        LIMIT 1\n                                )\n                                then (select pg_catalog.pg_get_triggerdef(oid, true)\n                                        from pg_trigger\n                                        where tgname = obj.nam)||';'\n                            else ''\n                        end\n                else \n                    ttt.str\n            end as v\n    )  scr ON TRUE\n    where ttt.id = tmp.id\n        and tmp.str like '--{%/%}';\n    \nupdate var_table set downgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\t\n--} create downgrade script\ndrop table tmp;\n\n\n--{!!! write upgrare script HERE !!!\n\n--\tyou can use "i 'function/reclada_object.get_schema.sql'"\n--\tto run text script of functions\n \n/*\n    you can use "i 'function/reclada_object.get_schema.sql'"\n    to run text script of functions\n*/\n\nSELECT reclada_object.create('{\n    "class": "jsonschema",\n    "attributes":{\n        "forClass":"ObjectDisplay",\n        "version": "1",\n        "schema":{\n            "$defs": {\n                "displayType":{\n                    "type": "object",\n                    "properties": {\n                        "orderColumn":{\n                            "type": "array",\n                            "items":{\n                                "type": "string"\n                            }\n                        },\n                        "orderRow":{\n                            "type": "array",\n                            "items":{\n                                "type": "object",\n                                "patternProperties": {\n                                    "^{.*}$": {\n                                        "type": "string",\n                                        "enum": ["ASC", "DESC"]\n                                    }\n                                }\n                            }\n                        }\n                    },\n                    "required":["orderColumn","orderRow"]\n                }\n            },\n            "properties": {\n                "classGUID": {"type": "string"},\n                "caption": {"type": "string"},\n                "flat": {"type": "bool"},\n                "table":{"$ref": "#/$defs/displayType"},\n                "card":{"$ref": "#/$defs/displayType"},\n                "preview":{"$ref": "#/$defs/displayType"},\n                "list":{"$ref": "#/$defs/displayType" }\n            },\n            "required": ["classGUID","caption"]\n        }\n    }\n}'::jsonb);\n\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('ObjectDisplay') ||'",\n        "caption": "Object display"\n    }\n}')::jsonb);\n\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('DataRow') ||'",\n        "caption": "Data row"\n    }\n}')::jsonb);\n\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('TextBlock') ||'",\n        "caption": "Text block"\n    }\n}')::jsonb);\n\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('Message') ||'",\n        "caption": "Message"\n    }\n}')::jsonb);\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('Page') ||'",\n        "caption": "Page"\n    }\n}')::jsonb);\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('Document') ||'",\n        "caption": "Document"\n    }\n}')::jsonb);\n\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('jsonschema') ||'",\n        "caption": "Json schema"\n    }\n}')::jsonb);\n\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('Job') ||'",\n        "caption": "Job"\n    }\n}')::jsonb);\n\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('File') ||'",\n        "caption": "Files",\n        "table": {\n            "{attributes,name}": {\n                "caption": "File name",\n                "displayCSS": "name",\n                "width": 250,\n                "behavior":"preview"\n            },\n            "{attributes,tags}": {\n                "caption": "Tags",\n                "displayCSS": "arrayLink",\n                "width": 250,\n                "items": {\n                    "displayCSS": "link",\n                    "behavior": "preview",\n                    "class":"'|| reclada_object.get_GUID_for_class('tag') ||'"\n                }\n            },\n            "{attributes,mimeType}": {\n                "caption": "Mime type",\n                "width": 250,\n                "displayCSS": "mimeType"\n            },\n            "{attributes,checksum}": {\n                "caption": "Checksum",\n                "width": 250,\n                "displayCSS": "checksum"\n            },\n            "{status}":{\n                "caption": "Status",\n                "width": 250,\n                "displayCSS": "status"\n            },\n            "{createdTime}":{\n                "caption": "Created time",\n                "width": 250,\n                "displayCSS": "createdTime"\n            },\n            "{transactionID}":{\n                "caption": "Transaction",\n                "width": 250,\n                "displayCSS": "transactionID"\n            },\n            "orderRow": [\n                {"{attributes,name}":"ASC"},\n                {"{attributes,mimeType}":"DESC"}\n            ],\n            "orderColumn": [\n                "{attributes,name}",\n                "{attributes,mimeType}",\n                "{attributes,tags}",\n                "{status}",\n                "{createdTime}",\n                "{transactionID}"\n            ]\n        },\n        "card":{\n            "orderRow": [\n                {"{attributes,name}":"ASC"},\n                {"{attributes,mimeType}":"DESC"}\n            ],\n            "orderColumn": [\n                "{attributes,name}",\n                "{attributes,mimeType}",\n                "{attributes,tags}",\n                "{status}",\n                "{createdTime}",\n                "{transactionID}"\n            ]\n        },\n        "preview":{\n            "orderRow": [\n                {"{attributes,name}":"ASC"},\n                {"{attributes,mimeType}":"DESC"}\n            ],\n            "orderColumn": [\n                "{attributes,name}",\n                "{attributes,mimeType}",\n                "{attributes,tags}",\n                "{status}",\n                "{createdTime}",\n                "{transactionID}"\n            ]\n        },\n        "list":{\n            "orderRow": [\n                {"{attributes,name}":"ASC"},\n                {"{attributes,mimeType}":"DESC"}\n            ],\n            "orderColumn": [\n                "{attributes,name}",\n                "{attributes,mimeType}",\n                "{attributes,tags}",\n                "{status}",\n                "{createdTime}",\n                "{transactionID}"\n            ]\n        }\n    }\n}')::jsonb);\n\ni 'view/reclada.v_object_display.sql' \ni 'view/reclada.v_ui_active_object.sql' \ni 'function/reclada_object.need_flat.sql' \ni 'function/reclada_object.list.sql' \ni 'function/api.reclada_object_update.sql' \ni 'function/reclada_object.update.sql' \ni 'function/api.reclada_object_list.sql' \ni 'function/api.reclada_object_create.sql' \ni 'function/api.reclada_object_delete.sql' \n\ni 'function/api.storage_generate_presigned_get.sql'\ni 'function/api.storage_generate_presigned_post.sql'\n\n\n\n--}!!! write upgrare script HERE !!!\n\ninsert into dev.ver(ver,upgrade_script,downgrade_script)\n    select ver, upgrade_script, downgrade_script\n        from var_table;\n\n--{ testing downgrade script\nSAVEPOINT sp;\n    select dev.downgrade_version();\nROLLBACK TO sp;\n--} testing downgrade script\n\nselect reclada.raise_notice('OK, curren version: ' \n                            || (select ver from var_table)::text\n                          );\ndrop table var_table;\n\ncommit;	-- you you can use "--{function/reclada_object.get_schema}"\n-- to add current version of object to downgrade script\n\n\nDROP view IF EXISTS reclada.v_ui_active_object ;\n\nDROP view IF EXISTS reclada.v_object_display ;\n\ndelete from reclada.object \n    where class in (select reclada_object.get_GUID_for_class('ObjectDisplay'));\n\ndelete from reclada.object \n    where guid in (select reclada_object.get_GUID_for_class('ObjectDisplay'));\n\nDROP function IF EXISTS reclada_object.list ;\nCREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, gui boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE\nAS $function$\r\nDECLARE\r\n    _f_name TEXT = 'reclada_object.list';\r\n    class               text;\r\n    attrs               jsonb;\r\n    order_by_jsonb      jsonb;\r\n    order_by            text;\r\n    limit_              text;\r\n    offset_             text;\r\n    query_conditions    text;\r\n    number_of_objects   int;\r\n    objects             jsonb;\r\n    res                 jsonb;\r\n    query               text;\r\n    class_uuid          uuid;\r\n    last_change         text;\r\n    tran_id             bigint;\r\n    _filter             JSONB;\r\nBEGIN\r\n\r\n    perform reclada.validate_json(data, _f_name);\r\n\r\n    tran_id := (data->>'transactionID')::bigint;\r\n    class := data->>'class';\r\n    _filter = data->'filter';\r\n    -- IF (class IS NULL and tran_id IS NULL and _filter IS NULL) THEN\r\n    --     RAISE EXCEPTION 'The reclada object class, transactionID and filter are not specified';\r\n    -- END IF;\r\n\r\n    order_by_jsonb := data->'orderBy';\r\n    IF ((order_by_jsonb IS NULL) OR\r\n        (order_by_jsonb = 'null'::jsonb) OR\r\n        (order_by_jsonb = '[]'::jsonb)) THEN\r\n        order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;\r\n    END IF;\r\n    -- IF (jsonb_typeof(order_by_jsonb) != 'array') THEN\r\n    -- \t\torder_by_jsonb := format('[%s]', order_by_jsonb);\r\n    -- END IF;\r\n    SELECT string_agg(\r\n        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),\r\n        ' , ')\r\n        FROM jsonb_array_elements(order_by_jsonb) T\r\n        INTO order_by;\r\n\r\n    limit_ := data->>'limit';\r\n    IF (limit_ IS NULL) THEN\r\n        limit_ := 500;\r\n    END IF;\r\n    --IF ((limit_ ~ '(\\D+)') AND (limit_ != 'ALL')) THEN\r\n    --\t\tRAISE EXCEPTION 'The limit must be an integer number or "ALL"';\r\n    --END IF;\r\n\r\n    offset_ := data->>'offset';\r\n    IF (offset_ IS NULL) THEN\r\n        offset_ := 0;\r\n    END IF;\r\n    -- IF (offset_ ~ '(\\D+)') THEN\r\n    -- \t\tRAISE EXCEPTION 'The offset must be an integer number';\r\n    -- END IF;\r\n\r\n    IF (_filter IS NOT NULL) THEN\r\n        query_conditions := reclada_object.get_query_condition_filter(_filter);\r\n    ELSE\r\n        class_uuid := reclada.try_cast_uuid(class);\r\n\r\n        if class_uuid is not null then\r\n            select v.for_class \r\n                from reclada.v_class_lite v\r\n                    where class_uuid = v.obj_id\r\n            into class;\r\n\r\n            IF (class IS NULL) THEN\r\n                RAISE EXCEPTION 'Class not found by GUID: %', class_uuid::text;\r\n            END IF;\r\n        end if;\r\n\r\n        attrs := data->'attributes' || '{}'::jsonb;\r\n\r\n        SELECT\r\n            string_agg(\r\n                format(\r\n                    E'(%s)',\r\n                    condition\r\n                ),\r\n                ' AND '\r\n            )\r\n            FROM (\r\n                SELECT\r\n                    format('obj.class_name = ''%s''', class) AS condition\r\n                        where class is not null\r\n                            and class_uuid is null\r\n                UNION\r\n                    SELECT format('obj.class = ''%s''', class_uuid) AS condition\r\n                        where class_uuid is not null\r\n                UNION\r\n                    SELECT format('obj.transaction_id = %s', tran_id) AS condition\r\n                        where tran_id is not null\r\n                UNION\r\n                    SELECT CASE\r\n                            WHEN jsonb_typeof(data->'GUID') = 'array' THEN\r\n                            (\r\n                                SELECT string_agg\r\n                                    (\r\n                                        format(\r\n                                            E'(%s)',\r\n                                            reclada_object.get_query_condition(cond, E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)\r\n                                        ),\r\n                                        ' AND '\r\n                                    )\r\n                                    FROM jsonb_array_elements(data->'GUID') AS cond\r\n                            )\r\n                            ELSE reclada_object.get_query_condition(data->'GUID', E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)\r\n                        END AS condition\r\n                    WHERE coalesce(data->'GUID','null'::jsonb) != 'null'::jsonb\r\n                UNION\r\n                SELECT\r\n                    CASE\r\n                        WHEN jsonb_typeof(value) = 'array'\r\n                            THEN\r\n                                (\r\n                                    SELECT string_agg\r\n                                        (\r\n                                            format\r\n                                            (\r\n                                                E'(%s)',\r\n                                                reclada_object.get_query_condition(cond, format(E'attrs->%L', key))\r\n                                            ),\r\n                                            ' AND '\r\n                                        )\r\n                                        FROM jsonb_array_elements(value) AS cond\r\n                                )\r\n                        ELSE reclada_object.get_query_condition(value, format(E'attrs->%L', key))\r\n                    END AS condition\r\n                FROM jsonb_each(attrs)\r\n                WHERE attrs != ('{}'::jsonb)\r\n            ) conds\r\n        INTO query_conditions;\r\n    END IF;\r\n    query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;\r\n\r\n    -- RAISE NOTICE 'conds: %', '\r\n    --             SELECT obj.data\r\n    --             '\r\n    --             || query\r\n    --             ||\r\n    --             ' ORDER BY ' || order_by ||\r\n    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;\r\n    EXECUTE E'SELECT to_jsonb(array_agg(T.data))\r\n        FROM (\r\n            SELECT obj.data\r\n            '\r\n            || query\r\n            ||\r\n            ' ORDER BY ' || order_by ||\r\n            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'\r\n    INTO objects;\r\n    IF gui THEN\r\n\r\n        EXECUTE E'SELECT count(1)\r\n        '|| query\r\n        INTO number_of_objects;\r\n\r\n        EXECUTE E'SELECT TO_CHAR(\r\n\tMAX(\r\n\t\tGREATEST(obj.created_time, (\r\n\t\t\tSELECT TO_TIMESTAMP(MAX(date_time),\\'YYYY-MM-DD hh24:mi:ss.US TZH\\')\r\n\t\t\tFROM reclada.v_revision vr\r\n\t\t\tWHERE vr.obj_id = UUID(obj.attrs ->>\\'revision\\'))\r\n\t\t)\r\n\t),\\'YYYY-MM-DD hh24:mi:ss.MS TZH\\')\r\n        '|| query\r\n        INTO last_change;\r\n\r\n        res := jsonb_build_object(\r\n        'last_change', last_change,    \r\n        'number', number_of_objects,\r\n        'objects', objects);\r\n    ELSE\r\n        res := objects;\r\n    END IF;\r\n\r\n    RETURN res;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.update ;\nCREATE OR REPLACE FUNCTION reclada_object.update(data jsonb, user_info jsonb DEFAULT '{}'::jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    class_name     text;\r\n    class_uuid     uuid;\r\n    v_obj_id       uuid;\r\n    v_attrs        jsonb;\r\n    schema        jsonb;\r\n    old_obj       jsonb;\r\n    branch        uuid;\r\n    revid         uuid;\r\n\r\nBEGIN\r\n\r\n    class_name := data->>'class';\r\n    IF (class_name IS NULL) THEN\r\n        RAISE EXCEPTION 'The reclada object class is not specified';\r\n    END IF;\r\n    class_uuid := reclada.try_cast_uuid(class_name);\r\n    v_obj_id := data->>'GUID';\r\n    IF (v_obj_id IS NULL) THEN\r\n        RAISE EXCEPTION 'Could not update object with no GUID';\r\n    END IF;\r\n\r\n    v_attrs := data->'attributes';\r\n    IF (v_attrs IS NULL) THEN\r\n        RAISE EXCEPTION 'The reclada object must have attributes';\r\n    END IF;\r\n\r\n    SELECT reclada_object.get_schema(class_name) \r\n        INTO schema;\r\n\r\n    if class_uuid is null then\r\n        SELECT reclada_object.get_schema(class_name) \r\n            INTO schema;\r\n    else\r\n        select v.data \r\n            from reclada.v_class v\r\n                where class_uuid = v.obj_id\r\n            INTO schema;\r\n    end if;\r\n    -- TODO: don't allow update jsonschema\r\n    IF (schema IS NULL) THEN\r\n        RAISE EXCEPTION 'No json schema available for %', class_name;\r\n    END IF;\r\n\r\n    IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', v_attrs))) THEN\r\n        RAISE EXCEPTION 'JSON invalid: %', v_attrs;\r\n    END IF;\r\n\r\n    SELECT \tv.data\r\n        FROM reclada.v_active_object v\r\n\t        WHERE v.obj_id = v_obj_id\r\n\t    INTO old_obj;\r\n\r\n    IF (old_obj IS NULL) THEN\r\n        RAISE EXCEPTION 'Could not update object, no such id';\r\n    END IF;\r\n\r\n    branch := data->'branch';\r\n    SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) \r\n        INTO revid;\r\n    \r\n    with t as \r\n    (\r\n        update reclada.object o\r\n            set status = reclada_object.get_archive_status_obj_id()\r\n                where o.GUID = v_obj_id\r\n                    and status != reclada_object.get_archive_status_obj_id()\r\n                        RETURNING id\r\n    )\r\n    INSERT INTO reclada.object( GUID,\r\n                                class,\r\n                                status,\r\n                                attributes,\r\n                                transaction_id\r\n                              )\r\n        select  v.obj_id,\r\n                (schema->>'GUID')::uuid,\r\n                reclada_object.get_active_status_obj_id(),--status \r\n                v_attrs || format('{"revision":"%s"}',revid)::jsonb,\r\n                transaction_id\r\n            FROM reclada.v_object v\r\n            JOIN t \r\n                on t.id = v.id\r\n\t            WHERE v.obj_id = v_obj_id;\r\n    PERFORM reclada_object.datasource_insert\r\n            (\r\n                class_name,\r\n                v_obj_id,\r\n                v_attrs\r\n            );\r\n    PERFORM reclada_object.refresh_mv(class_name);  \r\n                  \r\n    select v.data \r\n        FROM reclada.v_active_object v\r\n            WHERE v.obj_id = v_obj_id\r\n        into data;\r\n    PERFORM reclada_notification.send_object_notification('update', data);\r\n    RETURN data;\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_update ;\nCREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    class         text;\r\n    objid         uuid;\r\n    attrs         jsonb;\r\n    user_info     jsonb;\r\n    result        jsonb;\r\n\r\nBEGIN\r\n\r\n    class := data->>'class';\r\n    IF (class IS NULL) THEN\r\n        RAISE EXCEPTION 'reclada object class not specified';\r\n    END IF;\r\n\r\n    objid := data->>'GUID';\r\n    IF (objid IS NULL) THEN\r\n        RAISE EXCEPTION 'Could not update object with no GUID';\r\n    END IF;\r\n\r\n    attrs := data->'attributes';\r\n    IF (attrs IS NULL) THEN\r\n        RAISE EXCEPTION 'reclada object must have attributes';\r\n    END IF;\r\n\r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'update', class))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'update', class;\r\n    END IF;\r\n\r\n    SELECT reclada_object.update(data, user_info) INTO result;\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_list ;\nCREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE\nAS $function$\r\nDECLARE\r\n    class               text;\r\n    user_info           jsonb;\r\n    result              jsonb;\r\n    _filter             jsonb;\r\nBEGIN\r\n\r\n    class := data->>'class';\r\n    IF(class IS NULL) THEN\r\n        RAISE EXCEPTION 'reclada object class not specified';\r\n    END IF;\r\n\r\n    _filter = data->'filter';\r\n    if _filter is not null then\r\n        select format(  '{\r\n                            "filter":\r\n                            {\r\n                                "operator":"AND",\r\n                                "value":[\r\n                                    {\r\n                                        "operator":"=",\r\n                                        "value":["{class}","%s"]\r\n                                    },\r\n                                    %s\r\n                                ]\r\n                            }\r\n                        }',\r\n                class,\r\n                _filter\r\n            )::jsonb \r\n            into _filter;\r\n        data := data || _filter;\r\n    end if;\r\n\r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'list', class))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;\r\n    END IF;\r\n\r\n    SELECT reclada_object.list(data, true) INTO result;\r\n\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_create ;\nCREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    data_jsonb       jsonb;\r\n    class            text;\r\n    user_info        jsonb;\r\n    attrs            jsonb;\r\n    data_to_create   jsonb = '[]'::jsonb;\r\n    result           jsonb;\r\n\r\nBEGIN\r\n\r\n    IF (jsonb_typeof(data) != 'array') THEN\r\n        data := '[]'::jsonb || data;\r\n    END IF;\r\n\r\n    FOR data_jsonb IN SELECT jsonb_array_elements(data) LOOP\r\n\r\n        class := data_jsonb->>'class';\r\n        IF (class IS NULL) THEN\r\n            RAISE EXCEPTION 'The reclada object class is not specified';\r\n        END IF;\r\n\r\n        SELECT reclada_user.auth_by_token(data_jsonb->>'accessToken') INTO user_info;\r\n        data_jsonb := data_jsonb - 'accessToken';\r\n\r\n        IF (NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN\r\n            RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;\r\n        END IF;\r\n\r\n        attrs := data_jsonb->'attributes';\r\n        IF (attrs IS NULL) THEN\r\n            RAISE EXCEPTION 'The reclada object must have attributes';\r\n        END IF;\r\n\r\n        data_to_create := data_to_create || data_jsonb;\r\n    END LOOP;\r\n\r\n    SELECT reclada_object.create(data_to_create, user_info) INTO result;\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_delete ;\nCREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    class         text;\r\n    obj_id        uuid;\r\n    user_info     jsonb;\r\n    result        jsonb;\r\n\r\nBEGIN\r\n\r\n    class := data->>'class';\r\n    IF (class IS NULL) THEN\r\n        RAISE EXCEPTION 'reclada object class not specified';\r\n    END IF;\r\n\r\n    obj_id := data->>'GUID';\r\n    IF (obj_id IS NULL) THEN\r\n        RAISE EXCEPTION 'Could not delete object with no id';\r\n    END IF;\r\n\r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'delete', class))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;\r\n    END IF;\r\n\r\n    SELECT reclada_object.delete(data, user_info) INTO result;\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.need_flat ;\n\n\nDROP function IF EXISTS api.storage_generate_presigned_get ;\nCREATE OR REPLACE FUNCTION api.storage_generate_presigned_get(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    object_data  jsonb;\r\n    object_id    uuid;\r\n    result       jsonb;\r\n    user_info    jsonb;\r\n    lambda_name  varchar;\r\n\r\nBEGIN\r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'generate presigned get', ''))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned get';\r\n    END IF;\r\n\r\n    -- TODO: check user's permissions for reclada object access?\r\n    object_id := data->>'objectId';\r\n    SELECT reclada_object.list(format(\r\n        '{"class": "File", "attributes": {}, "GUID": "%s"}',\r\n        object_id\r\n    )::jsonb) -> 0 INTO object_data;\r\n\r\n    IF (object_data IS NULL) THEN\r\n\t\tRAISE EXCEPTION 'There is no object with such id';\r\n\tEND IF;\r\n\r\n    SELECT attrs->>'Lambda'\r\n    FROM reclada.v_active_object\r\n    WHERE class_name = 'Context'\r\n    ORDER BY created_time DESC\r\n    LIMIT 1\r\n    INTO lambda_name;\r\n\r\n    SELECT payload\r\n    FROM aws_lambda.invoke(\r\n        aws_commons.create_lambda_function_arn(\r\n            format('%s', lambda_name),\r\n            'eu-west-1'\r\n            ),\r\n        format('{\r\n            "type": "get",\r\n            "uri": "%s",\r\n            "expiration": 3600}',\r\n            object_data->'attributes'->>'uri'\r\n            )::jsonb)\r\n    INTO result;\r\n\r\n    RETURN result;\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS api.storage_generate_presigned_post ;\nCREATE OR REPLACE FUNCTION api.storage_generate_presigned_post(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    user_info    jsonb;\r\n    object_name  varchar;\r\n    file_type    varchar;\r\n    file_size    varchar;\r\n    lambda_name  varchar;\r\n    bucket_name  varchar;\r\n    url          varchar;\r\n    result       jsonb;\r\n\r\n\r\n    object       jsonb;\r\n    object_id    uuid;\r\n    object_path  varchar;\r\n    uri          varchar;\r\n\r\n\r\nBEGIN\r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'generate presigned post', ''))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to %', 'generate presigned post';\r\n    END IF;\r\n\r\n    object_name := data->>'objectName';\r\n    file_type := data->>'fileType';\r\n    file_size := data->>'fileSize';\r\n\r\n    IF (object_name IS NULL) OR (file_type IS NULL) OR (file_size IS NULL) THEN\r\n        RAISE EXCEPTION 'Parameters objectName, fileType and fileSize must be present';\r\n    END IF;\r\n\r\n    SELECT attrs->>'Lambda'\r\n    FROM reclada.v_active_object\r\n    WHERE class_name = 'Context'\r\n    ORDER BY created_time DESC\r\n    LIMIT 1\r\n    INTO lambda_name;\r\n\r\n    bucket_name := data->>'bucketName';\r\n\r\n    SELECT payload::jsonb\r\n    FROM aws_lambda.invoke(\r\n        aws_commons.create_lambda_function_arn(\r\n                format('%s', lambda_name),\r\n                'eu-west-1'\r\n        ),\r\n        format('{\r\n            "type": "post",\r\n            "fileName": "%s",\r\n            "fileType": "%s",\r\n            "fileSize": "%s",\r\n            "bucketName": "%s",\r\n            "expiration": 3600}',\r\n            object_name,\r\n            file_type,\r\n            file_size,\r\n            bucket_name\r\n            )::jsonb)\r\n    INTO url;\r\n\r\n    result = format(\r\n        '{"uploadUrl": %s}',\r\n        url\r\n    )::jsonb;\r\n\r\n    RETURN result;\r\nEND;\r\n$function$\n;\n	2021-11-17 14:11:31.38773+00
 44	43	\N	begin;\nSET CLIENT_ENCODING TO 'utf8';\nCREATE TEMP TABLE var_table\n    (\n        ver int,\n        upgrade_script text,\n        downgrade_script text\n    );\n    \ninsert into var_table(ver)\t\n    select max(ver) + 1\n        from dev.VER;\n        \nselect reclada.raise_exception('Can not apply this version!') \n    where not exists\n    (\n        select ver from var_table where ver = 43 --!!! write current version HERE !!!\n    );\n\nCREATE TEMP TABLE tmp\n(\n    id int GENERATED ALWAYS AS IDENTITY,\n    str text\n);\n--{ logging upgrade script\nCOPY tmp(str) FROM  'up.sql' delimiter E'';\nupdate var_table set upgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\ndelete from tmp;\n--} logging upgrade script\t\n\n--{ create downgrade script\nCOPY tmp(str) FROM  'down.sql' delimiter E'';\nupdate tmp set str = drp.v || scr.v\n    from tmp ttt\n    inner JOIN LATERAL\n    (\n        select substring(ttt.str from 4 for length(ttt.str)-4) as v\n    )  obj_file_name ON TRUE\n    inner JOIN LATERAL\n    (\n        select \tsplit_part(obj_file_name.v,'/',1) typ,\n                split_part(obj_file_name.v,'/',2) nam\n    )  obj ON TRUE\n        inner JOIN LATERAL\n    (\n        select case\n                when obj.typ = 'trigger'\n                    then\n                        (select 'DROP '|| obj.typ || ' IF EXISTS '|| obj.nam ||' ON ' || schm||'.'||tbl ||';' || E'\n'\n                        from (\n                            select n.nspname as schm,\n                                   c.relname as tbl\n                            from pg_trigger t\n                                join pg_class c on c.oid = t.tgrelid\n                                join pg_namespace n on n.oid = c.relnamespace\n                            where t.tgname = 'datasource_insert_trigger') o)\n                else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'\n                end as v\n    )  drp ON TRUE\n    inner JOIN LATERAL\n    (\n        select case \n                when obj.typ in ('function', 'procedure')\n                    then\n                        case \n                            when EXISTS\n                                (\n                                    SELECT 1 a\n                                        FROM pg_proc p \n                                        join pg_namespace n \n                                            on p.pronamespace = n.oid \n                                            where n.nspname||'.'||p.proname = obj.nam\n                                        LIMIT 1\n                                ) \n                                then (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))||';'\n                            else ''\n                        end\n                when obj.typ = 'view'\n                    then\n                        case \n                            when EXISTS\n                                (\n                                    select 1 a \n                                        from pg_views v \n                                            where v.schemaname||'.'||v.viewname = obj.nam\n                                        LIMIT 1\n                                ) \n                                then E'CREATE OR REPLACE VIEW '\n                                        || obj.nam\n                                        || E'\nAS\n'\n                                        || (select pg_get_viewdef(obj.nam, true))\n                            else ''\n                        end\n                when obj.typ = 'trigger'\n                    then\n                        case\n                            when EXISTS\n                                (\n                                    select 1 a\n                                        from pg_trigger v\n                                            where v.tgname = obj.nam\n                                        LIMIT 1\n                                )\n                                then (select pg_catalog.pg_get_triggerdef(oid, true)\n                                        from pg_trigger\n                                        where tgname = obj.nam)||';'\n                            else ''\n                        end\n                else \n                    ttt.str\n            end as v\n    )  scr ON TRUE\n    where ttt.id = tmp.id\n        and tmp.str like '--{%/%}';\n    \nupdate var_table set downgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\t\n--} create downgrade script\ndrop table tmp;\n\n\n--{!!! write upgrare script HERE !!!\n\n--\tyou can use "i 'function/reclada_object.get_schema.sql'"\n--\tto run text script of functions\n \n/*\n    you can use "i 'function/reclada_object.get_schema.sql'"\n    to run text script of functions\n*/\n\ncreate table reclada.draft(\n    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1),\n    guid uuid,\n    user_guid uuid DEFAULT reclada_object.get_default_user_obj_id(),\n    data jsonb not null\n);\n\n\ni 'function/api.reclada_object_create.sql'\ni 'function/api.reclada_object_list.sql'\ni 'function/api.reclada_object_delete.sql'\ni 'function/api.reclada_object_update.sql'\n\ni 'function/reclada_object.create.sql'\ni 'function/reclada_object.datasource_insert.sql'\ni 'function/reclada_object.list.sql'\ni 'function/reclada_object.get_query_condition_filter.sql'\ni 'function/reclada_object.parse_filter.sql'\n\ni 'function/reclada.raise_exception.sql'\ni 'view/reclada.v_filter_avaliable_operator.sql'\ni 'view/reclada.v_default_display.sql'\ni 'function/reclada_object.create_subclass.sql'\ni 'view/reclada.v_ui_active_object.sql'\n\n\n\nSELECT reclada_object.create_subclass('{\n    "class": "DataSource",\n    "attributes": {\n        "newClass": "Asset"\n    }\n}'::jsonb);\n\nSELECT reclada_object.create_subclass('{\n    "class": "Asset",\n    "attributes": {\n        "newClass": "DBAsset"\n    }\n}'::jsonb);\n\n\nUPDATE reclada.OBJECT\nSET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,object,pattern}','"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"'::jsonb)\nWHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));\n\nUPDATE reclada.OBJECT\nSET ATTRIBUTES = jsonb_set(ATTRIBUTES,'{schema,properties,subject,pattern}','"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"'::jsonb)\nWHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));\n\n\nDROP OPERATOR IF EXISTS reclada.#(boolean, boolean);\nCREATE OPERATOR reclada.## (\n    FUNCTION = reclada.xor,\n    LEFTARG = boolean,\n    RIGHTARG = boolean\n);\n\ndelete from reclada.v_object_display;\n\nSELECT reclada_object.create(('{\n    "class":"ObjectDisplay",\n    "attributes":{\n        "classGUID": "'|| reclada_object.get_GUID_for_class('File') ||'",\n        "caption": "Files",\n        "table": {\n            "{attributes,name}:string": {\n                "caption": "File name",\n                "displayCSS": "name",\n                "width": 250,\n                "behavior":"preview"\n            },\n            "{attributes,tags}:array": {\n                "caption": "Tags",\n                "displayCSS": "arrayLink",\n                "width": 250,\n                "items": {\n                    "displayCSS": "link",\n                    "behavior": "preview",\n                    "class":"'|| reclada_object.get_GUID_for_class('tag') ||'"\n                }\n            },\n            "{attributes,mimeType}:string": {\n                "caption": "Mime type",\n                "width": 250,\n                "displayCSS": "mimeType"\n            },\n            "{attributes,checksum}:string": {\n                "caption": "Checksum",\n                "width": 250,\n                "displayCSS": "checksum"\n            },\n            "{status}:string":{\n                "caption": "Status",\n                "width": 250,\n                "displayCSS": "status"\n            },\n            "{createdTime}:string":{\n                "caption": "Created time",\n                "width": 250,\n                "displayCSS": "createdTime"\n            },\n            "{transactionID}:number":{\n                "caption": "Transaction",\n                "width": 250,\n                "displayCSS": "transactionID"\n            },\n            "{GUID}:string":{\n                "caption": "GUID",\n                "width": 250,\n                "displayCSS": "GUID"\n            },\n            "orderRow": [\n                {"{attributes,name}:string":"ASC"},\n                {"{attributes,mimeType}:string":"DESC"}\n            ],\n            "orderColumn": [\n                "{attributes,name}:string",\n                "{attributes,mimeType}:string",\n                "{attributes,tags}:array",\n                "{status}:string",\n                "{createdTime}:string",\n                "{transactionID}:number"\n            ]\n        },\n        "card":{\n            "orderRow": [\n                {"{attributes,name}:string":"ASC"},\n                {"{attributes,mimeType}:string":"DESC"}\n            ],\n            "orderColumn": [\n                "{attributes,name}:string",\n                "{attributes,mimeType}:string",\n                "{attributes,tags}:array",\n                "{status}:string",\n                "{createdTime}:string",\n                "{transactionID}:number"\n            ]\n        },\n        "preview":{\n            "orderRow": [\n                {"{attributes,name}:string":"ASC"},\n                {"{attributes,mimeType}:string":"DESC"}\n            ],\n            "orderColumn": [\n                "{attributes,name}:string",\n                "{attributes,mimeType}:string",\n                "{attributes,tags}:array",\n                "{status}:string",\n                "{createdTime}:string",\n                "{transactionID}:number"\n            ]\n        },\n        "list":{\n             "orderRow": [\n                {"{attributes,name}:string":"ASC"},\n                {"{attributes,mimeType}:string":"DESC"}\n            ],\n            "orderColumn": [\n                "{attributes,name}:string",\n                "{attributes,mimeType}:string",\n                "{attributes,tags}:array",\n                "{status}:string",\n                "{createdTime}:string",\n                "{transactionID}:number"\n            ]\n        }\n    }\n}')::jsonb);\n\nDO\n$do12$\nDECLARE\n\t_guid uuid;\n    _json jsonb;\nBEGIN\n\tselect obj_id\n        from reclada.v_DTO_json_schema \n            where function = 'reclada_object.list'\n            into _guid;\n    _json := '{\n        "status": "active",\n        "attributes": {\n            "schema": {\n                "type": "object",\n                "anyOf": [\n                    {\n                        "required": [\n                            "transactionID","class"\n                        ]\n                    },\n                    {\n                        "required": [\n                            "class"\n                        ]\n                    },\n                    {\n                        "required": [\n                            "filter","class"\n                        ]\n                    }\n                ],\n                "properties": {\n                    "class": {\n                        "type": "string"\n                    },\n                    "limit": {\n                        "anyOf": [\n                            {\n                                "enum": [\n                                    "ALL"\n                                ],\n                                "type": "string"\n                            },\n                            {\n                                "type": "integer"\n                            }\n                        ]\n                    },\n                    "filter": {\n                        "type": "object"\n                    },\n                    "offset": {\n                        "type": "integer"\n                    },\n                    "orderBy": {\n                        "type": "array",\n                        "items": {\n                            "type": "object",\n                            "required": [\n                                "field"\n                            ],\n                            "properties": {\n                                "field": {\n                                    "type": "string"\n                                },\n                                "order": {\n                                    "enum": [\n                                        "ASC",\n                                        "DESC"\n                                    ],\n                                    "type": "string"\n                                }\n                            }\n                        }\n                    },\n                    "transactionID": {\n                        "type": "integer"\n                    }\n                }\n            },\n            "function": "reclada_object.list"\n        },\n        "parentGUID": null,\n        "createdTime": "2021-11-08T11:01:49.274513+00:00",\n        "transactionID": 61\n    }';\n    \n    _json := _json || ('{"GUID": "'||_guid::text||'"}')::jsonb;\n    select reclada_object.get_guid_for_class('DTOJsonSchema')\n        into _guid;\n    _json := _json || ('{"class": "' ||_guid::text|| '"}')::jsonb;\n    perform reclada_object.update(_json);\n    \nEND\n$do12$;\n\n\n\n--}!!! write upgrare script HERE !!!\n\ninsert into dev.ver(ver,upgrade_script,downgrade_script)\n    select ver, upgrade_script, downgrade_script\n        from var_table;\n\n--{ testing downgrade script\nSAVEPOINT sp;\n    select dev.downgrade_version();\nROLLBACK TO sp;\n--} testing downgrade script\n\nselect reclada.raise_notice('OK, curren version: ' \n                            || (select ver from var_table)::text\n                          );\ndrop table var_table;\n\ncommit;	-- you you can use "--{function/reclada_object.get_schema}"\n-- to add current version of object to downgrade script\n\ndrop table reclada.draft;\n\nDROP function IF EXISTS api.reclada_object_create ;\nCREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    data_jsonb       jsonb;\r\n    class            text;\r\n    user_info        jsonb;\r\n    attrs            jsonb;\r\n    data_to_create   jsonb = '[]'::jsonb;\r\n    result           jsonb;\r\n    _need_flat       bool := false;\r\nBEGIN\r\n\r\n    IF (jsonb_typeof(data) != 'array') THEN\r\n        data := '[]'::jsonb || data;\r\n    END IF;\r\n\r\n    FOR data_jsonb IN SELECT jsonb_array_elements(data) LOOP\r\n\r\n        class := coalesce(data_jsonb->>'{class}', data_jsonb->>'class');\r\n        IF (class IS NULL) THEN\r\n            RAISE EXCEPTION 'The reclada object class is not specified (api)';\r\n        END IF;\r\n\r\n        SELECT reclada_user.auth_by_token(data_jsonb->>'accessToken') INTO user_info;\r\n        data_jsonb := data_jsonb - 'accessToken';\r\n\r\n        -- raise notice '%',data_jsonb #> '{}';\r\n\r\n        IF (NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN\r\n            RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;\r\n        END IF;\r\n        \r\n        if reclada_object.need_flat(class) then\r\n            _need_flat := true;\r\n            with recursive j as \r\n            (\r\n                select  row_number() over() as id,\r\n                        key,\r\n                        value \r\n                    from jsonb_each(data_jsonb)\r\n                        where key like '{%}'\r\n            ),\r\n            inn as \r\n            (\r\n                SELECT  row_number() over(order by s.id,j.id) rn,\r\n                        j.id,\r\n                        s.id sid,\r\n                        s.d,\r\n                        ARRAY (\r\n                            SELECT UNNEST(arr.v) \r\n                            LIMIT array_position(arr.v, s.d)\r\n                        ) as k\r\n                    FROM j\r\n                    left join lateral\r\n                    (\r\n                        select id, d ,max(id) over() mid\r\n                        from\r\n                        (\r\n                            SELECT  row_number() over() as id, \r\n                                    d\r\n                                from regexp_split_to_table(substring(j.key,2,char_length(j.key)-2),',') d \r\n                        ) t\r\n                    ) s on s.mid != s.id\r\n                    join lateral\r\n                    (\r\n                        select regexp_split_to_array(substring(j.key,2,char_length(j.key)-2),',') v\r\n                    ) arr on true\r\n                        where d is not null\r\n            ),\r\n            src as\r\n            (\r\n                select  jsonb_set('{}'::jsonb,('{'|| i.d ||'}')::text[],'{}'::jsonb) r,\r\n                        i.* \r\n                    from inn i\r\n                        where i.rn = 1\r\n                union\r\n                select  jsonb_set(\r\n                            s.r,\r\n                            i.k,\r\n                            '{}'::jsonb\r\n                        ) r,\r\n                        i.* \r\n                    from src s\r\n                    join inn i\r\n                        on s.rn + 1 = i.rn\r\n            ),\r\n            tmpl as (\r\n                select r v\r\n                    from src\r\n                    ORDER BY rn DESC\r\n                    limit 1\r\n            ),\r\n            res as\r\n            (\r\n                SELECT jsonb_set(\r\n                        (select v from tmpl),\r\n                        j.key::text[],\r\n                        j.value\r\n                    ) v,\r\n                    j.*\r\n                    FROM j\r\n                        where j.id = 1\r\n                union \r\n                select jsonb_set(\r\n                        res.v,\r\n                        j.key::text[],\r\n                        j.value\r\n                    ) v,\r\n                    j.*\r\n                    FROM res\r\n                    join j\r\n                        on res.id + 1 =j.id\r\n            )\r\n            SELECT v \r\n                FROM res\r\n                ORDER BY ID DESC\r\n                limit 1\r\n                into data_jsonb;\r\n        end if;\r\n        data_to_create := data_to_create || data_jsonb;\r\n    END LOOP;\r\n\r\n    if data_to_create is null then\r\n        RAISE EXCEPTION 'JSON invalid';\r\n    end if;\r\n\r\n    SELECT reclada_object.create(data_to_create, user_info) INTO result;\r\n    if _need_flat then\r\n        RETURN '{"status":"OK"}'::jsonb;\r\n    end if;\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_list ;\nCREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    class               text;\r\n    user_info           jsonb;\r\n    result              jsonb;\r\n    _filter             jsonb;\r\nBEGIN\r\n\r\n    class := coalesce(data->>'{class}', data->>'class');\r\n    IF(class IS NULL) THEN\r\n        RAISE EXCEPTION 'reclada object class not specified';\r\n    END IF;\r\n\r\n    _filter = data->'filter';\r\n    IF _filter IS NOT NULL THEN\r\n        SELECT format(  '{\r\n                            "filter":\r\n                            {\r\n                                "operator":"AND",\r\n                                "value":[\r\n                                    {\r\n                                        "operator":"=",\r\n                                        "value":["{class}","%s"]\r\n                                    },\r\n                                    %s\r\n                                ]\r\n                            }\r\n                        }',\r\n                class,\r\n                _filter\r\n            )::jsonb \r\n            INTO _filter;\r\n        data := data || _filter;\r\n    ELSE\r\n        data := data || ('{"class":"'|| class ||'"}')::jsonb;\r\n    --     select format(  '{\r\n    --                         "filter":{\r\n    --                             "operator":"=",\r\n    --                             "value":["{class}","%s"]\r\n    --                         }\r\n    --                     }',\r\n    --             class,\r\n    --             _filter\r\n    --         )::jsonb \r\n    --         INTO _filter;\r\n    END IF;\r\n\r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'list', class))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;\r\n    END IF;\r\n\r\n    SELECT reclada_object.list(data, true) \r\n        INTO result;\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_delete ;\nCREATE OR REPLACE FUNCTION api.reclada_object_delete(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    class         text;\r\n    obj_id        uuid;\r\n    user_info     jsonb;\r\n    result        jsonb;\r\n\r\nBEGIN\r\n\r\n    class := coalesce(data ->> '{class}', data ->> 'class');\r\n    IF (class IS NULL) THEN\r\n        RAISE EXCEPTION 'reclada object class not specified';\r\n    END IF;\r\n\r\n    obj_id := coalesce(data ->> '{GUID}', data ->> 'GUID');\r\n    IF (obj_id IS NULL) THEN\r\n        RAISE EXCEPTION 'Could not delete object with no id';\r\n    END IF;\r\n\r\n    data := data || ('{"GUID":"'|| obj_id ||'","class":"'|| class ||'"}')::jsonb;\r\n\r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'delete', class))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'delete', class;\r\n    END IF;\r\n\r\n    SELECT reclada_object.delete(data, user_info) INTO result;\r\n\r\n    if reclada_object.need_flat(class) then \r\n        RETURN '{"status":"OK"}'::jsonb;\r\n    end if;\r\n\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_update ;\nCREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    class         text;\r\n    objid         uuid;\r\n    attrs         jsonb;\r\n    user_info     jsonb;\r\n    result        jsonb;\r\n    _need_flat    bool := false;\r\n\r\nBEGIN\r\n\r\n    class := coalesce(data ->> '{class}', data ->> 'class');\r\n    IF (class IS NULL) THEN\r\n        RAISE EXCEPTION 'reclada object class not specified';\r\n    END IF;\r\n\r\n    objid := coalesce(data ->> '{GUID}', data ->> 'GUID');\r\n    IF (objid IS NULL) THEN\r\n        RAISE EXCEPTION 'Could not update object with no GUID';\r\n    END IF;\r\n    \r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'update', class))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'update', class;\r\n    END IF;\r\n\r\n    if reclada_object.need_flat(class) then\r\n        _need_flat := true;\r\n        with recursive j as \r\n        (\r\n            select  row_number() over() as id,\r\n                    key,\r\n                    value \r\n                from jsonb_each(data)\r\n                    where key like '{%}'\r\n        ),\r\n        t as\r\n        (\r\n            select  j.id    , \r\n                    j.key   , \r\n                    j.value , \r\n                    o.data\r\n                from reclada.v_object o\r\n                join j\r\n                    on true\r\n                    where o.obj_id = \r\n                        (\r\n                            select (j.value#>>'{}')::uuid \r\n                                from j where j.key = '{GUID}'\r\n                        )\r\n        ),\r\n        r as \r\n        (\r\n            select id,key,value,jsonb_set(t.data,t.key::text[],t.value) as u, t.data\r\n                from t\r\n                    where id = 1\r\n            union\r\n            select t.id,t.key,t.value,jsonb_set(r.u   ,t.key::text[],t.value) as u, t.data\r\n                from r\r\n                JOIN t\r\n                    on t.id-1 = r.id\r\n        )\r\n        select r.u\r\n            from r\r\n                where id = (select max(j.id) from j)\r\n            INTO data;\r\n    end if;\r\n    raise notice '%', data#>>'{}';\r\n    SELECT reclada_object.update(data, user_info) INTO result;\r\n\r\n    if _need_flat then\r\n        RETURN '{"status":"OK"}'::jsonb;\r\n    end if;\r\n    return result;\r\nEND;\r\n$function$\n;\n\nDROP function IF EXISTS reclada_object.create ;\nCREATE OR REPLACE FUNCTION reclada_object."create"(data_jsonb jsonb, user_info jsonb DEFAULT '{}'::jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    branch        uuid;\r\n    data          jsonb;\r\n    class_name    text;\r\n    class_uuid    uuid;\r\n    tran_id       bigint;\r\n    _attrs         jsonb;\r\n    schema        jsonb;\r\n    obj_GUID      uuid;\r\n    res           jsonb;\r\n    affected      uuid[];\r\n    _parent_guid  uuid;\r\nBEGIN\r\n\r\n    IF (jsonb_typeof(data_jsonb) != 'array') THEN\r\n        data_jsonb := '[]'::jsonb || data_jsonb;\r\n    END IF;\r\n    /*TODO: check if some objects have revision and others do not */\r\n    branch:= data_jsonb->0->'branch';\r\n\r\n    FOR data IN SELECT jsonb_array_elements(data_jsonb) \r\n    LOOP\r\n\r\n        class_name := data->>'class';\r\n\r\n        IF (class_name IS NULL) THEN\r\n            RAISE EXCEPTION 'The reclada object class is not specified';\r\n        END IF;\r\n        class_uuid := reclada.try_cast_uuid(class_name);\r\n\r\n        _attrs := data->'attributes';\r\n        IF (_attrs IS NULL) THEN\r\n            RAISE EXCEPTION 'The reclada object must have attributes';\r\n        END IF;\r\n\r\n        tran_id := (data->>'transactionID')::bigint;\r\n        if tran_id is null then\r\n            tran_id := reclada.get_transaction_id();\r\n        end if;\r\n\r\n        IF class_uuid IS NULL THEN\r\n            SELECT reclada_object.get_schema(class_name) \r\n            INTO schema;\r\n            class_uuid := (schema->>'GUID')::uuid;\r\n        ELSE\r\n            SELECT v.data \r\n            FROM reclada.v_class v\r\n            WHERE class_uuid = v.obj_id\r\n            INTO schema;\r\n        END IF;\r\n        IF (schema IS NULL) THEN\r\n            RAISE EXCEPTION 'No json schema available for %', class_name;\r\n        END IF;\r\n\r\n        IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', _attrs))) THEN\r\n            RAISE EXCEPTION 'JSON invalid: %', _attrs;\r\n        END IF;\r\n        \r\n        IF data->>'id' IS NOT NULL THEN\r\n            RAISE EXCEPTION '%','Field "id" not allow!!!';\r\n        END IF;\r\n\r\n        IF class_uuid IN (SELECT guid FROM reclada.v_PK_for_class)\r\n        THEN\r\n            SELECT o.obj_id\r\n                FROM reclada.v_object o\r\n                JOIN reclada.v_PK_for_class pk\r\n                    on pk.guid = o.class\r\n                        and class_uuid = o.class\r\n                where o.attrs->>pk.pk = _attrs ->> pk.pk\r\n                LIMIT 1\r\n            INTO obj_GUID;\r\n            IF obj_GUID IS NOT NULL THEN\r\n                SELECT reclada_object.update(data || format('{"GUID": "%s"}', obj_GUID)::jsonb)\r\n                    INTO res;\r\n                    RETURN '[]'::jsonb || res;\r\n            END IF;\r\n        END IF;\r\n\r\n        obj_GUID := (data->>'GUID')::uuid;\r\n        IF EXISTS (\r\n            SELECT 1\r\n            FROM reclada.object \r\n            WHERE GUID = obj_GUID\r\n        ) THEN\r\n            RAISE EXCEPTION 'GUID: % is duplicate', obj_GUID;\r\n        END IF;\r\n        --raise notice 'schema: %',schema;\r\n\r\n        _parent_guid = (data->>'parent_guid')::uuid;\r\n\r\n        INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)\r\n            SELECT  CASE\r\n                        WHEN obj_GUID IS NULL\r\n                            THEN public.uuid_generate_v4()\r\n                        ELSE obj_GUID\r\n                    END AS GUID,\r\n                    class_uuid, \r\n                    _attrs,\r\n                    tran_id,\r\n                    _parent_guid\r\n        RETURNING GUID INTO obj_GUID;\r\n        affected := array_append( affected, obj_GUID);\r\n\r\n        PERFORM reclada_object.datasource_insert\r\n            (\r\n                class_name,\r\n                obj_GUID,\r\n                _attrs\r\n            );\r\n\r\n        PERFORM reclada_object.refresh_mv(class_name);\r\n    END LOOP;\r\n\r\n    res := array_to_json\r\n            (\r\n                array\r\n                (\r\n                    SELECT o.data \r\n                    FROM reclada.v_active_object o\r\n                    WHERE o.obj_id = ANY (affected)\r\n                )\r\n            )::jsonb; \r\n    PERFORM reclada_notification.send_object_notification\r\n        (\r\n            'create',\r\n            res\r\n        );\r\n    RETURN res;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.datasource_insert ;\nCREATE OR REPLACE FUNCTION reclada_object.datasource_insert(_class_name text, _obj_id uuid, attributes jsonb)\n RETURNS void\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    dataset_guid  uuid;\r\n    uri           text;\r\n    environment   varchar;\r\n    rel_cnt       int;\r\n    dataset2ds_type text;\r\nBEGIN\r\n    IF _class_name in \r\n            ('DataSource','File') THEN\r\n\r\n        dataset2ds_type := 'defaultDataSet to DataSource';\r\n\r\n        SELECT v.obj_id\r\n        FROM reclada.v_active_object v\r\n\t    WHERE v.attrs->>'name' = 'defaultDataSet'\r\n\t    INTO dataset_guid;\r\n\r\n        SELECT count(*)\r\n        FROM reclada.v_active_object\r\n        WHERE class_name = 'Relationship'\r\n            AND (attrs->>'object')::uuid = _obj_id\r\n            AND (attrs->>'subject')::uuid = dataset_guid\r\n            AND attrs->>'type' = dataset2ds_type\r\n                INTO rel_cnt;\r\n\r\n        IF rel_cnt=0 THEN\r\n            PERFORM reclada_object.create(\r\n                format('{\r\n                    "class": "Relationship",\r\n                    "attributes": {\r\n                        "type": "%s",\r\n                        "object": "%s",\r\n                        "subject": "%s"\r\n                        }\r\n                    }', dataset2ds_type, _obj_id, dataset_guid)::jsonb);\r\n\r\n        END IF;\r\n\r\n        uri := attributes->>'uri';\r\n\r\n        SELECT attrs->>'Environment'\r\n        FROM reclada.v_active_object\r\n        WHERE class_name = 'Context'\r\n        ORDER BY created_time DESC\r\n        LIMIT 1\r\n        INTO environment;\r\n\r\n        PERFORM reclada_object.create(\r\n            format('{\r\n                "class": "Job",\r\n                "attributes": {\r\n                    "task": "c94bff30-15fa-427f-9954-d5c3c151e652",\r\n                    "status": "new",\r\n                    "type": "%s",\r\n                    "command": "./run_pipeline.sh",\r\n                    "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]\r\n                    }\r\n                }', environment, uri, _obj_id)::jsonb);\r\n\r\n    END IF;\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.list ;\nCREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, gui boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    _f_name TEXT = 'reclada_object.list';\r\n    class               text;\r\n    attrs               jsonb;\r\n    order_by_jsonb      jsonb;\r\n    order_by            text;\r\n    limit_              text;\r\n    offset_             text;\r\n    query_conditions    text;\r\n    number_of_objects   int;\r\n    objects             jsonb;\r\n    res                 jsonb;\r\n    query               text;\r\n    class_uuid          uuid;\r\n    last_change         text;\r\n    tran_id             bigint;\r\n    _filter             JSONB;\r\nBEGIN\r\n\r\n    perform reclada.validate_json(data, _f_name);\r\n\r\n    tran_id := (data->>'transactionID')::bigint;\r\n    class := data->>'class';\r\n    _filter = data->'filter';\r\n\r\n    order_by_jsonb := data->'orderBy';\r\n    IF ((order_by_jsonb IS NULL) OR\r\n        (order_by_jsonb = 'null'::jsonb) OR\r\n        (order_by_jsonb = '[]'::jsonb)) THEN\r\n        order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;\r\n    END IF;\r\n    SELECT string_agg(\r\n        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),\r\n        ' , ')\r\n        FROM jsonb_array_elements(order_by_jsonb) T\r\n        INTO order_by;\r\n\r\n    limit_ := data->>'limit';\r\n    IF (limit_ IS NULL) THEN\r\n        limit_ := 500;\r\n    END IF;\r\n\r\n    offset_ := data->>'offset';\r\n    IF (offset_ IS NULL) THEN\r\n        offset_ := 0;\r\n    END IF;\r\n \r\n    IF (_filter IS NOT NULL) THEN\r\n        query_conditions := reclada_object.get_query_condition_filter(_filter);\r\n        IF gui THEN\r\n            query_conditions := REPLACE(query_conditions,'#>','->');\r\n        end if;\r\n    ELSE\r\n        class_uuid := reclada.try_cast_uuid(class);\r\n\r\n        IF class_uuid IS NOT NULL THEN\r\n            SELECT v.for_class\r\n                FROM reclada.v_class_lite v\r\n                    WHERE class_uuid = v.obj_id\r\n            INTO class;\r\n\r\n            IF (class IS NULL) THEN\r\n                RAISE EXCEPTION 'Class not found by GUID: %', class_uuid::text;\r\n            END IF;\r\n        end if;\r\n\r\n        attrs := data->'attributes' || '{}'::jsonb;\r\n\r\n        SELECT\r\n            string_agg(\r\n                format(\r\n                    E'(%s)',\r\n                    condition\r\n                ),\r\n                ' AND '\r\n            )\r\n            FROM (\r\n                SELECT\r\n                    format('obj.class_name = ''%s''', class) AS condition\r\n                        where class is not null\r\n                            and class_uuid is null\r\n                UNION\r\n                    SELECT format('obj.class = ''%s''', class_uuid) AS condition\r\n                        where class_uuid is not null\r\n                UNION\r\n                    SELECT format('obj.transaction_id = %s', tran_id) AS condition\r\n                        where tran_id is not null\r\n                UNION\r\n                    SELECT CASE\r\n                            WHEN jsonb_typeof(data->'GUID') = 'array' THEN\r\n                            (\r\n                                SELECT string_agg\r\n                                    (\r\n                                        format(\r\n                                            E'(%s)',\r\n                                            reclada_object.get_query_condition(cond, E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)\r\n                                        ),\r\n                                        ' AND '\r\n                                    )\r\n                                    FROM jsonb_array_elements(data->'GUID') AS cond\r\n                            )\r\n                            ELSE reclada_object.get_query_condition(data->'GUID', E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)\r\n                        END AS condition\r\n                    WHERE coalesce(data->'GUID','null'::jsonb) != 'null'::jsonb\r\n                UNION\r\n                SELECT\r\n                    CASE\r\n                        WHEN jsonb_typeof(value) = 'array'\r\n                            THEN\r\n                                (\r\n                                    SELECT string_agg\r\n                                        (\r\n                                            format\r\n                                            (\r\n                                                E'(%s)',\r\n                                                reclada_object.get_query_condition(cond, format(E'attrs->%L', key))\r\n                                            ),\r\n                                            ' AND '\r\n                                        )\r\n                                        FROM jsonb_array_elements(value) AS cond\r\n                                )\r\n                        ELSE reclada_object.get_query_condition(value, format(E'attrs->%L', key))\r\n                    END AS condition\r\n                FROM jsonb_each(attrs)\r\n                WHERE attrs != ('{}'::jsonb)\r\n            ) conds\r\n        INTO query_conditions;\r\n    END IF;\r\n    IF gui AND reclada_object.need_flat(class) THEN\r\n        query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;\r\n    ELSE\r\n        query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;\r\n    END IF;\r\n    RAISE NOTICE 'conds: %', '\r\n                SELECT obj.data\r\n                '\r\n                || query\r\n                ||\r\n                ' ORDER BY ' || order_by ||\r\n                ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;\r\n    EXECUTE E'SELECT to_jsonb(array_agg(T.data))\r\n        FROM (\r\n            SELECT obj.data\r\n            '\r\n            || query\r\n            ||\r\n            ' ORDER BY ' || order_by ||\r\n            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'\r\n    INTO objects;\r\n    IF gui THEN\r\n\r\n        EXECUTE E'SELECT count(1)\r\n        '|| query\r\n        INTO number_of_objects;\r\n\r\n        EXECUTE E'SELECT TO_CHAR(\r\n\tMAX(\r\n\t\tGREATEST(obj.created_time, (\r\n\t\t\tSELECT TO_TIMESTAMP(MAX(date_time),\\'YYYY-MM-DD hh24:mi:ss.US TZH\\')\r\n\t\t\tFROM reclada.v_revision vr\r\n\t\t\tWHERE vr.obj_id = UUID(obj.attrs ->>\\'revision\\'))\r\n\t\t)\r\n\t),\\'YYYY-MM-DD hh24:mi:ss.MS TZH\\')\r\n        '|| query\r\n        INTO last_change;\r\n\r\n        res := jsonb_build_object(\r\n        'last_change', last_change,    \r\n        'number', number_of_objects,\r\n        'objects', objects);\r\n    ELSE\r\n        res := objects;\r\n    END IF;\r\n\r\n    RETURN res;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.get_query_condition_filter ;\nCREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data jsonb)\n RETURNS text\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE \r\n    _count   INT;\r\n    _res     TEXT;\r\n    _f_name TEXT = 'reclada_object.get_query_condition_filter';\r\nBEGIN \r\n    \r\n    perform reclada.validate_json(data, _f_name);\r\n    -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE\r\n    CREATE TEMP TABLE mytable AS\r\n        SELECT  res.lvl              AS lvl         , \r\n                res.rn               AS rn          , \r\n                res.idx              AS idx         ,\r\n                res.prev             AS prev        , \r\n                res.val              AS val         ,  \r\n                res.parsed           AS parsed      , \r\n                coalesce(\r\n                    po.inner_operator, \r\n                    op.operator\r\n                )                   AS op           , \r\n                coalesce\r\n                (\r\n                    iop.input_type,\r\n                    op.input_type\r\n                )                   AS input_type   ,\r\n                case \r\n                    when iop.input_type is not NULL \r\n                        then NULL \r\n                    else \r\n                        op.output_type\r\n                end                 AS output_type  ,\r\n                po.operator         AS po           ,\r\n                po.input_type       AS po_input_type,\r\n                iop.brackets        AS po_inner_brackets\r\n            FROM reclada_object.parse_filter(data) res\r\n            LEFT JOIN reclada.v_filter_avaliable_operator op\r\n                ON res.op = op.operator\r\n            LEFT JOIN reclada_object.parse_filter(data) p\r\n                on  p.lvl = res.lvl-1\r\n                    and res.prev = p.rn\r\n            LEFT JOIN reclada.v_filter_avaliable_operator po\r\n                on po.operator = p.op\r\n            LEFT JOIN reclada.v_filter_inner_operator iop\r\n                on iop.operator = po.inner_operator;\r\n\r\n    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op,'reclada_object.get_query_condition_filter')\r\n        FROM mytable t\r\n            WHERE t.op IS NULL;\r\n\r\n\r\n    UPDATE mytable u\r\n        SET parsed = to_jsonb(p.v)\r\n            FROM mytable t\r\n            JOIN LATERAL \r\n            (\r\n                SELECT  t.parsed #>> '{}' v\r\n            ) as pt\r\n                ON TRUE\r\n            LEFT JOIN reclada.v_filter_mapping fm\r\n                ON pt.v = fm.pattern\r\n            JOIN LATERAL \r\n            (\r\n                SELECT CASE \r\n                        WHEN fm.repl is not NULL \r\n                            then '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)\r\n                        -- WHEN pt.v LIKE '{attributes,%}'\r\n                        --     THEN format('attrs #> ''%s''', REPLACE(pt.v,'{attributes,','{'))\r\n                        WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')\r\n                            then \r\n                                case \r\n                                    when t.input_type in ('NUMERIC','INT')\r\n                                        then pt.v\r\n                                    else '''' || pt.v || '''::jsonb'\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) = 'string' \r\n                            then    \r\n                                case\r\n                                    WHEN pt.v LIKE '{%}'\r\n                                        THEN\r\n                                            case\r\n                                                when t.input_type = 'TEXT'\r\n                                                    then format('(data #>> ''%s'')', pt.v)\r\n                                                when t.input_type = 'JSONB' or t.input_type is null\r\n                                                    then format('data #> ''%s''', pt.v)\r\n                                                else\r\n                                                    format('(data #>> ''%s'')::', pt.v) || t.input_type\r\n                                            end\r\n                                    when t.input_type = 'TEXT'\r\n                                        then ''''||REPLACE(pt.v,'''','''''')||''''\r\n                                    when t.input_type = 'JSONB' or t.input_type is null\r\n                                        then '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'\r\n                                    else ''''||REPLACE(pt.v,'''','''''')||'''::'||t.input_type\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) = 'null'\r\n                            then 'null'\r\n                        WHEN jsonb_typeof(t.parsed) = 'array'\r\n                            then ''''||REPLACE(pt.v,'''','''''')||'''::jsonb'\r\n                        ELSE\r\n                            pt.v\r\n                    END AS v\r\n            ) as p\r\n                ON TRUE\r\n            WHERE t.lvl = u.lvl\r\n                AND t.rn = u.rn\r\n                AND t.parsed IS NOT NULL;\r\n\r\n    update mytable u\r\n        set op = CASE \r\n                    when f.btwn\r\n                        then ' BETWEEN '\r\n                    else u.op -- f.inop\r\n                end,\r\n            parsed = format(vb.operand_format,u.parsed)::jsonb\r\n        FROM mytable t\r\n        join lateral\r\n        (\r\n            select  t.op like ' %/BETWEEN ' btwn, \r\n                    t.po_inner_brackets is not null inop\r\n        ) f \r\n            on true\r\n        join reclada.v_filter_between vb\r\n            on t.op = vb.operator\r\n            WHERE t.lvl = u.lvl\r\n                AND t.rn = u.rn\r\n                AND (f.btwn or f.inop);\r\n\r\n    INSERT INTO mytable (lvl,rn)\r\n        VALUES (0,0);\r\n\r\n    _count := 1;\r\n\r\n    WHILE (_count>0) LOOP\r\n        WITH r AS \r\n        (\r\n            UPDATE mytable\r\n                SET parsed = to_json(t.converted)::JSONB \r\n                FROM \r\n                (\r\n                    SELECT     \r\n                            res.lvl-1 lvl,\r\n                            res.prev rn,\r\n                            res.op,\r\n                            1 q,\r\n                            case \r\n                                when not res.po_inner_brackets \r\n                                    then array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) \r\n                                else\r\n                                    CASE COUNT(1) \r\n                                        WHEN 1\r\n                                            THEN \r\n                                                CASE res.output_type\r\n                                                    when 'NUMERIC'\r\n                                                        then format('(%s %s)::TEXT::JSONB', res.op, min(res.parsed #>> '{}') )\r\n                                                    else \r\n                                                        format('(%s %s)', res.op, min(res.parsed #>> '{}') )\r\n                                                end\r\n                                        ELSE\r\n                                            CASE \r\n                                                when res.output_type = 'TEXT'\r\n                                                    then '(''"''||'||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||'||''"'')::JSONB'\r\n                                                when res.output_type in ('NUMERIC','INT')\r\n                                                    then '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||')::TEXT::JSONB'\r\n                                                else\r\n                                                    '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||')'\r\n                                            end\r\n                                    end\r\n                            end AS converted\r\n                        FROM mytable res \r\n                            WHERE res.parsed IS NOT NULL\r\n                                AND res.lvl = (SELECT max(lvl)+1 FROM mytable WHERE parsed IS NULL)\r\n                            GROUP BY  res.prev, res.op, res.lvl, res.input_type, res.output_type, res.po_inner_brackets\r\n                ) t\r\n                WHERE\r\n                    t.lvl = mytable.lvl\r\n                        AND t.rn = mytable.rn\r\n                RETURNING 1\r\n        )\r\n            SELECT COUNT(1) \r\n                FROM r\r\n                INTO _count;\r\n    END LOOP;\r\n    \r\n    SELECT parsed #>> '{}' \r\n        FROM mytable\r\n            WHERE lvl = 0 AND rn = 0\r\n        INTO _res;\r\n    perform reclada.raise_notice( _res);\r\n    DROP TABLE mytable;\r\n    RETURN _res;\r\nEND \r\n$function$\n;\nDROP function IF EXISTS reclada_object.parse_filter ;\nCREATE OR REPLACE FUNCTION reclada_object.parse_filter(data jsonb)\n RETURNS TABLE(lvl integer, rn bigint, idx bigint, op text, prev bigint, val jsonb, parsed jsonb)\n LANGUAGE sql\n IMMUTABLE\nAS $function$\r\n    WITH RECURSIVE f AS \r\n    (\r\n        SELECT data AS v\r\n    ),\r\n    pr AS \r\n    (\r\n        SELECT \tformat(' %s ',f.v->>'operator') AS op, \r\n                val.v AS val,\r\n                1 AS lvl,\r\n                row_number() OVER(ORDER BY idx) AS rn,\r\n                val.idx idx,\r\n                0::BIGINT prev\r\n            FROM f, jsonb_array_elements(f.v->'value') WITH ordinality AS val(v, idx)\r\n    ),\r\n    res AS\r\n    (\t\r\n        SELECT \tpr.lvl\t,\r\n                pr.rn\t,\r\n                pr.idx  ,\r\n                pr.op\t,\r\n                pr.prev ,\r\n                pr.val\t,\r\n                CASE jsonb_typeof(pr.val) \r\n                    WHEN 'object'\t\r\n                        THEN NULL\r\n                    ELSE pr.val\r\n                END AS parsed\r\n            FROM pr\r\n            WHERE prev = 0 \r\n                AND lvl = 1\r\n        UNION ALL\r\n        SELECT \tttt.lvl\t,\r\n                ROW_NUMBER() OVER(ORDER BY ttt.idx) AS rn,\r\n                ttt.idx,\r\n                ttt.op\t,\r\n                ttt.prev,\r\n                ttt.val ,\r\n                CASE jsonb_typeof(ttt.val) \r\n                    WHEN 'object'\t\r\n                        THEN NULL\r\n                    ELSE ttt.val\r\n                end AS parsed\r\n            FROM\r\n            (\r\n                SELECT \tres.lvl + 1 AS lvl,\r\n                        format(' %s ',res.val->>'operator') AS op,\r\n                        res.rn AS prev\t,\r\n                        val.v  AS val,\r\n                        val.idx\r\n                    FROM res, \r\n                         jsonb_array_elements(res.val->'value') WITH ordinality AS val(v, idx)\r\n            ) ttt\r\n    )\r\n    SELECT \tr.lvl\t,\r\n            r.rn\t,\r\n            r.idx   ,\r\n            upper(r.op) ,\r\n            r.prev  ,\r\n            r.val\t,\r\n            r.parsed\r\n        FROM res r\r\n$function$\n;\n\nDROP function IF EXISTS reclada.raise_exception ;\nCREATE OR REPLACE FUNCTION reclada.raise_exception(msg text, func_name text DEFAULT '<unknown>'::text)\n RETURNS void\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n    -- \r\n    RAISE EXCEPTION '% \r\n    from: %', msg, func_name;\r\nEND\r\n$function$\n;\nDROP view IF EXISTS reclada.v_filter_avaliable_operator ;\nCREATE OR REPLACE VIEW reclada.v_filter_avaliable_operator\nAS\n SELECT ' = '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' LIKE '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' NOT LIKE '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' || '::text AS operator,\n    'TEXT'::text AS input_type,\n    'TEXT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' ~ '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' !~ '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' ~* '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' !~* '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' SIMILAR TO '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' > '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' < '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' <= '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' != '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' >= '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' AND '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' OR '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' NOT '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' # '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' IS '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' IS NOT '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' IN '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    ' , '::text AS inner_operator\nUNION\n SELECT ' @> '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' <@ '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' + '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' - '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' * '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' / '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' % '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' ^ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' |/ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' ||/ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' !! '::text AS operator,\n    'INT'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' @ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' & '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' | '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' << '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' >> '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' BETWEEN '::text AS operator,\n    'TIMESTAMP WITH TIME ZONE'::text AS input_type,\n    'BOOL'::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' Y/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' MON/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' D/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' H/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' MIN/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' S/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' DOW/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' DOY/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' Q/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' W/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator;\nDROP function IF EXISTS reclada_object.create_subclass ;\nCREATE OR REPLACE FUNCTION reclada_object.create_subclass(data jsonb)\n RETURNS void\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    class           text;\r\n    new_class       text;\r\n    attrs           jsonb;\r\n    class_schema    jsonb;\r\n    version_         integer;\r\n    class_guid    uuid;\r\nBEGIN\r\n\r\n    class := data->>'class';\r\n    IF (class IS NULL) THEN\r\n        RAISE EXCEPTION 'The reclada object class is not specified';\r\n    END IF;\r\n\r\n    attrs := data->'attributes';\r\n    IF (attrs IS NULL) THEN\r\n        RAISE EXCEPTION 'The reclada object must have attributes';\r\n    END IF;\r\n\r\n    new_class = attrs->>'newClass';\r\n\r\n    SELECT reclada_object.get_schema(class) INTO class_schema;\r\n\r\n    IF (class_schema IS NULL) THEN\r\n        RAISE EXCEPTION 'No json schema available for %', class;\r\n    END IF;\r\n\r\n    SELECT max(version) + 1\r\n    FROM reclada.v_class_lite v\r\n    WHERE v.for_class = new_class\r\n    INTO version_;\r\n\r\n    version_ := coalesce(version_,1);\r\n    class_schema := class_schema->'attributes'->'schema';\r\n\r\n    SELECT obj_id\r\n    FROM reclada.v_class\r\n    WHERE for_class = class\r\n    ORDER BY version DESC\r\n    LIMIT 1\r\n    INTO class_guid;\r\n\r\n    PERFORM reclada_object.create(format('{\r\n        "class": "jsonschema",\r\n        "attributes": {\r\n            "forClass": "%s",\r\n            "version": "%s",\r\n            "schema": {\r\n                "type": "object",\r\n                "properties": %s,\r\n                "required": %s\r\n            }\r\n        },\r\n        "parent_guid" : "%s"\r\n    }',\r\n    new_class,\r\n    version_,\r\n    (class_schema->'properties') || (attrs->'properties'),\r\n    (SELECT jsonb_agg(el) FROM (\r\n        SELECT DISTINCT pg_catalog.jsonb_array_elements(\r\n            (class_schema -> 'required') || (attrs -> 'required')\r\n        ) el) arr),\r\n    class_guid\r\n    )::jsonb);\r\n\r\nEND;\r\n$function$\n;\nDROP view IF EXISTS reclada.v_ui_active_object ;\nCREATE OR REPLACE VIEW reclada.v_ui_active_object\nAS\n SELECT t.id,\n    t.obj_id,\n    t.class,\n    t.revision_num,\n    t.status,\n    t.status_caption,\n    t.revision,\n    t.created_time,\n    t.class_name,\n    t.attrs,\n    j.data,\n    t.transaction_id,\n    t.parent_guid\n   FROM v_active_object t\n     JOIN ( SELECT t_1.id,\n            jsonb_object_agg(t_1.key, t_1.val) AS data\n           FROM ( SELECT t_2.id,\n                    j_1.key,\n                    t_2.data #>> j_1.key::text[] AS val\n                   FROM v_active_object t_2\n                     JOIN v_object_display od ON od.class_guid = t_2.class\n                     JOIN LATERAL ( SELECT jsonb_each.key\n                           FROM jsonb_each(od."table") jsonb_each(key, value)\n                        UNION\n                         SELECT '{GUID}'::text AS text) j_1 ON j_1.key ~~ '{%}'::text) t_1\n          GROUP BY t_1.id) j ON t.id = j.id;\nDROP view IF EXISTS reclada.v_default_display ;\n\n\ndelete from reclada.object \n    where guid in (select reclada_object.get_GUID_for_class('Asset'));\n\ndelete from reclada.object \n    where guid in (select reclada_object.get_GUID_for_class('DBAsset'));\n\nUPDATE reclada.OBJECT\nSET ATTRIBUTES = ATTRIBUTES #- '{schema,properties,object,minLength}'\nWHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));\n\nUPDATE reclada.OBJECT\nSET ATTRIBUTES = ATTRIBUTES #- '{schema,properties,subject,minLength}'\nWHERE guid IN(SELECT reclada_object.get_GUID_for_class('Relationship'));\n\nDROP OPERATOR IF EXISTS reclada.##(boolean, boolean);\nCREATE OPERATOR reclada.# (\n    FUNCTION = reclada.xor,\n    LEFTARG = boolean,\n    RIGHTARG = boolean\n);\n\n    \nwith g as \n(\n    select g.obj_id\n    from\n    (\n        select s.obj_id, count(*) cnt\n            from reclada.v_DTO_json_schema s\n            join reclada.v_object o\n                on o.obj_id = s.obj_id\n                where s.function = 'reclada_object.list'\n                    group by s.obj_id\n    ) as g\n    left join lateral \n    (\n        select reclada.raise_exception('reclada_object.list has more 2 DTO schema')\n            where g.cnt > 2\n    ) ex  on true\n),\nupd as (\n    update reclada.object o\n        set status = reclada_object.get_active_status_obj_id()\n        from g\n            where g.obj_id = o.guid\n        RETURNING id\n)\ndelete \n    from reclada.object \n        where id = \n            (\n                select max(id) from upd\n            );\n\n            	2021-12-02 11:20:10.536606+00
-45	44	\N	begin;\nSET CLIENT_ENCODING TO 'utf8';\nCREATE TEMP TABLE var_table\n    (\n        ver int,\n        upgrade_script text,\n        downgrade_script text\n    );\n    \ninsert into var_table(ver)\t\n    select max(ver) + 1\n        from dev.VER;\n        \nselect reclada.raise_exception('Can not apply this version!') \n    where not exists\n    (\n        select ver from var_table where ver = 44 --!!! write current version HERE !!!\n    );\n\nCREATE TEMP TABLE tmp\n(\n    id int GENERATED ALWAYS AS IDENTITY,\n    str text\n);\n--{ logging upgrade script\nCOPY tmp(str) FROM  'up.sql' delimiter E'';\nupdate var_table set upgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\ndelete from tmp;\n--} logging upgrade script\t\n\n--{ create downgrade script\nCOPY tmp(str) FROM  'down.sql' delimiter E'';\nupdate tmp set str = drp.v || scr.v\n    from tmp ttt\n    inner JOIN LATERAL\n    (\n        select substring(ttt.str from 4 for length(ttt.str)-4) as v\n    )  obj_file_name ON TRUE\n    inner JOIN LATERAL\n    (\n        select \tsplit_part(obj_file_name.v,'/',1) typ,\n                split_part(obj_file_name.v,'/',2) nam\n    )  obj ON TRUE\n        inner JOIN LATERAL\n    (\n        select case\n                when obj.typ = 'trigger'\n                    then\n                        (select 'DROP '|| obj.typ || ' IF EXISTS '|| obj.nam ||' ON ' || schm||'.'||tbl ||';' || E'\n'\n                        from (\n                            select n.nspname as schm,\n                                   c.relname as tbl\n                            from pg_trigger t\n                                join pg_class c on c.oid = t.tgrelid\n                                join pg_namespace n on n.oid = c.relnamespace\n                            where t.tgname = 'datasource_insert_trigger') o)\n                else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'\n                end as v\n    )  drp ON TRUE\n    inner JOIN LATERAL\n    (\n        select case \n                when obj.typ in ('function', 'procedure')\n                    then\n                        case \n                            when EXISTS\n                                (\n                                    SELECT 1 a\n                                        FROM pg_proc p \n                                        join pg_namespace n \n                                            on p.pronamespace = n.oid \n                                            where n.nspname||'.'||p.proname = obj.nam\n                                        LIMIT 1\n                                ) \n                                then (select pg_catalog.pg_get_functiondef(obj.nam::regproc::oid))||';'\n                            else ''\n                        end\n                when obj.typ = 'view'\n                    then\n                        case \n                            when EXISTS\n                                (\n                                    select 1 a \n                                        from pg_views v \n                                            where v.schemaname||'.'||v.viewname = obj.nam\n                                        LIMIT 1\n                                ) \n                                then E'CREATE OR REPLACE VIEW '\n                                        || obj.nam\n                                        || E'\nAS\n'\n                                        || (select pg_get_viewdef(obj.nam, true))\n                            else ''\n                        end\n                when obj.typ = 'trigger'\n                    then\n                        case\n                            when EXISTS\n                                (\n                                    select 1 a\n                                        from pg_trigger v\n                                            where v.tgname = obj.nam\n                                        LIMIT 1\n                                )\n                                then (select pg_catalog.pg_get_triggerdef(oid, true)\n                                        from pg_trigger\n                                        where tgname = obj.nam)||';'\n                            else ''\n                        end\n                else \n                    ttt.str\n            end as v\n    )  scr ON TRUE\n    where ttt.id = tmp.id\n        and tmp.str like '--{%/%}';\n    \nupdate var_table set downgrade_script = array_to_string(ARRAY((select str from tmp order by id asc)),chr(10),'');\t\n--} create downgrade script\ndrop table tmp;\n\n\n--{!!! write upgrare script HERE !!!\n\n--\tyou can use "i 'function/reclada_object.get_schema.sql'"\n--\tto run text script of functions\n \n/*\n    you can use "i 'function/reclada_object.get_schema.sql'"\n    to run text script of functions\n*/\n\nCREATE TYPE reclada.dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert','Merge');\n\nCREATE TABLE reclada_object.cr_dup_behavior (\n    id bigint NOT NULL GENERATED BY DEFAULT AS IDENTITY,\n    parent_guid     uuid,\n    transaction_id  bigint,\n    dup_behavior    reclada.dp_bhvr,\n    last_use        timestamp DEFAULT current_timestamp,\n    PRIMARY KEY     (transaction_id, parent_guid)\n);\n\nDROP VIEW reclada.v_pk_for_class;\n\ni 'view/reclada.v_object_unifields.sql'\ni 'view/reclada.v_parent_field.sql'\ni 'function/reclada.get_unifield_index_name.sql'\ni 'view/reclada.v_unifields_idx_cnt.sql'\ni 'view/reclada.v_unifields_pivoted.sql'\n\ni 'function/reclada_object.get_parent_guid.sql'\ni 'function/reclada_object.get_query_condition_filter.sql'\ni 'function/reclada_object.merge.sql'\ni 'function/reclada_object.update_json.sql'\ni 'function/reclada_object.update_json_by_guid.sql'\ni 'function/reclada_object.remove_parent_guid.sql'\ni 'function/reclada_object.create.sql'\ni 'function/reclada_object.create_subclass.sql'\ni 'function/reclada_object.delete.sql'\ni 'function/reclada_object.update.sql'\ni 'function/reclada_object.refresh_mv.sql'\ni 'function/reclada_object.update.sql'\ni 'function/reclada.get_children.sql'\ni 'function/reclada_object.datasource_insert.sql'\ni 'function/reclada.get_duplicates.sql'\ni 'function/reclada_object.add_cr_dup_mark.sql'\ni 'function/reclada_object.parse_filter.sql'\n\ni 'function/reclada_object.list.sql'\ni 'function/api.reclada_object_list.sql'\ni 'function/reclada_object.get_query_condition_filter.sql'\ni 'function/api.reclada_object_create.sql'\ni 'function/reclada_object.delete.sql'\n\ni 'view/reclada.v_filter_avaliable_operator.sql'\ni 'view/reclada.v_ui_active_object.sql'\n\nUPDATE reclada.object\nSET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)\nWHERE guid IN (SELECT reclada_object.get_guid_for_class('Cell')) and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = jsonb_set(attributes,'{parentField}','"page"'::jsonb)\nWHERE guid IN (SELECT reclada_object.get_guid_for_class('Table')) and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = jsonb_set(attributes,'{parentField}','"document"'::jsonb)\nWHERE guid IN (SELECT reclada_object.get_guid_for_class('Page')) and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = jsonb_set(attributes,'{parentField}','"fileGUID"'::jsonb)\nWHERE guid IN (SELECT reclada_object.get_guid_for_class('Document')) and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)\nWHERE guid IN (SELECT reclada_object.get_guid_for_class('DataRow')) and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = jsonb_set(attributes,'{dupBehavior}','"Replace"'::jsonb)\nWHERE guid IN (SELECT reclada_object.get_guid_for_class('File')) and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = jsonb_set(attributes,'{isCascade}','true'::jsonb)\nWHERE guid IN (SELECT reclada_object.get_guid_for_class('File')) and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = jsonb_set(attributes,'{dupChecking}','[{"uniFields" : ["uri"], "isMandatory" : true}, {"uniFields" : ["checksum"], "isMandatory" : true}]'::jsonb)\nWHERE guid IN (SELECT reclada_object.get_guid_for_class('File')) and status = reclada_object.get_active_status_obj_id();\n\nSELECT reclada_object.refresh_mv('uniFields');\n\n\nCREATE INDEX uri_index_ ON reclada.object USING HASH (((attributes->>'uri')));\nCREATE INDEX checksum_index_ ON reclada.object USING HASH (((attributes->>'checksum')));\n\n--{ display\nwith t as\n( \n    update reclada.object\n        set status = reclada_object.get_active_status_obj_id()\n        where attributes->>'function' = 'reclada_object.list'\n            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))\n            and status = reclada_object.get_archive_status_obj_id()\n        returning id\n)\n    update reclada.object\n        set status = reclada_object.get_archive_status_obj_id()\n        where attributes->>'function' = 'reclada_object.list'\n            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))\n            and id not in (select id from t);\n--} display\n\n\n--}!!! write upgrare script HERE !!!\n\ninsert into dev.ver(ver,upgrade_script,downgrade_script)\n    select ver, upgrade_script, downgrade_script\n        from var_table;\n\n--{ testing downgrade script\nSAVEPOINT sp;\n    select dev.downgrade_version();\nROLLBACK TO sp;\n--} testing downgrade script\n\nselect reclada.raise_notice('OK, curren version: ' \n                            || (select ver from var_table)::text\n                          );\ndrop table var_table;\n\ncommit;	-- you you can use "--{function/reclada_object.get_schema}"\n-- to add current version of object to downgrade script\n\n\nUPDATE reclada.object\nSET attributes = attributes - 'parentField'\nWHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = attributes - 'parentField'\nWHERE guid='f5bcc7ad-1a9b-476d-985e-54cf01377530' and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = attributes - 'parentField'\nWHERE guid='3ed1c180-a508-4180-9281-2f9b9a9cd477' and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = attributes - 'parentField'\nWHERE guid='85d32073-4a00-4df7-9def-7de8d90b77e0' and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = attributes - 'parentField'\nWHERE guid='7643b601-43c2-4125-831a-539b9e7418ec' and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = attributes - 'dupBehavior'\nWHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = attributes - 'isCascade'\nWHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();\n\nUPDATE reclada.object\nSET attributes = attributes - 'dupChecking'\nWHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();\n\nDROP view IF EXISTS reclada.v_parent_field ;\n\nDROP view IF EXISTS reclada.v_unifields_idx_cnt ;\n\nDROP view IF EXISTS reclada.v_unifields_pivoted ;\n\nDROP MATERIALIZED VIEW       reclada.v_object_unifields;\n\nDROP function IF EXISTS reclada.get_unifield_index_name ;\n\nDROP function IF EXISTS reclada_object.merge ;\n\nDROP function IF EXISTS reclada.get_children ;\n\nDROP function IF EXISTS reclada.get_duplicates ;\n\nDROP function IF EXISTS reclada_object.add_cr_dup_mark ;\n\nDROP function IF EXISTS reclada_object.update_json_by_guid ;\n\nDROP function IF EXISTS reclada_object.update_json ;\n\nDROP function IF EXISTS reclada_object.remove_parent_guid ;\n\nDROP function IF EXISTS reclada_object.get_parent_guid ;\n\n\nDROP function IF EXISTS reclada_object.get_query_condition_filter ;\nCREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data jsonb)\n RETURNS text\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE \r\n    _count   INT;\r\n    _res     TEXT;\r\n    _f_name TEXT = 'reclada_object.get_query_condition_filter';\r\nBEGIN \r\n    \r\n    perform reclada.validate_json(data, _f_name);\r\n    -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE\r\n    CREATE TEMP TABLE mytable AS\r\n        SELECT  res.lvl              AS lvl         , \r\n                res.rn               AS rn          , \r\n                res.idx              AS idx         ,\r\n                res.prev             AS prev        , \r\n                res.val              AS val         ,  \r\n                res.parsed           AS parsed      , \r\n                coalesce(\r\n                    po.inner_operator, \r\n                    op.operator\r\n                )                   AS op           , \r\n                coalesce\r\n                (\r\n                    iop.input_type,\r\n                    op.input_type\r\n                )                   AS input_type   ,\r\n                case \r\n                    when iop.input_type is not NULL \r\n                        then NULL \r\n                    else \r\n                        op.output_type\r\n                end                 AS output_type  ,\r\n                po.operator         AS po           ,\r\n                po.input_type       AS po_input_type,\r\n                iop.brackets        AS po_inner_brackets\r\n            FROM reclada_object.parse_filter(data) res\r\n            LEFT JOIN reclada.v_filter_avaliable_operator op\r\n                ON res.op = op.operator\r\n            LEFT JOIN reclada_object.parse_filter(data) p\r\n                on  p.lvl = res.lvl-1\r\n                    and res.prev = p.rn\r\n            LEFT JOIN reclada.v_filter_avaliable_operator po\r\n                on po.operator = p.op\r\n            LEFT JOIN reclada.v_filter_inner_operator iop\r\n                on iop.operator = po.inner_operator;\r\n\r\n    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op, _f_name)\r\n        FROM mytable t\r\n            WHERE t.op IS NULL;\r\n\r\n\r\n    UPDATE mytable u\r\n        SET parsed = to_jsonb(p.v)\r\n            FROM mytable t\r\n            JOIN LATERAL \r\n            (\r\n                SELECT  t.parsed #>> '{}' v\r\n            ) as pt\r\n                ON TRUE\r\n            LEFT JOIN reclada.v_filter_mapping fm\r\n                ON pt.v = fm.pattern\r\n            JOIN LATERAL \r\n            (\r\n                SELECT CASE \r\n                        WHEN fm.repl is not NULL \r\n                            then \r\n                                case \r\n                                    when t.input_type in ('TEXT')\r\n                                        then fm.repl || '::TEXT'\r\n                                    else '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')\r\n                            then \r\n                                case \r\n                                    when t.input_type in ('NUMERIC','INT')\r\n                                        then pt.v\r\n                                    else '''' || pt.v || '''::jsonb'\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) = 'string' \r\n                            then    \r\n                                case\r\n                                    WHEN pt.v LIKE '{%}'\r\n                                        THEN\r\n                                            case\r\n                                                when t.input_type = 'TEXT'\r\n                                                    then format('(data #>> ''%s'')', pt.v)\r\n                                                when t.input_type = 'JSONB' or t.input_type is null\r\n                                                    then format('data #> ''%s''', pt.v)\r\n                                                else\r\n                                                    format('(data #>> ''%s'')::', pt.v) || t.input_type\r\n                                            end\r\n                                    when t.input_type = 'TEXT'\r\n                                        then ''''||REPLACE(pt.v,'''','''''')||''''\r\n                                    when t.input_type = 'JSONB' or t.input_type is null\r\n                                        then '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'\r\n                                    else ''''||REPLACE(pt.v,'''','''''')||'''::'||t.input_type\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) = 'null'\r\n                            then 'null'\r\n                        WHEN jsonb_typeof(t.parsed) = 'array'\r\n                            then ''''||REPLACE(pt.v,'''','''''')||'''::jsonb'\r\n                        ELSE\r\n                            pt.v\r\n                    END AS v\r\n            ) as p\r\n                ON TRUE\r\n            WHERE t.lvl = u.lvl\r\n                AND t.rn = u.rn\r\n                AND t.parsed IS NOT NULL;\r\n\r\n    update mytable u\r\n        set op = CASE \r\n                    when f.btwn\r\n                        then ' BETWEEN '\r\n                    else u.op -- f.inop\r\n                end,\r\n            parsed = format(vb.operand_format,u.parsed)::jsonb\r\n        FROM mytable t\r\n        join lateral\r\n        (\r\n            select  t.op like ' %/BETWEEN ' btwn, \r\n                    t.po_inner_brackets is not null inop\r\n        ) f \r\n            on true\r\n        join reclada.v_filter_between vb\r\n            on t.op = vb.operator\r\n            WHERE t.lvl = u.lvl\r\n                AND t.rn = u.rn\r\n                AND (f.btwn or f.inop);\r\n\r\n    INSERT INTO mytable (lvl,rn)\r\n        VALUES (0,0);\r\n\r\n    _count := 1;\r\n\r\n    WHILE (_count>0) LOOP\r\n        WITH r AS \r\n        (\r\n            UPDATE mytable\r\n                SET parsed = to_json(t.converted)::JSONB \r\n                FROM \r\n                (\r\n                    SELECT     \r\n                            res.lvl-1 lvl,\r\n                            res.prev rn,\r\n                            res.op,\r\n                            1 q,\r\n                            case \r\n                                when not res.po_inner_brackets \r\n                                    then array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) \r\n                                else\r\n                                    CASE COUNT(1) \r\n                                        WHEN 1\r\n                                            THEN \r\n                                                CASE res.output_type\r\n                                                    when 'NUMERIC'\r\n                                                        then format('(%s %s)::TEXT::JSONB', res.op, min(res.parsed #>> '{}') )\r\n                                                    else \r\n                                                        format('(%s %s)', res.op, min(res.parsed #>> '{}') )\r\n                                                end\r\n                                        ELSE\r\n                                            CASE \r\n                                                when res.output_type = 'TEXT'\r\n                                                    then '(''"''||'||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||'||''"'')::JSONB'\r\n                                                when res.output_type in ('NUMERIC','INT')\r\n                                                    then '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||')::TEXT::JSONB'\r\n                                                else\r\n                                                    '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||')'\r\n                                            end\r\n                                    end\r\n                            end AS converted\r\n                        FROM mytable res \r\n                            WHERE res.parsed IS NOT NULL\r\n                                AND res.lvl = (SELECT max(lvl)+1 FROM mytable WHERE parsed IS NULL)\r\n                            GROUP BY  res.prev, res.op, res.lvl, res.input_type, res.output_type, res.po_inner_brackets\r\n                ) t\r\n                WHERE\r\n                    t.lvl = mytable.lvl\r\n                        AND t.rn = mytable.rn\r\n                RETURNING 1\r\n        )\r\n            SELECT COUNT(1) \r\n                FROM r\r\n                INTO _count;\r\n    END LOOP;\r\n    \r\n    SELECT parsed #>> '{}' \r\n        FROM mytable\r\n            WHERE lvl = 0 AND rn = 0\r\n        INTO _res;\r\n    -- perform reclada.raise_notice( _res);\r\n    DROP TABLE mytable;\r\n    RETURN _res;\r\nEND \r\n$function$\n;\nDROP view IF EXISTS reclada.v_pk_for_class ;\nCREATE OR REPLACE VIEW reclada.v_pk_for_class\nAS\n SELECT obj.obj_id AS guid,\n    obj.for_class,\n    pk.pk\n   FROM v_class obj\n     JOIN ( SELECT 'File'::text AS class_name,\n            'uri'::text AS pk\n        UNION\n         SELECT 'DTOJsonSchema'::text AS text,\n            'function'::text AS text) pk ON pk.class_name = obj.for_class;\nDROP function IF EXISTS reclada_object.create ;\nCREATE OR REPLACE FUNCTION reclada_object."create"(data_jsonb jsonb, user_info jsonb DEFAULT '{}'::jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    branch        uuid;\r\n    data          jsonb;\r\n    class_name    text;\r\n    class_uuid    uuid;\r\n    tran_id       bigint;\r\n    _attrs         jsonb;\r\n    schema        jsonb;\r\n    obj_GUID      uuid;\r\n    res           jsonb;\r\n    affected      uuid[];\r\n    _parent_guid  uuid;\r\nBEGIN\r\n\r\n    IF (jsonb_typeof(data_jsonb) != 'array') THEN\r\n        data_jsonb := '[]'::jsonb || data_jsonb;\r\n    END IF;\r\n    /*TODO: check if some objects have revision and others do not */\r\n    branch:= data_jsonb->0->'branch';\r\n\r\n    FOR data IN SELECT jsonb_array_elements(data_jsonb) \r\n    LOOP\r\n\r\n        class_name := data->>'class';\r\n\r\n        IF (class_name IS NULL) THEN\r\n            RAISE EXCEPTION 'The reclada object class is not specified';\r\n        END IF;\r\n        class_uuid := reclada.try_cast_uuid(class_name);\r\n\r\n        _attrs := data->'attributes';\r\n        IF (_attrs IS NULL) THEN\r\n            RAISE EXCEPTION 'The reclada object must have attributes';\r\n        END IF;\r\n\r\n        tran_id := (data->>'transactionID')::bigint;\r\n        if tran_id is null then\r\n            tran_id := reclada.get_transaction_id();\r\n        end if;\r\n\r\n        IF class_uuid IS NULL THEN\r\n            SELECT reclada_object.get_schema(class_name) \r\n            INTO schema;\r\n            class_uuid := (schema->>'GUID')::uuid;\r\n        ELSE\r\n            SELECT v.data \r\n            FROM reclada.v_class v\r\n            WHERE class_uuid = v.obj_id\r\n            INTO schema;\r\n        END IF;\r\n        IF (schema IS NULL) THEN\r\n            RAISE EXCEPTION 'No json schema available for %', class_name;\r\n        END IF;\r\n\r\n        IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', _attrs))) THEN\r\n            RAISE EXCEPTION 'JSON invalid: %', _attrs;\r\n        END IF;\r\n        \r\n        IF data->>'id' IS NOT NULL THEN\r\n            RAISE EXCEPTION '%','Field "id" not allow!!!';\r\n        END IF;\r\n\r\n        IF class_uuid IN (SELECT guid FROM reclada.v_PK_for_class)\r\n        THEN\r\n            SELECT o.obj_id\r\n                FROM reclada.v_object o\r\n                JOIN reclada.v_PK_for_class pk\r\n                    on pk.guid = o.class\r\n                        and class_uuid = o.class\r\n                where o.attrs->>pk.pk = _attrs ->> pk.pk\r\n                LIMIT 1\r\n            INTO obj_GUID;\r\n            IF obj_GUID IS NOT NULL THEN\r\n                SELECT reclada_object.update(data || format('{"GUID": "%s"}', obj_GUID)::jsonb)\r\n                    INTO res;\r\n                    RETURN '[]'::jsonb || res;\r\n            END IF;\r\n        END IF;\r\n\r\n        obj_GUID := (data->>'GUID')::uuid;\r\n        IF EXISTS (\r\n            SELECT 1\r\n            FROM reclada.object \r\n            WHERE GUID = obj_GUID\r\n        ) THEN\r\n            RAISE EXCEPTION 'GUID: % is duplicate', obj_GUID;\r\n        END IF;\r\n        --raise notice 'schema: %',schema;\r\n\r\n        _parent_guid = (data->>'parent_guid')::uuid;\r\n\r\n        INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)\r\n            SELECT  CASE\r\n                        WHEN obj_GUID IS NULL\r\n                            THEN public.uuid_generate_v4()\r\n                        ELSE obj_GUID\r\n                    END AS GUID,\r\n                    class_uuid, \r\n                    _attrs,\r\n                    tran_id,\r\n                    _parent_guid\r\n        RETURNING GUID INTO obj_GUID;\r\n        affected := array_append( affected, obj_GUID);\r\n\r\n        PERFORM reclada_object.datasource_insert\r\n            (\r\n                class_name,\r\n                obj_GUID,\r\n                _attrs\r\n            );\r\n\r\n        PERFORM reclada_object.refresh_mv(class_name);\r\n    END LOOP;\r\n\r\n    res := array_to_json\r\n            (\r\n                array\r\n                (\r\n                    SELECT o.data \r\n                    FROM reclada.v_active_object o\r\n                    WHERE o.obj_id = ANY (affected)\r\n                )\r\n            )::jsonb; \r\n    \r\n    delete from reclada.draft \r\n        where guid = ANY (affected);\r\n\r\n    PERFORM reclada_notification.send_object_notification\r\n        (\r\n            'create',\r\n            res\r\n        );\r\n    RETURN res;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.create_subclass ;\nCREATE OR REPLACE FUNCTION reclada_object.create_subclass(data jsonb)\n RETURNS void\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    class           text;\r\n    new_class       text;\r\n    attrs           jsonb;\r\n    class_schema    jsonb;\r\n    version_         integer;\r\n    class_guid    uuid;\r\nBEGIN\r\n\r\n    class := data->>'class';\r\n    IF (class IS NULL) THEN\r\n        RAISE EXCEPTION 'The reclada object class is not specified';\r\n    END IF;\r\n\r\n    attrs := data->'attributes';\r\n    IF (attrs IS NULL) THEN\r\n        RAISE EXCEPTION 'The reclada object must have attributes';\r\n    END IF;\r\n\r\n    new_class = attrs->>'newClass';\r\n\r\n    SELECT reclada_object.get_schema(class) INTO class_schema;\r\n\r\n    IF (class_schema IS NULL) THEN\r\n        RAISE EXCEPTION 'No json schema available for %', class;\r\n    END IF;\r\n\r\n    SELECT max(version) + 1\r\n    FROM reclada.v_class_lite v\r\n    WHERE v.for_class = new_class\r\n    INTO version_;\r\n\r\n    version_ := coalesce(version_,1);\r\n    class_schema := class_schema->'attributes'->'schema';\r\n\r\n    SELECT obj_id\r\n    FROM reclada.v_class\r\n    WHERE for_class = class\r\n    ORDER BY version DESC\r\n    LIMIT 1\r\n    INTO class_guid;\r\n\r\n    PERFORM reclada_object.create(format('{\r\n        "class": "jsonschema",\r\n        "attributes": {\r\n            "forClass": "%s",\r\n            "version": "%s",\r\n            "schema": {\r\n                "type": "object",\r\n                "properties": %s,\r\n                "required": %s\r\n            }\r\n        },\r\n        "parent_guid" : "%s"\r\n    }',\r\n    new_class,\r\n    version_,\r\n    (class_schema->'properties') || coalesce((attrs->'properties'),'{}'::jsonb),\r\n    (SELECT jsonb_agg(el) FROM (\r\n        SELECT DISTINCT pg_catalog.jsonb_array_elements(\r\n            (class_schema -> 'required') || coalesce((attrs -> 'required'),'{}'::jsonb)\r\n        ) el) arr),\r\n    class_guid\r\n    )::jsonb);\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.refresh_mv ;\nCREATE OR REPLACE FUNCTION reclada_object.refresh_mv(class_name text)\n RETURNS void\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n    CASE class_name\r\n        WHEN 'ObjectStatus' THEN\r\n            REFRESH MATERIALIZED VIEW reclada.v_object_status;\r\n        WHEN 'User' THEN\r\n            REFRESH MATERIALIZED VIEW reclada.v_user;\r\n        WHEN 'jsonschema' THEN\r\n            REFRESH MATERIALIZED VIEW reclada.v_class_lite;\r\n        ELSE\r\n            NULL;\r\n    END CASE;\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.update ;\nCREATE OR REPLACE FUNCTION reclada_object.update(data jsonb, user_info jsonb DEFAULT '{}'::jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    _class_name     text;\r\n    class_uuid     uuid;\r\n    v_obj_id       uuid;\r\n    v_attrs        jsonb;\r\n    schema        jsonb;\r\n    old_obj       jsonb;\r\n    branch        uuid;\r\n    revid         uuid;\r\n\r\nBEGIN\r\n\r\n    _class_name := data->>'class';\r\n    IF (_class_name IS NULL) THEN\r\n        RAISE EXCEPTION 'The reclada object class is not specified';\r\n    END IF;\r\n    class_uuid := reclada.try_cast_uuid(_class_name);\r\n    v_obj_id := data->>'GUID';\r\n    IF (v_obj_id IS NULL) THEN\r\n        RAISE EXCEPTION 'Could not update object with no GUID';\r\n    END IF;\r\n\r\n    v_attrs := data->'attributes';\r\n    IF (v_attrs IS NULL) THEN\r\n        RAISE EXCEPTION 'The reclada object must have attributes';\r\n    END IF;\r\n\r\n    SELECT reclada_object.get_schema(_class_name) \r\n        INTO schema;\r\n\r\n    if class_uuid is null then\r\n        SELECT reclada_object.get_schema(_class_name) \r\n            INTO schema;\r\n    else\r\n        select v.data, v.for_class \r\n            from reclada.v_class v\r\n                where class_uuid = v.obj_id\r\n            INTO schema, _class_name;\r\n    end if;\r\n    -- TODO: don't allow update jsonschema\r\n    IF (schema IS NULL) THEN\r\n        RAISE EXCEPTION 'No json schema available for %', _class_name;\r\n    END IF;\r\n\r\n    IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', v_attrs))) THEN\r\n        RAISE EXCEPTION 'JSON invalid: %', v_attrs;\r\n    END IF;\r\n\r\n    SELECT \tv.data\r\n        FROM reclada.v_object v\r\n\t        WHERE v.obj_id = v_obj_id\r\n                AND v.class_name = _class_name \r\n\t    INTO old_obj;\r\n\r\n    IF (old_obj IS NULL) THEN\r\n        RAISE EXCEPTION 'Could not update object, no such id';\r\n    END IF;\r\n\r\n    branch := data->'branch';\r\n    SELECT reclada_revision.create(user_info->>'sub', branch, v_obj_id) \r\n        INTO revid;\r\n    \r\n    with t as \r\n    (\r\n        update reclada.object o\r\n            set status = reclada_object.get_archive_status_obj_id()\r\n                where o.GUID = v_obj_id\r\n                    and status != reclada_object.get_archive_status_obj_id()\r\n                        RETURNING id\r\n    )\r\n    INSERT INTO reclada.object( GUID,\r\n                                class,\r\n                                status,\r\n                                attributes,\r\n                                transaction_id\r\n                              )\r\n        select  v.obj_id,\r\n                (schema->>'GUID')::uuid,\r\n                reclada_object.get_active_status_obj_id(),--status \r\n                v_attrs || format('{"revision":"%s"}',revid)::jsonb,\r\n                transaction_id\r\n            FROM reclada.v_object v\r\n            JOIN \r\n            (   \r\n                select id \r\n                    FROM \r\n                    (\r\n                        select id, 1 as q\r\n                            from t\r\n                        union \r\n                        select id, 2 as q\r\n                            from reclada.object ro\r\n                                where ro.guid = v_obj_id\r\n                                    ORDER BY ID DESC \r\n                                        LIMIT 1\r\n                    ) ta\r\n                    ORDER BY q ASC \r\n                        LIMIT 1\r\n            ) as tt\r\n                on tt.id = v.id\r\n\t            WHERE v.obj_id = v_obj_id;\r\n    PERFORM reclada_object.datasource_insert\r\n            (\r\n                _class_name,\r\n                v_obj_id,\r\n                v_attrs\r\n            );\r\n    PERFORM reclada_object.refresh_mv(_class_name);  \r\n                  \r\n    select v.data \r\n        FROM reclada.v_active_object v\r\n            WHERE v.obj_id = v_obj_id\r\n        into data;\r\n    PERFORM reclada_notification.send_object_notification('update', data);\r\n    RETURN data;\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.datasource_insert ;\nCREATE OR REPLACE FUNCTION reclada_object.datasource_insert(_class_name text, _obj_id uuid, attributes jsonb)\n RETURNS void\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    dataset_guid  uuid;\r\n    uri           text;\r\n    environment   varchar;\r\n    rel_cnt       int;\r\n    dataset2ds_type text;\r\nBEGIN\r\n    IF _class_name in \r\n            ('DataSource','File') THEN\r\n\r\n        IF (_obj_id IS NULL) THEN\r\n            RAISE EXCEPTION 'Object GUID IS NULL';\r\n        END IF;\r\n\r\n        dataset2ds_type := 'defaultDataSet to DataSource';\r\n\r\n        SELECT v.obj_id\r\n        FROM reclada.v_active_object v\r\n\t    WHERE v.attrs->>'name' = 'defaultDataSet'\r\n\t        INTO dataset_guid;\r\n\r\n        IF (dataset_guid IS NULL) THEN\r\n            RAISE EXCEPTION 'Can''t found defaultDataSet';\r\n        END IF;\r\n\r\n        SELECT count(*)\r\n        FROM reclada.v_active_object\r\n        WHERE class_name = 'Relationship'\r\n            AND NULLIF(attrs->>'object','')::uuid   = _obj_id\r\n            AND NULLIF(attrs->>'subject','')::uuid  = dataset_guid\r\n            AND attrs->>'type'                      = dataset2ds_type\r\n                INTO rel_cnt;\r\n\r\n        IF rel_cnt=0 THEN\r\n            PERFORM reclada_object.create(\r\n                format('{\r\n                    "class": "Relationship",\r\n                    "attributes": {\r\n                        "type": "%s",\r\n                        "object": "%s",\r\n                        "subject": "%s"\r\n                        }\r\n                    }', dataset2ds_type, _obj_id, dataset_guid)::jsonb);\r\n\r\n        END IF;\r\n\r\n        uri := attributes->>'uri';\r\n\r\n        SELECT attrs->>'Environment'\r\n        FROM reclada.v_active_object\r\n        WHERE class_name = 'Context'\r\n        ORDER BY id DESC\r\n        LIMIT 1\r\n            INTO environment;\r\n\r\n        PERFORM reclada_object.create(\r\n            format('{\r\n                "class": "Job",\r\n                "attributes": {\r\n                    "task": "c94bff30-15fa-427f-9954-d5c3c151e652",\r\n                    "status": "new",\r\n                    "type": "%s",\r\n                    "command": "./run_pipeline.sh",\r\n                    "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]\r\n                    }\r\n                }', environment, uri, _obj_id)::jsonb);\r\n\r\n    END IF;\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.parse_filter ;\nCREATE OR REPLACE FUNCTION reclada_object.parse_filter(data jsonb)\n RETURNS TABLE(lvl integer, rn bigint, idx bigint, op text, prev bigint, val jsonb, parsed jsonb)\n LANGUAGE sql\n IMMUTABLE\nAS $function$\r\n    WITH RECURSIVE f AS \r\n    (\r\n        SELECT data AS v\r\n    ),\r\n    pr AS \r\n    (\r\n        SELECT \tformat(' %s ',f.v->>'operator') AS op, \r\n                val.v AS val,\r\n                1 AS lvl,\r\n                row_number() OVER(ORDER BY idx) AS rn,\r\n                val.idx idx,\r\n                0::BIGINT prev\r\n            FROM f, jsonb_array_elements(f.v->'value') WITH ordinality AS val(v, idx)\r\n    ),\r\n    res AS\r\n    (\t\r\n        SELECT \tpr.lvl\t,\r\n                pr.rn\t,\r\n                pr.idx  ,\r\n                pr.op\t,\r\n                pr.prev ,\r\n                pr.val\t,\r\n                CASE jsonb_typeof(pr.val) \r\n                    WHEN 'object'\t\r\n                        THEN NULL\r\n                    ELSE pr.val\r\n                END AS parsed\r\n            FROM pr\r\n            WHERE prev = 0 \r\n                AND lvl = 1\r\n        UNION ALL\r\n        SELECT \tttt.lvl\t,\r\n                ROW_NUMBER() OVER(ORDER BY ttt.idx) AS rn,\r\n                ttt.idx,\r\n                ttt.op\t,\r\n                ttt.prev,\r\n                ttt.val ,\r\n                CASE jsonb_typeof(ttt.val) \r\n                    WHEN 'object'\t\r\n                        THEN NULL\r\n                    ELSE ttt.val\r\n                end AS parsed\r\n            FROM\r\n            (\r\n                SELECT \tres.lvl + 1 AS lvl,\r\n                        format(' %s ',res.val->>'operator') AS op,\r\n                        res.rn AS prev\t,\r\n                        val.v  AS val,\r\n                        val.idx\r\n                    FROM res, \r\n                         jsonb_array_elements(res.val->'value') WITH ordinality AS val(v, idx)\r\n            ) ttt\r\n    )\r\n    SELECT \tr.lvl\t,\r\n            r.rn\t,\r\n            r.idx   ,\r\n            case upper(r.op) \r\n                when ' XOR '\r\n                    then ' OPERATOR(reclada.##) ' \r\n                else upper(r.op) \r\n            end,\r\n            r.prev  ,\r\n            r.val\t,\r\n            r.parsed\r\n        FROM res r\r\n$function$\n;\n\n\nDROP function IF EXISTS reclada_object.list ;\nCREATE OR REPLACE FUNCTION reclada_object.list(data jsonb, gui boolean DEFAULT false, ver text DEFAULT '1'::text)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    _f_name TEXT = 'reclada_object.list';\r\n    _class              text;\r\n    attrs               jsonb;\r\n    order_by_jsonb      jsonb;\r\n    order_by            text;\r\n    limit_              text;\r\n    offset_             text;\r\n    query_conditions    text;\r\n    number_of_objects   int;\r\n    objects             jsonb;\r\n    res                 jsonb;\r\n    query               text;\r\n    class_uuid          uuid;\r\n    last_change         text;\r\n    tran_id             bigint;\r\n    _filter             JSONB;\r\n    _object_display     JSONB;\r\nBEGIN\r\n\r\n    perform reclada.validate_json(data, _f_name);\r\n\r\n    tran_id := (data->>'transactionID')::bigint;\r\n    _class := data->>'class';\r\n    _filter = data->'filter';\r\n\r\n    order_by_jsonb := data->'orderBy';\r\n    IF ((order_by_jsonb IS NULL) OR\r\n        (order_by_jsonb = 'null'::jsonb) OR\r\n        (order_by_jsonb = '[]'::jsonb)) THEN\r\n        order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;\r\n    END IF;\r\n    SELECT string_agg(\r\n        format(E'obj.data#>''{%s}'' %s', T.value->>'field', COALESCE(T.value->>'order', 'ASC')),\r\n        ' , ')\r\n        FROM jsonb_array_elements(order_by_jsonb) T\r\n        INTO order_by;\r\n\r\n    limit_ := data->>'limit';\r\n    IF (limit_ IS NULL) THEN\r\n        limit_ := 500;\r\n    END IF;\r\n\r\n    offset_ := data->>'offset';\r\n    IF (offset_ IS NULL) THEN\r\n        offset_ := 0;\r\n    END IF;\r\n    \r\n    IF (_filter IS NOT NULL) THEN\r\n        query_conditions := reclada_object.get_query_condition_filter(_filter);\r\n        IF ver = '2' THEN\r\n            query_conditions := REPLACE(query_conditions,'#>','->');\r\n        end if;\r\n    ELSE\r\n        class_uuid := reclada.try_cast_uuid(_class);\r\n\r\n        IF (class_uuid IS NULL) THEN\r\n            SELECT v.obj_id\r\n                FROM reclada.v_class v\r\n                    WHERE _class = v.for_class\r\n                    ORDER BY v.version DESC\r\n                    limit 1 \r\n            INTO class_uuid;\r\n            IF (class_uuid IS NULL) THEN\r\n                RAISE EXCEPTION 'Class not found: %', _class;\r\n            END IF;\r\n        end if;\r\n\r\n        attrs := data->'attributes' || '{}'::jsonb;\r\n\r\n        SELECT\r\n            string_agg(\r\n                format(\r\n                    E'(%s)',\r\n                    condition\r\n                ),\r\n                ' AND '\r\n            )\r\n            FROM (\r\n                SELECT\r\n                    format('obj.class_name = ''%s''', _class) AS condition\r\n                        where _class is not null\r\n                            and class_uuid is null\r\n                UNION\r\n                    SELECT format('obj.class = ''%s''', class_uuid) AS condition\r\n                        where class_uuid is not null\r\n                UNION\r\n                    SELECT format('obj.transaction_id = %s', tran_id) AS condition\r\n                        where tran_id is not null\r\n                UNION\r\n                    SELECT CASE\r\n                            WHEN jsonb_typeof(data->'GUID') = 'array' THEN\r\n                            (\r\n                                SELECT string_agg\r\n                                    (\r\n                                        format(\r\n                                            E'(%s)',\r\n                                            reclada_object.get_query_condition(cond, E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)\r\n                                        ),\r\n                                        ' AND '\r\n                                    )\r\n                                    FROM jsonb_array_elements(data->'GUID') AS cond\r\n                            )\r\n                            ELSE reclada_object.get_query_condition(data->'GUID', E'data->''GUID''') -- TODO: change data->'GUID' to obj_id(GUID)\r\n                        END AS condition\r\n                    WHERE coalesce(data->'GUID','null'::jsonb) != 'null'::jsonb\r\n                UNION\r\n                SELECT\r\n                    CASE\r\n                        WHEN jsonb_typeof(value) = 'array'\r\n                            THEN\r\n                                (\r\n                                    SELECT string_agg\r\n                                        (\r\n                                            format\r\n                                            (\r\n                                                E'(%s)',\r\n                                                reclada_object.get_query_condition(cond, format(E'attrs->%L', key))\r\n                                            ),\r\n                                            ' AND '\r\n                                        )\r\n                                        FROM jsonb_array_elements(value) AS cond\r\n                                )\r\n                        ELSE reclada_object.get_query_condition(value, format(E'attrs->%L', key))\r\n                    END AS condition\r\n                FROM jsonb_each(attrs)\r\n                WHERE attrs != ('{}'::jsonb)\r\n            ) conds\r\n        INTO query_conditions;\r\n    END IF;\r\n    IF ver = '2' THEN\r\n        query := 'FROM reclada.v_ui_active_object obj WHERE ' || query_conditions;\r\n    ELSE\r\n        query := 'FROM reclada.v_active_object obj WHERE ' || query_conditions;\r\n    END IF;\r\n\r\n    -- RAISE NOTICE 'conds: %', '\r\n    --             SELECT obj.data\r\n    --             '\r\n    --             || query\r\n    --             ||\r\n    --             ' ORDER BY ' || order_by ||\r\n    --             ' OFFSET ' || offset_ || ' LIMIT ' || limit_ ;\r\n\r\n    EXECUTE E'SELECT to_jsonb(array_agg(T.data))\r\n        FROM (\r\n            SELECT obj.data\r\n            '\r\n            || query\r\n            ||\r\n            ' ORDER BY ' || order_by ||\r\n            ' OFFSET ' || offset_ || ' LIMIT ' || limit_ || ') T'\r\n    INTO objects;\r\n    objects := coalesce(objects,'[]'::jsonb);\r\n    IF gui THEN\r\n\r\n        if ver = '2' then\r\n            -- raise notice 'od: %',_object_display;\r\n            EXECUTE '   with recursive \r\n                        d as ( \r\n                            select  obj_id, data\r\n                                '|| query ||'\r\n                        ),\r\n                        t as\r\n                        (\r\n                            select distinct je.key v\r\n                                from d\r\n                                JOIN LATERAL jsonb_each(d.data) je\r\n                                    on true \r\n                        ),\r\n                        on_data as \r\n                        (\r\n                            select  jsonb_object_agg(\r\n                                        t.v, \r\n                                        replace(dd.template,''#@#attrname#@#'',t.v)::jsonb \r\n                                    ) t\r\n                                from t\r\n                                JOIN reclada.v_default_display dd\r\n                                    on t.v like ''%'' || dd.json_type\r\n                        )\r\n                        select od.t || coalesce(d.table,''{}''::jsonb)\r\n                            from on_data od\r\n                            left join reclada.v_object_display d\r\n                                on d.class_guid = '''||class_uuid::text||''''\r\n            INTO _object_display;\r\n\r\n        end if;\r\n        EXECUTE E'SELECT COUNT(1),\r\n                         TO_CHAR(\r\n                            MAX(\r\n                                GREATEST(obj.created_time, (\r\n                                    SELECT TO_TIMESTAMP(MAX(date_time),\\'YYYY-MM-DD hh24:mi:ss.US TZH\\')\r\n                                    FROM reclada.v_revision vr\r\n                                    WHERE vr.obj_id = UUID(obj.attrs ->>\\'revision\\'))\r\n                                )\r\n                            ),\\'YYYY-MM-DD hh24:mi:ss.MS TZH\\')\r\n            '|| query\r\n            INTO number_of_objects, last_change;\r\n        \r\n        IF _object_display IS NOT NULL then\r\n            res := jsonb_build_object(\r\n                    'lastСhange', last_change,    \r\n                    'number', number_of_objects,\r\n                    'objects', objects,\r\n                    'display', _object_display\r\n                );\r\n        ELSE\r\n            res := jsonb_build_object(\r\n                    'lastСhange', last_change,    \r\n                    'number', number_of_objects,\r\n                    'objects', objects\r\n            );\r\n        end if;\r\n    ELSE\r\n        \r\n        res := objects;\r\n    END IF;\r\n\r\n    RETURN res;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_list ;\nCREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb DEFAULT NULL::jsonb, ver text DEFAULT '1'::text, draft text DEFAULT 'false'::text)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    _class              text;\r\n    user_info           jsonb;\r\n    result              jsonb;\r\n    _filter             jsonb;\r\nBEGIN\r\n\r\n    if draft != 'false' then\r\n        return array_to_json\r\n            (\r\n                array\r\n                (\r\n                    SELECT o.data \r\n                        FROM reclada.draft o\r\n                            where id = \r\n                                (\r\n                                    select max(id) \r\n                                        FROM reclada.draft d\r\n                                            where o.guid = d.guid\r\n                                )\r\n                            -- and o.user = user_info->>'guid'\r\n                )\r\n            )::jsonb;\r\n    end if;\r\n\r\n    _class := CASE ver\r\n                when '1'\r\n                    then data->>'class'\r\n                when '2'\r\n                    then data->>'{class}'\r\n            end;\r\n    IF(_class IS NULL) THEN\r\n        RAISE EXCEPTION 'reclada object class not specified';\r\n    END IF;\r\n\r\n    _filter = data->'filter';\r\n    IF _filter IS NOT NULL THEN\r\n        SELECT format(  '{\r\n                            "filter":\r\n                            {\r\n                                "operator":"AND",\r\n                                "value":[\r\n                                    {\r\n                                        "operator":"=",\r\n                                        "value":["{class}","%s"]\r\n                                    },\r\n                                    %s\r\n                                ]\r\n                            }\r\n                        }',\r\n                _class,\r\n                _filter\r\n            )::jsonb \r\n            INTO _filter;\r\n        data := data || _filter;\r\n    ELSE\r\n        data := data || ('{"class":"'|| _class ||'"}')::jsonb;\r\n    --     select format(  '{\r\n    --                         "filter":{\r\n    --                             "operator":"=",\r\n    --                             "value":["{class}","%s"]\r\n    --                         }\r\n    --                     }',\r\n    --             class,\r\n    --             _filter\r\n    --         )::jsonb \r\n    --         INTO _filter;\r\n    END IF;\r\n\r\n    SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;\r\n    data := data - 'accessToken';\r\n\r\n    IF (NOT(reclada_user.is_allowed(user_info, 'list', _class))) THEN\r\n        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', _class;\r\n    END IF;\r\n\r\n    SELECT reclada_object.list(data, true, ver) \r\n        INTO result;\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.get_query_condition_filter ;\nCREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data jsonb)\n RETURNS text\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE \r\n    _count   INT;\r\n    _res     TEXT;\r\n    _f_name TEXT = 'reclada_object.get_query_condition_filter';\r\nBEGIN \r\n    \r\n    perform reclada.validate_json(data, _f_name);\r\n    -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE\r\n    CREATE TEMP TABLE mytable AS\r\n        SELECT  res.lvl              AS lvl         , \r\n                res.rn               AS rn          , \r\n                res.idx              AS idx         ,\r\n                res.prev             AS prev        , \r\n                res.val              AS val         ,  \r\n                res.parsed           AS parsed      , \r\n                coalesce(\r\n                    po.inner_operator, \r\n                    op.operator\r\n                )                   AS op           , \r\n                coalesce\r\n                (\r\n                    iop.input_type,\r\n                    op.input_type\r\n                )                   AS input_type   ,\r\n                case \r\n                    when iop.input_type is not NULL \r\n                        then NULL \r\n                    else \r\n                        op.output_type\r\n                end                 AS output_type  ,\r\n                po.operator         AS po           ,\r\n                po.input_type       AS po_input_type,\r\n                iop.brackets        AS po_inner_brackets\r\n            FROM reclada_object.parse_filter(data) res\r\n            LEFT JOIN reclada.v_filter_avaliable_operator op\r\n                ON res.op = op.operator\r\n            LEFT JOIN reclada_object.parse_filter(data) p\r\n                on  p.lvl = res.lvl-1\r\n                    and res.prev = p.rn\r\n            LEFT JOIN reclada.v_filter_avaliable_operator po\r\n                on po.operator = p.op\r\n            LEFT JOIN reclada.v_filter_inner_operator iop\r\n                on iop.operator = po.inner_operator;\r\n\r\n    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op, _f_name)\r\n        FROM mytable t\r\n            WHERE t.op IS NULL;\r\n\r\n\r\n    UPDATE mytable u\r\n        SET parsed = to_jsonb(p.v)\r\n            FROM mytable t\r\n            JOIN LATERAL \r\n            (\r\n                SELECT  t.parsed #>> '{}' v\r\n            ) as pt\r\n                ON TRUE\r\n            LEFT JOIN reclada.v_filter_mapping fm\r\n                ON pt.v = fm.pattern\r\n            JOIN LATERAL \r\n            (\r\n                SELECT CASE \r\n                        WHEN fm.repl is not NULL \r\n                            then \r\n                                case \r\n                                    when t.input_type in ('TEXT')\r\n                                        then fm.repl || '::TEXT'\r\n                                    else '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')\r\n                            then \r\n                                case \r\n                                    when t.input_type in ('NUMERIC','INT')\r\n                                        then pt.v\r\n                                    else '''' || pt.v || '''::jsonb'\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) = 'string' \r\n                            then    \r\n                                case\r\n                                    WHEN pt.v LIKE '{%}'\r\n                                        THEN\r\n                                            case\r\n                                                when t.input_type = 'TEXT'\r\n                                                    then format('(data #>> ''%s'')', pt.v)\r\n                                                when t.input_type = 'JSONB' or t.input_type is null\r\n                                                    then format('data #> ''%s''', pt.v)\r\n                                                else\r\n                                                    format('(data #>> ''%s'')::', pt.v) || t.input_type\r\n                                            end\r\n                                    when t.input_type = 'TEXT'\r\n                                        then ''''||REPLACE(pt.v,'''','''''')||''''\r\n                                    when t.input_type = 'JSONB' or t.input_type is null\r\n                                        then '''"'||REPLACE(pt.v,'''','''''')||'"''::jsonb'\r\n                                    else ''''||REPLACE(pt.v,'''','''''')||'''::'||t.input_type\r\n                                end\r\n                        WHEN jsonb_typeof(t.parsed) = 'null'\r\n                            then 'null'\r\n                        WHEN jsonb_typeof(t.parsed) = 'array'\r\n                            then ''''||REPLACE(pt.v,'''','''''')||'''::jsonb'\r\n                        ELSE\r\n                            pt.v\r\n                    END AS v\r\n            ) as p\r\n                ON TRUE\r\n            WHERE t.lvl = u.lvl\r\n                AND t.rn = u.rn\r\n                AND t.parsed IS NOT NULL;\r\n\r\n    update mytable u\r\n        set op = CASE \r\n                    when f.btwn\r\n                        then ' BETWEEN '\r\n                    else u.op -- f.inop\r\n                end,\r\n            parsed = format(vb.operand_format,u.parsed)::jsonb\r\n        FROM mytable t\r\n        join lateral\r\n        (\r\n            select  t.op like ' %/BETWEEN ' btwn, \r\n                    t.po_inner_brackets is not null inop\r\n        ) f \r\n            on true\r\n        join reclada.v_filter_between vb\r\n            on t.op = vb.operator\r\n            WHERE t.lvl = u.lvl\r\n                AND t.rn = u.rn\r\n                AND (f.btwn or f.inop);\r\n\r\n    INSERT INTO mytable (lvl,rn)\r\n        VALUES (0,0);\r\n\r\n    _count := 1;\r\n\r\n    WHILE (_count>0) LOOP\r\n        WITH r AS \r\n        (\r\n            UPDATE mytable\r\n                SET parsed = to_json(t.converted)::JSONB \r\n                FROM \r\n                (\r\n                    SELECT     \r\n                            res.lvl-1 lvl,\r\n                            res.prev rn,\r\n                            res.op,\r\n                            1 q,\r\n                            case \r\n                                when not res.po_inner_brackets \r\n                                    then array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) \r\n                                else\r\n                                    CASE COUNT(1) \r\n                                        WHEN 1\r\n                                            THEN \r\n                                                CASE res.output_type\r\n                                                    when 'NUMERIC'\r\n                                                        then format('(%s %s)::TEXT::JSONB', res.op, min(res.parsed #>> '{}') )\r\n                                                    else \r\n                                                        format('(%s %s)', res.op, min(res.parsed #>> '{}') )\r\n                                                end\r\n                                        ELSE\r\n                                            CASE \r\n                                                when res.output_type = 'TEXT'\r\n                                                    then '(''"''||'||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||'||''"'')::JSONB'\r\n                                                when res.output_type in ('NUMERIC','INT')\r\n                                                    then '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||')::TEXT::JSONB'\r\n                                                else\r\n                                                    '('||array_to_string(array_agg(res.parsed #>> '{}' ORDER BY res.rn), res.op) ||')'\r\n                                            end\r\n                                    end\r\n                            end AS converted\r\n                        FROM mytable res \r\n                            WHERE res.parsed IS NOT NULL\r\n                                AND res.lvl = (SELECT max(lvl)+1 FROM mytable WHERE parsed IS NULL)\r\n                            GROUP BY  res.prev, res.op, res.lvl, res.input_type, res.output_type, res.po_inner_brackets\r\n                ) t\r\n                WHERE\r\n                    t.lvl = mytable.lvl\r\n                        AND t.rn = mytable.rn\r\n                RETURNING 1\r\n        )\r\n            SELECT COUNT(1) \r\n                FROM r\r\n                INTO _count;\r\n    END LOOP;\r\n    \r\n    SELECT parsed #>> '{}' \r\n        FROM mytable\r\n            WHERE lvl = 0 AND rn = 0\r\n        INTO _res;\r\n    -- perform reclada.raise_notice( _res);\r\n    DROP TABLE mytable;\r\n    RETURN _res;\r\nEND \r\n$function$\n;\nDROP function IF EXISTS api.reclada_object_create ;\nCREATE OR REPLACE FUNCTION api.reclada_object_create(data jsonb, ver text DEFAULT '1'::text, draft text DEFAULT 'false'::text)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    data_jsonb       jsonb;\r\n    class            text;\r\n    user_info        jsonb;\r\n    attrs            jsonb;\r\n    data_to_create   jsonb = '[]'::jsonb;\r\n    result           jsonb;\r\n    _need_flat       bool := false;\r\n    _draft           bool;\r\n    _guid            uuid;\r\nBEGIN\r\n\r\n    _draft := draft != 'false';\r\n\r\n    IF (jsonb_typeof(data) != 'array') THEN\r\n        data := '[]'::jsonb || data;\r\n    END IF;\r\n\r\n    FOR data_jsonb IN SELECT jsonb_array_elements(data) LOOP\r\n\r\n        _guid := CASE ver\r\n                        when '1'\r\n                            then data_jsonb->>'GUID'\r\n                        when '2'\r\n                            then data_jsonb->>'{GUID}'\r\n                    end;\r\n        if _draft then\r\n            INSERT into reclada.draft(guid,data)\r\n                values(_guid,data_jsonb);\r\n        else\r\n\r\n             class := CASE ver\r\n                            when '1'\r\n                                then data_jsonb->>'class'\r\n                            when '2'\r\n                                then data_jsonb->>'{class}'\r\n                        end;\r\n\r\n            IF (class IS NULL) THEN\r\n                RAISE EXCEPTION 'The reclada object class is not specified (api)';\r\n            END IF;\r\n\r\n            SELECT reclada_user.auth_by_token(data_jsonb->>'accessToken') INTO user_info;\r\n            data_jsonb := data_jsonb - 'accessToken';\r\n\r\n            IF (NOT(reclada_user.is_allowed(user_info, 'create', class))) THEN\r\n                RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'create', class;\r\n            END IF;\r\n            \r\n            if ver = '2' then\r\n                _need_flat := true;\r\n                with recursive j as \r\n                (\r\n                    select  row_number() over() as id,\r\n                            key,\r\n                            value \r\n                        from jsonb_each(data_jsonb)\r\n                            where key like '{%}'\r\n                ),\r\n                inn as \r\n                (\r\n                    SELECT  row_number() over(order by s.id,j.id) rn,\r\n                            j.id,\r\n                            s.id sid,\r\n                            s.d,\r\n                            ARRAY (\r\n                                SELECT UNNEST(arr.v) \r\n                                LIMIT array_position(arr.v, s.d)\r\n                            ) as k\r\n                        FROM j\r\n                        left join lateral\r\n                        (\r\n                            select id, d ,max(id) over() mid\r\n                            from\r\n                            (\r\n                                SELECT  row_number() over() as id, \r\n                                        d\r\n                                    from regexp_split_to_table(substring(j.key,2,char_length(j.key)-2),',') d \r\n                            ) t\r\n                        ) s on s.mid != s.id\r\n                        join lateral\r\n                        (\r\n                            select regexp_split_to_array(substring(j.key,2,char_length(j.key)-2),',') v\r\n                        ) arr on true\r\n                            where d is not null\r\n                ),\r\n                src as\r\n                (\r\n                    select  jsonb_set('{}'::jsonb,('{'|| i.d ||'}')::text[],'{}'::jsonb) r,\r\n                            i.rn\r\n                        from inn i\r\n                            where i.rn = 1\r\n                    union\r\n                    select  jsonb_set(\r\n                                s.r,\r\n                                i.k,\r\n                                '{}'::jsonb\r\n                            ) r,\r\n                            i.rn\r\n                        from src s\r\n                        join inn i\r\n                            on s.rn + 1 = i.rn\r\n                ),\r\n                tmpl as \r\n                (\r\n                    select r v\r\n                        from src\r\n                        ORDER BY rn DESC\r\n                        limit 1\r\n                ),\r\n                res as\r\n                (\r\n                    SELECT jsonb_set(\r\n                            (select v from tmpl),\r\n                            j.key::text[],\r\n                            j.value\r\n                        ) v,\r\n                        j.id\r\n                        FROM j\r\n                            where j.id = 1\r\n                    union \r\n                    select jsonb_set(\r\n                            res.v,\r\n                            j.key::text[],\r\n                            j.value\r\n                        ) v,\r\n                        j.id\r\n                        FROM res\r\n                        join j\r\n                            on res.id + 1 =j.id\r\n                )\r\n                SELECT v \r\n                    FROM res\r\n                    ORDER BY ID DESC\r\n                    limit 1\r\n                    into data_jsonb;\r\n            end if;\r\n\r\n            if data_jsonb is null then\r\n                RAISE EXCEPTION 'JSON invalid';\r\n            end if;\r\n            data_to_create := data_to_create || data_jsonb;\r\n        end if;\r\n    END LOOP;\r\n\r\n    if data_to_create is not  null then\r\n        SELECT reclada_object.create(data_to_create, user_info) \r\n            INTO result;\r\n    end if;\r\n    if ver = '2' or _draft then\r\n        RETURN '{"status":"OK"}'::jsonb;\r\n    end if;\r\n    RETURN result;\r\n\r\nEND;\r\n$function$\n;\nDROP function IF EXISTS reclada_object.delete ;\nCREATE OR REPLACE FUNCTION reclada_object.delete(data jsonb, user_info jsonb DEFAULT '{}'::jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n    v_obj_id            uuid;\r\n    tran_id             bigint;\r\n    class               text;\r\n    class_uuid          uuid;\r\n    list_id             bigint[];\r\n\r\nBEGIN\r\n\r\n    v_obj_id := data->>'GUID';\r\n    tran_id := (data->>'transactionID')::bigint;\r\n    class := data->>'class';\r\n\r\n    IF (v_obj_id IS NULL AND class IS NULL AND tran_id IS NULl) THEN\r\n        RAISE EXCEPTION 'Could not delete object with no GUID, class and transactionID';\r\n    END IF;\r\n\r\n    class_uuid := reclada.try_cast_uuid(class);\r\n\r\n    WITH t AS\r\n    (    \r\n        UPDATE reclada.object u\r\n            SET status = reclada_object.get_archive_status_obj_id()\r\n            FROM reclada.object o\r\n                LEFT JOIN\r\n                (   SELECT obj_id FROM reclada_object.get_GUID_for_class(class)\r\n                    UNION SELECT class_uuid WHERE class_uuid IS NOT NULL\r\n                ) c ON o.class = c.obj_id\r\n                WHERE u.id = o.id AND\r\n                (\r\n                    (v_obj_id = o.GUID AND c.obj_id = o.class AND tran_id = o.transaction_id)\r\n\r\n                    OR (v_obj_id = o.GUID AND c.obj_id = o.class AND tran_id IS NULL)\r\n                    OR (v_obj_id = o.GUID AND c.obj_id IS NULL AND tran_id = o.transaction_id)\r\n                    OR (v_obj_id IS NULL AND c.obj_id = o.class AND tran_id = o.transaction_id)\r\n\r\n                    OR (v_obj_id = o.GUID AND c.obj_id IS NULL AND tran_id IS NULL)\r\n                    OR (v_obj_id IS NULL AND c.obj_id = o.class AND tran_id IS NULL)\r\n                    OR (v_obj_id IS NULL AND c.obj_id IS NULL AND tran_id = o.transaction_id)\r\n                )\r\n                    AND o.status != reclada_object.get_archive_status_obj_id()\r\n                    RETURNING o.id\r\n    ) \r\n        SELECT\r\n            array\r\n            (\r\n                SELECT t.id FROM t\r\n            )\r\n        INTO list_id;\r\n\r\n    SELECT array_to_json\r\n    (\r\n        array\r\n        (\r\n            SELECT o.data\r\n            FROM reclada.v_object o\r\n            WHERE o.id IN (SELECT unnest(list_id))\r\n        )\r\n    )::jsonb\r\n    INTO data;\r\n\r\n    IF (jsonb_array_length(data) = 1) THEN\r\n        data := data->0;\r\n    END IF;\r\n    \r\n    IF (data IS NULL) THEN\r\n        RAISE EXCEPTION 'Could not delete object, no such GUID';\r\n    END IF;\r\n\r\n    PERFORM reclada_object.refresh_mv(class);\r\n\r\n    PERFORM reclada_notification.send_object_notification('delete', data);\r\n\r\n    RETURN data;\r\nEND;\r\n$function$\n;\n\nDROP view IF EXISTS reclada.v_filter_avaliable_operator ;\nCREATE OR REPLACE VIEW reclada.v_filter_avaliable_operator\nAS\n SELECT ' = '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' LIKE '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' NOT LIKE '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' || '::text AS operator,\n    'TEXT'::text AS input_type,\n    'TEXT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' ~ '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' !~ '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' ~* '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' !~* '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' SIMILAR TO '::text AS operator,\n    'TEXT'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' > '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' < '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' <= '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' != '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' >= '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' AND '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' OR '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' NOT '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' XOR '::text AS operator,\n    'BOOL'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' IS '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' IS NOT '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' IN '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    ' , '::text AS inner_operator\nUNION\n SELECT ' @> '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' <@ '::text AS operator,\n    'JSONB'::text AS input_type,\n    'BOOL'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' + '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' - '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' * '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' / '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' % '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' ^ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' |/ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' ||/ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' !! '::text AS operator,\n    'INT'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' @ '::text AS operator,\n    'NUMERIC'::text AS input_type,\n    'NUMERIC'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' & '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' | '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' # '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' << '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' >> '::text AS operator,\n    'INT'::text AS input_type,\n    'INT'::text AS output_type,\n    NULL::text AS inner_operator\nUNION\n SELECT ' BETWEEN '::text AS operator,\n    'TIMESTAMP WITH TIME ZONE'::text AS input_type,\n    'BOOL'::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' Y/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' MON/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' D/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' H/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' MIN/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' S/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' DOW/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' DOY/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' Q/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator\nUNION\n SELECT ' W/BETWEEN '::text AS operator,\n    NULL::text AS input_type,\n    NULL::text AS output_type,\n    ' AND '::text AS inner_operator;\nDROP view IF EXISTS reclada.v_ui_active_object ;\nCREATE OR REPLACE VIEW reclada.v_ui_active_object\nAS\n WITH RECURSIVE d AS (\n         SELECT obj.data,\n            obj.obj_id\n           FROM v_active_object obj\n        ), t AS (\n         SELECT je.key,\n            jsonb_typeof(je.value) AS typ,\n            d.obj_id,\n            je.value\n           FROM d\n             JOIN LATERAL jsonb_each(d.data) je(key, value) ON true\n          WHERE jsonb_typeof(je.value) <> 'null'::text\n        UNION\n         SELECT (d.key || ','::text) || je.key AS key,\n            jsonb_typeof(je.value) AS typ,\n            d.obj_id,\n            je.value\n           FROM ( SELECT d_1.data -> t_1.key AS data,\n                    t_1.key,\n                    d_1.obj_id\n                   FROM d d_1\n                     JOIN t t_1 ON t_1.typ = 'object'::text) d\n             JOIN LATERAL jsonb_each(d.data) je(key, value) ON true\n          WHERE jsonb_typeof(je.value) <> 'null'::text\n        ), res AS (\n         SELECT t_1.obj_id,\n            jsonb_object_agg((('{'::text || t_1.key) || '}:'::text) || t_1.typ, t_1.value) AS data\n           FROM t t_1\n          WHERE t_1.typ <> 'object'::text\n          GROUP BY t_1.obj_id\n        )\n SELECT res.obj_id,\n    res.data,\n    t.id,\n    t.class,\n    t.revision_num,\n    t.status,\n    t.status_caption,\n    t.revision,\n    t.created_time,\n    t.class_name,\n    t.attrs,\n    t.transaction_id,\n    t.parent_guid\n   FROM res\n     JOIN v_active_object t ON t.obj_id = res.obj_id;\n\nDROP TABLE reclada_object.cr_dup_behavior;\nDROP TYPE reclada.dp_bhvr;\n\nDROP INDEX reclada.uri_index_;\nDROP INDEX reclada.checksum_index_;\n\n--{ display\nwith t as\n( \n    update reclada.object\n        set status = reclada_object.get_active_status_obj_id()\n        where attributes->>'function' = 'reclada_object.list'\n            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))\n            and status = reclada_object.get_archive_status_obj_id()\n        returning id\n)\n    update reclada.object\n        set status = reclada_object.get_archive_status_obj_id()\n        where attributes->>'function' = 'reclada_object.list'\n            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))\n            and id not in (select id from t);\n--} display	2021-12-22 08:29:49.792075+00
 \.
 
 
@@ -4578,9 +3863,13 @@ COPY reclada.draft (id, guid, user_guid, data) FROM stdin;
 
 COPY reclada.object (id, status, attributes, transaction_id, created_time, created_by, class, guid, parent_guid) FROM stdin;
 22	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"caption": "active", "revision": "090c2cee-db0f-4637-9524-fb15e9c7362b"}	9	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	14af3113-18b5-4da8-af57-bdf37a6693aa	3748b1f7-b674-47ca-9ded-d011b16bbf7b	\N
+33	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["number", "bbox", "document"], "properties": {"bbox": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "number": {"type": "number"}, "document": {"type": "string"}}}, "version": "1", "forClass": "Page"}	2	2021-09-22 14:52:57.011935+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	3ed1c180-a508-4180-9281-2f9b9a9cd477	\N
 34	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["top", "left", "height", "width"], "properties": {"top": {"type": "number"}, "left": {"type": "number"}, "tags": {"type": "array", "items": {"type": "string"}}, "width": {"type": "number"}, "height": {"type": "number"}}}, "version": "1", "forClass": "BBox"}	3	2021-09-22 14:52:57.133151+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	c835c5b4-3b4f-49d7-b9b2-05a911234682	\N
 29	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["dateTime"], "properties": {"num": {"type": "number"}, "tags": {"type": "array", "items": {"type": "string"}}, "user": {"type": "string"}, "branch": {"type": "string"}, "dateTime": {"type": "string"}}}, "version": 1, "forClass": "revision"}	4	2021-09-22 14:51:54.773219+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	0f317fbd-8861-4d68-82ce-de7241d7db0f	\N
 35	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["text", "bbox", "page"], "properties": {"bbox": {"type": "string"}, "page": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "text": {"type": "string"}}}, "version": "1", "forClass": "TextBlock"}	5	2021-09-22 14:52:57.258646+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	9ed31858-a681-49fb-9e64-250b1afaf691	\N
+36	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["bbox", "page"], "properties": {"bbox": {"type": "string"}, "page": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": "1", "forClass": "Table"}	6	2021-09-22 14:52:57.379526+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	f5bcc7ad-1a9b-476d-985e-54cf01377530	\N
+37	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["colspan", "row", "text", "bbox", "table", "cellType", "rowspan", "column"], "properties": {"row": {"type": "number"}, "bbox": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "text": {"type": "string"}, "table": {"type": "string"}, "column": {"type": "number"}, "colspan": {"type": "number"}, "rowspan": {"type": "number"}, "cellType": {"type": "string"}}}, "version": "1", "forClass": "Cell"}	7	2021-09-22 14:52:57.502377+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	7f56ece0-e780-4496-8573-1ad4d800a3b6	\N
+38	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["row", "table"], "properties": {"row": {"type": "number"}, "tags": {"type": "array", "items": {"type": "string"}}, "table": {"type": "string"}}}, "version": "1", "forClass": "DataRow"}	8	2021-09-22 14:52:58.301966+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	7643b601-43c2-4125-831a-539b9e7418ec	\N
 18	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"name": "defaultDataSet", "revision": "a04d127e-5ea0-4683-8eff-2ea8d1ba5f24", "dataSources": []}	10	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	be193cf5-3156-4df4-8c9b-58b09524ce2f	10c400ff-a328-450d-ae07-ce7d427d961c	\N
 20	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["caption"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "caption": {"type": "string"}}}, "version": 1, "forClass": "ObjectStatus", "revision": "0b3c19cb-85f6-4481-bd91-30d004197cac"}	11	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	14af3113-18b5-4da8-af57-bdf37a6693aa	\N
 8	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["name"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": 1, "forClass": "DataSource", "revision": "559af2a2-371c-432f-92a7-e567da60565d"}	13	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	92a95f66-e28e-4ebc-9f33-3568fc5a281e	\N
@@ -4625,31 +3914,19 @@ COPY reclada.object (id, status, attributes, transaction_id, created_time, creat
 26	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["login"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "login": {"type": "string"}}}, "version": 1, "forClass": "User", "revision": "de7cfae5-c8c3-4ecc-b147-1427eb792f82"}	54	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	77f7d007-960f-4236-84fa-feadf3267bcf	\N
 14	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "dataSources": {"type": "array", "items": {"type": "string"}}}}, "version": 1, "forClass": "DataSet", "revision": "23a3251b-6269-456f-a5b7-09ce1b0df3e3"}	55	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	be193cf5-3156-4df4-8c9b-58b09524ce2f	\N
 57	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["tranID", "name"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "tranID": {"type": "number"}}}, "version": "1", "forClass": "ImportInfo"}	56	2021-09-24 09:46:22.790044+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	6f5245bd-1eec-4be0-8a28-681758155e33	\N
+58	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "fileGUID": {"type": "string"}}}, "version": "1", "forClass": "Document"}	57	2021-10-04 08:06:30.979167+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	85d32073-4a00-4df7-9def-7de8d90b77e0	\N
+59	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["checksum", "name", "mimeType"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "checksum": {"type": "string"}, "mimeType": {"type": "string"}}}, "version": "1", "forClass": "File"}	58	2021-10-04 08:06:30.979167+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	c7fc0455-0572-40d7-987f-583cc2c9630c	\N
 52	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["command", "status", "type", "task", "environment"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "task": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "type": {"type": "string"}, "runner": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "status": {"type": "string", "enum ": ["up", "down", "idle"]}, "command": {"type": "string"}, "environment": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "inputParameters": {"type": "array", "items": {"type": "object"}}, "outputParameters": {"type": "array", "items": {"type": "object"}}, "platformRunnerID": {"type": "string"}}}, "version": "1", "forClass": "Runner"}	29	2021-09-22 14:53:04.461972+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	b6e879da-731f-48c3-99b5-e48d73a74930	\N
 60	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["schema", "function"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "schema": {"type": "object"}, "function": {"type": "string"}}}, "version": "1", "forClass": "DTOJsonSchema"}	59	2021-11-08 11:01:49.274513+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	d90dd69c-fc00-4573-b747-c04f39c20b25	ab9ab26c-8902-43dd-9f1a-743b14a89825
 61	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"id": "expr", "type": "object", "required": ["value", "operator"], "properties": {"value": {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "null"}, {"type": "number"}, {"$ref": "expr"}, {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "number"}]}}]}, "minItems": 1}, "operator": {"type": "string"}}}, "function": "reclada_object.get_query_condition_filter"}	60	2021-11-08 11:01:49.274513+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	4ecbf6f5-7eea-4dbd-9f46-e0535f7fb299	\N
-58	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "fileGUID": {"type": "string"}}}, "version": "1", "forClass": "Document", "parentField": "fileGUID"}	57	2021-10-04 08:06:30.979167+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	85d32073-4a00-4df7-9def-7de8d90b77e0	\N
 63	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"$defs": {"displayType": {"type": "object", "required": ["orderColumn", "orderRow"], "properties": {"orderRow": {"type": "array", "items": {"type": "object", "patternProperties": {"^{.*}$": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "orderColumn": {"type": "array", "items": {"type": "string"}}}}}, "required": ["classGUID", "caption"], "properties": {"card": {"$ref": "#/$defs/displayType"}, "flat": {"type": "bool"}, "list": {"$ref": "#/$defs/displayType"}, "table": {"$ref": "#/$defs/displayType"}, "caption": {"type": "string"}, "preview": {"$ref": "#/$defs/displayType"}, "classGUID": {"type": "string"}}}, "version": "1", "forClass": "ObjectDisplay"}	62	2021-11-17 14:11:31.38773+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	74c22b58-ecec-4666-90b1-23e5bb04d98e	\N
 73	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": [{}, "name"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": "1", "forClass": "Asset"}	72	2021-12-02 11:20:10.536606+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	d2bafe4b-8831-4f3e-8616-e94a8f1809e9	92a95f66-e28e-4ebc-9f33-3568fc5a281e
 74	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": [{}, "name"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": "1", "forClass": "DBAsset"}	73	2021-12-02 11:20:10.536606+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	7ae8b861-4318-4a3e-a6f4-b9ea152884b1	d2bafe4b-8831-4f3e-8616-e94a8f1809e9
 50	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["subject", "type", "object"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "type": {"type": "string", "enum ": ["params"]}, "object": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "subject": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}}}, "version": "1", "forClass": "Relationship"}	27	2021-09-22 14:53:04.158111+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	2d054574-8f7a-4a9a-a3b3-0400ad9d0489	\N
 75	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"card": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"]}, "list": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"]}, "table": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"], "{GUID}:string": {"width": 250, "caption": "GUID", "displayCSS": "GUID"}, "{status}:string": {"width": 250, "caption": "Status", "displayCSS": "status"}, "{createdTime}:string": {"width": 250, "caption": "Created time", "displayCSS": "createdTime"}, "{transactionID}:number": {"width": 250, "caption": "Transaction", "displayCSS": "transactionID"}, "{attributes,tags}:array": {"items": {"class": "e12e729b-ac44-45bc-8271-9f0c6d4fa27b", "behavior": "preview", "displayCSS": "link"}, "width": 250, "caption": "Tags", "displayCSS": "arrayLink"}, "{attributes,name}:string": {"width": 250, "caption": "File name", "behavior": "preview", "displayCSS": "name"}, "{attributes,checksum}:string": {"width": 250, "caption": "Checksum", "displayCSS": "checksum"}, "{attributes,mimeType}:string": {"width": 250, "caption": "Mime type", "displayCSS": "mimeType"}}, "caption": "Files", "preview": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"]}, "classGUID": "c7fc0455-0572-40d7-987f-583cc2c9630c"}	74	2021-12-02 11:20:10.536606+00	16d789c1-1b4e-4815-b70c-4ef060e90884	74c22b58-ecec-4666-90b1-23e5bb04d98e	f1e73922-168f-48ea-a478-f18429b24309	\N
 76	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 2, "user": "", "branch": "", "dateTime": "2021-12-02 11:20:10.536606+00"}	75	2021-12-02 11:20:10.536606+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	a8fca306-3305-425d-b07e-4e07b5010b29	\N
-37	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["colspan", "row", "text", "bbox", "table", "cellType", "rowspan", "column"], "properties": {"row": {"type": "number"}, "bbox": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "text": {"type": "string"}, "table": {"type": "string"}, "column": {"type": "number"}, "colspan": {"type": "number"}, "rowspan": {"type": "number"}, "cellType": {"type": "string"}}}, "version": "1", "forClass": "Cell", "parentField": "table"}	7	2021-09-22 14:52:57.502377+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	7f56ece0-e780-4496-8573-1ad4d800a3b6	\N
-36	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["bbox", "page"], "properties": {"bbox": {"type": "string"}, "page": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": "1", "forClass": "Table", "parentField": "page"}	6	2021-09-22 14:52:57.379526+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	f5bcc7ad-1a9b-476d-985e-54cf01377530	\N
-33	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["number", "bbox", "document"], "properties": {"bbox": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "number": {"type": "number"}, "document": {"type": "string"}}}, "version": "1", "forClass": "Page", "parentField": "document"}	2	2021-09-22 14:52:57.011935+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	3ed1c180-a508-4180-9281-2f9b9a9cd477	\N
-38	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["row", "table"], "properties": {"row": {"type": "number"}, "tags": {"type": "array", "items": {"type": "string"}}, "table": {"type": "string"}}}, "version": "1", "forClass": "DataRow", "parentField": "table"}	8	2021-09-22 14:52:58.301966+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	7643b601-43c2-4125-831a-539b9e7418ec	\N
-59	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["checksum", "name", "mimeType"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "checksum": {"type": "string"}, "mimeType": {"type": "string"}}}, "version": "1", "forClass": "File", "isCascade": true, "dupBehavior": "Replace", "dupChecking": [{"uniFields": ["uri"], "isMandatory": true}, {"uniFields": ["checksum"], "isMandatory": true}]}	58	2021-10-04 08:06:30.979167+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	c7fc0455-0572-40d7-987f-583cc2c9630c	\N
-62	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "anyOf": [{"required": ["transactionID"]}, {"required": ["class"]}, {"required": ["filter"]}], "properties": {"class": {"type": "string"}, "limit": {"anyOf": [{"enum": ["ALL"], "type": "string"}, {"type": "integer"}]}, "filter": {"type": "object"}, "offset": {"type": "integer"}, "orderBy": {"type": "array", "items": {"type": "object", "required": ["field"], "properties": {"field": {"type": "string"}, "order": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "transactionID": {"type": "integer"}}}, "function": "reclada_object.list"}	61	2021-11-08 11:01:49.274513+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	d87ad26e-a522-4907-a41a-a82a916fdcf9	\N
-77	9dc0a032-90d6-4638-956e-9cd64cd2900c	{"schema": {"type": "object", "anyOf": [{"required": ["transactionID", "class"]}, {"required": ["class"]}, {"required": ["filter", "class"]}], "properties": {"class": {"type": "string"}, "limit": {"anyOf": [{"enum": ["ALL"], "type": "string"}, {"type": "integer"}]}, "filter": {"type": "object"}, "offset": {"type": "integer"}, "orderBy": {"type": "array", "items": {"type": "object", "required": ["field"], "properties": {"field": {"type": "string"}, "order": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "transactionID": {"type": "integer"}}}, "function": "reclada_object.list", "revision": "a8fca306-3305-425d-b07e-4e07b5010b29"}	61	2021-12-02 11:20:10.536606+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	d87ad26e-a522-4907-a41a-a82a916fdcf9	\N
-\.
-
-
---
--- Data for Name: cr_dup_behavior; Type: TABLE DATA; Schema: reclada_object; Owner: -
---
-
-COPY reclada_object.cr_dup_behavior (id, parent_guid, transaction_id, dup_behavior, last_use) FROM stdin;
+62	9dc0a032-90d6-4638-956e-9cd64cd2900c	{"schema": {"type": "object", "anyOf": [{"required": ["transactionID"]}, {"required": ["class"]}, {"required": ["filter"]}], "properties": {"class": {"type": "string"}, "limit": {"anyOf": [{"enum": ["ALL"], "type": "string"}, {"type": "integer"}]}, "filter": {"type": "object"}, "offset": {"type": "integer"}, "orderBy": {"type": "array", "items": {"type": "object", "required": ["field"], "properties": {"field": {"type": "string"}, "order": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "transactionID": {"type": "integer"}}}, "function": "reclada_object.list"}	61	2021-11-08 11:01:49.274513+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	d87ad26e-a522-4907-a41a-a82a916fdcf9	\N
+77	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "anyOf": [{"required": ["transactionID", "class"]}, {"required": ["class"]}, {"required": ["filter", "class"]}], "properties": {"class": {"type": "string"}, "limit": {"anyOf": [{"enum": ["ALL"], "type": "string"}, {"type": "integer"}]}, "filter": {"type": "object"}, "offset": {"type": "integer"}, "orderBy": {"type": "array", "items": {"type": "object", "required": ["field"], "properties": {"field": {"type": "string"}, "order": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "transactionID": {"type": "integer"}}}, "function": "reclada_object.list", "revision": "a8fca306-3305-425d-b07e-4e07b5010b29"}	61	2021-12-02 11:20:10.536606+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	d87ad26e-a522-4907-a41a-a82a916fdcf9	\N
 \.
 
 
@@ -4664,7 +3941,7 @@ SELECT pg_catalog.setval('dev.t_dbg_id_seq', 23, true);
 -- Name: ver_id_seq; Type: SEQUENCE SET; Schema: dev; Owner: -
 --
 
-SELECT pg_catalog.setval('dev.ver_id_seq', 45, true);
+SELECT pg_catalog.setval('dev.ver_id_seq', 44, true);
 
 
 --
@@ -4689,33 +3966,11 @@ SELECT pg_catalog.setval('reclada.transaction_id', 75, true);
 
 
 --
--- Name: cr_dup_behavior_id_seq; Type: SEQUENCE SET; Schema: reclada_object; Owner: -
---
-
-SELECT pg_catalog.setval('reclada_object.cr_dup_behavior_id_seq', 1, false);
-
-
---
 -- Name: object object_pkey; Type: CONSTRAINT; Schema: reclada; Owner: -
 --
 
 ALTER TABLE ONLY reclada.object
     ADD CONSTRAINT object_pkey PRIMARY KEY (id);
-
-
---
--- Name: cr_dup_behavior cr_dup_behavior_pkey; Type: CONSTRAINT; Schema: reclada_object; Owner: -
---
-
-ALTER TABLE ONLY reclada_object.cr_dup_behavior
-    ADD CONSTRAINT cr_dup_behavior_pkey PRIMARY KEY (transaction_id, parent_guid);
-
-
---
--- Name: checksum_index_; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX checksum_index_ ON reclada.object USING hash (((attributes ->> 'checksum'::text)));
 
 
 --
@@ -4803,13 +4058,6 @@ CREATE INDEX transaction_id_index ON reclada.object USING btree (transaction_id)
 
 
 --
--- Name: uri_index_; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX uri_index_ ON reclada.object USING hash (((attributes ->> 'uri'::text)));
-
-
---
 -- Name: staging load_staging; Type: TRIGGER; Schema: reclada; Owner: -
 --
 
@@ -4859,13 +4107,6 @@ REFRESH MATERIALIZED VIEW reclada.v_object_status;
 --
 
 REFRESH MATERIALIZED VIEW reclada.v_user;
-
-
---
--- Name: v_object_unifields; Type: MATERIALIZED VIEW DATA; Schema: reclada; Owner: -
---
-
-REFRESH MATERIALIZED VIEW reclada.v_object_unifields;
 
 
 --
