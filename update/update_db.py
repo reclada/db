@@ -4,6 +4,8 @@ import stat
 from pathlib import Path
 import sys
 import urllib.parse
+import uuid
+import shutil
 
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -102,8 +104,16 @@ def rmdir(top:str):
 
 def clone_db():
     rmdir('db')
-    os.system(f'git clone https://github.com/reclada/db.git')
-    os.chdir('db')
+    os.chdir('..')
+    os.chdir('..')
+    folder_name = f'db_copy_{str(uuid.uuid4())}'
+    shutil.copytree('db',folder_name)
+    os.chdir(folder_name)
+    checkout('.')
+    os.chdir('..')
+    path = os.path.join('db','update','db')
+    shutil.move(folder_name, path)
+    os.chdir(path)
     checkout(branch_db)
 
 def get_commit_history(branch:str = branch_db, need_comment:bool = False):

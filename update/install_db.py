@@ -49,6 +49,7 @@ def db_install():
     rmdir('db')
     return need_update, use_dump
 
+
 def runtime_install():
     rmdir('reclada.runtime')
     os.system(f'git clone https://github.com/reclada/reclada.runtime')
@@ -60,6 +61,7 @@ def runtime_install():
     os.chdir('..')
     rmdir('reclada.runtime')
 
+
 def scinlp_install():
     rmdir('SciNLP')
     os.system(f'git clone https://github.com/reclada/SciNLP')
@@ -67,10 +69,12 @@ def scinlp_install():
     os.system(f'git checkout {branch_SciNLP}')
     run_file('bdobjects.sql')
     run_file('nlpobjects.sql')
+    run_file('nlpatterns.sql')
     os.chdir('..')
     os.chdir('..')
     os.chdir('..')
     rmdir('SciNLP')
+
 
 if __name__ == "__main__":
     
