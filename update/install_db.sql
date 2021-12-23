@@ -1767,14 +1767,21 @@ CREATE FUNCTION reclada_object.datasource_insert(_class_name text, _obj_id uuid,
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    dataset_guid  uuid;
-    uri           text;
-    environment   varchar;
-    rel_cnt       int;
-    dataset2ds_type text;
+    _pipeline_lite jsonb;
+    _task  jsonb;
+    _dataset_guid  uuid;
+    _new_guid  uuid;
+    _pipeline_job_guid  uuid;
+    _stage         text;
+    _uri           text;
+    _environment   varchar;
+    _rel_cnt       int;
+    _dataset2ds_type text = 'defaultDataSet to DataSource';
+    _f_name text = 'reclada_object.datasource_insert';
 BEGIN
-    IF _class_name in 
-            ('DataSource','File') THEN
+    IF _class_name in ('DataSource','File') THEN
+
+        _uri := attributes->>'uri';
 
         IF (_obj_id IS NULL) THEN
             RAISE EXCEPTION 'Object GUID IS NULL';
@@ -1799,16 +1806,115 @@ BEGIN
             AND attrs->>'type'                      = dataset2ds_type
                 INTO rel_cnt;
 
-        IF rel_cnt=0 THEN
+        SELECT attrs->>'Environment'
+            FROM reclada.v_active_object
+                WHERE class_name = 'Context'
+                ORDER BY created_time DESC
+                LIMIT 1
+            INTO _environment;
+        IF _rel_cnt=0 THEN
+            PERFORM reclada_object.create(
+                    format('{
+                        "class": "Relationship",
+                        "attributes": {
+                            "type": "%s",
+                            "object": "%s",
+                            "subject": "%s"
+                            }
+                        }', _dataset2ds_type, _obj_id, _dataset_guid
+                    )::jsonb
+                );
+
+        END IF;
+        if _uri like '%inbox/jobs/%' then
+        
+            PERFORM reclada_object.create(
+                    format('{
+                        "class": "Job",
+                        "attributes": {
+                            "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
+                            "status": "new",
+                            "type": "%s",
+                            "command": "./run_pipeline.sh",
+                            "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
+                            }
+                        }', _environment, _uri, _obj_id
+                    )::jsonb
+                );
+        
+        ELSE
+            
+            SELECT data 
+                FROM reclada.v_active_object
+                    WHERE class_name = 'PipelineLite'
+                        LIMIT 1
+                INTO _pipeline_lite;
+            _new_guid := public.uuid_generate_v4();
+            IF _uri like '%inbox/pipelines/%/%' then
+                
+                _stage := SPLIT_PART(
+                                SPLIT_PART(_uri,'inbox/pipelines/',2),
+                                '/',
+                                2
+                            );
+                _stage = replace(_stage,'.json','');
+                SELECT data 
+                    FROM reclada.v_active_object o
+                        where o.class_name = 'Task'
+                            and o.obj_id = (_pipeline_lite #>> ('{attributes,tasks,'||_stage||'}')::text[])::uuid
+                    into _task;
+                
+                _pipeline_job_guid = reclada.try_cast_uuid(
+                                        SPLIT_PART(
+                                            SPLIT_PART(_uri,'inbox/pipelines/',2),
+                                            '/',
+                                            1
+                                        )
+                                    );
+                if _pipeline_job_guid is null then 
+                    perform reclada.raise_exception('PIPELINE_JOB_GUID not found',_f_name);
+                end if;
+                
+                SELECT  data #>> '{attributes,inputParameters,0,uri}',
+                        (data #>> '{attributes,inputParameters,1,dataSourceId}')::uuid
+                    from reclada.v_active_object o
+                        where o.obj_id = _pipeline_job_guid
+                    into _uri, _obj_id;
+
+            ELSE
+                SELECT data 
+                    FROM reclada.v_active_object o
+                        where o.class_name = 'Task'
+                            and o.obj_id = (_pipeline_lite #>> '{attributes,tasks,0}')::uuid
+                    into _task;
+                _pipeline_job_guid := _new_guid;
+            END IF;
+            
             PERFORM reclada_object.create(
                 format('{
-                    "class": "Relationship",
+                    "GUID":"%s",
+                    "class": "Job",
                     "attributes": {
+                        "task": "%s",
+                        "status": "new",
                         "type": "%s",
-                        "object": "%s",
-                        "subject": "%s"
+                        "command": "%s",
+                        "inputParameters": [
+                                { "uri"                 :"%s"   }, 
+                                { "dataSourceId"        :"%s"   },
+                                { "PipelineLiteJobGUID" :"%s"   }
+                            ]
                         }
-                    }', dataset2ds_type, _obj_id, dataset_guid)::jsonb);
+                    }',
+                        _new_guid::text,
+                        _task->>'GUID',
+                        _environment, 
+                        _task-> 'attributes' ->>'command',
+                        _uri,
+                        _obj_id,
+                        _pipeline_job_guid::text
+                )::jsonb
+            );
 
         END IF;
 
@@ -3790,30 +3896,15 @@ CREATE MATERIALIZED VIEW reclada.v_user AS
 --
 
 CREATE VIEW reclada.v_object AS
- WITH t AS (
-         SELECT obj.id,
-            obj.guid,
-            obj.class,
-            r.num,
-            (NULLIF((obj.attributes ->> 'revision'::text), ''::text))::uuid AS revision,
-            obj.attributes,
-            obj.status,
-            obj.created_time,
-            obj.created_by,
-            obj.transaction_id,
-            obj.parent_guid
-           FROM (reclada.object obj
-             LEFT JOIN ( SELECT ((r_1.attributes ->> 'num'::text))::bigint AS num,
-                    r_1.guid
-                   FROM reclada.object r_1
-                  WHERE (r_1.class IN ( SELECT reclada_object.get_guid_for_class('revision'::text) AS get_guid_for_class))) r ON ((r.guid = (NULLIF((obj.attributes ->> 'revision'::text), ''::text))::uuid)))
-        )
  SELECT t.id,
     t.guid AS obj_id,
     t.class,
-    t.num AS revision_num,
+    ( SELECT ((r.attributes ->> 'num'::text))::bigint AS num
+           FROM reclada.object r
+          WHERE ((r.class IN ( SELECT reclada_object.get_guid_for_class('revision'::text) AS get_guid_for_class)) AND (r.guid = (NULLIF((t.attributes ->> 'revision'::text), ''::text))::uuid))
+         LIMIT 1) AS revision_num,
     os.caption AS status_caption,
-    t.revision,
+    (NULLIF((t.attributes ->> 'revision'::text), ''::text))::uuid AS revision,
     t.created_time,
     t.attributes AS attrs,
     cl.for_class AS class_name,
@@ -3830,7 +3921,7 @@ CREATE VIEW reclada.v_object AS
     t.status,
     t.transaction_id,
     t.parent_guid
-   FROM (((t
+   FROM (((reclada.object t
      LEFT JOIN reclada.v_object_status os ON ((t.status = os.obj_id)))
      LEFT JOIN reclada.v_user u ON ((u.obj_id = t.created_by)))
      LEFT JOIN reclada.v_class_lite cl ON ((cl.obj_id = t.class)));

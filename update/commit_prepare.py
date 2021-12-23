@@ -145,5 +145,3 @@ if __name__ == "__main__":
     input("Press Enter to run testing . . .")
     
     run_test()
-
-    input("Press Enter to finish . . .")
