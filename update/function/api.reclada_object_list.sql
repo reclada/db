@@ -117,17 +117,19 @@ BEGIN
                 _filter
             )::jsonb 
             INTO _filter;
-            data := data || _filter;
-        
-    ELSEIF ver = '2' then
-        SELECT format( '{
-                            "operator":"=",
-                            "value":["{class}","%s"]
-                        }',
-                _class
-            )::jsonb 
-            INTO _filter;
-        data := Jsonb_set(data,'{filter}', _filter);
+        data := data || _filter;
+    ELSE
+        data := data || ('{"class":"'|| _class ||'"}')::jsonb;
+    --     select format(  '{
+    --                         "filter":{
+    --                             "operator":"=",
+    --                             "value":["{class}","%s"]
+    --                         }
+    --                     }',
+    --             class,
+    --             _filter
+    --         )::jsonb 
+    --         INTO _filter;
     END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;

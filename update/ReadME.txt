@@ -1,31 +1,24 @@
-Для подготовки обновления БД:
-1)  Пишем скрипт обновления в "up_script.sql", при этом 
-    если нужно менять функции/процедуры/представления и т.д. 
-    изменения вносим в файлы в соответствующей папке, 
-    а в файле "up_script.sql" прописываем 
-    "\i 'function/reclada_object.get_schema.sql'" - в данном 
-    случае изменили функцию (папка function) 
-    reclada_object.get_schema (ее текст в файле 
-    reclada_object.get_schema.sql).
-	Строка "-- version = 1" в файле up_script.sql обязательна, 
-	здесь нужно указать номер версии (целое число, больше 
-	предыдущего на 1).
-2)  Пишем скрипт отката в файле "down.sql" - перечень действий,
-	необходимый для перевода БД в прежнее состояние - из 
-	состояния после обновления в состояние до обновления.
-	Для функций/процедур/представлений можно использовать 
-	комментарий: "--{function/reclada_object.get_schema}",
-	который будет преобразован в скрипт с текущей версией 
-	функции в БД.
-3)  Запускаем "create_up.sql.py" в результате должен 
-	сформроваться файл "up.sql" - файл.
-4)  Для выполнения обновления БД подключаемся к БД через
-	psql из папки update и выполняем "\i up.sql".
-	Если обновление прошло успешно, в выводе вы увидите много
-	строк, среди которых: 
-	- "OK, curren version: <версия БД до обноовления>"
-	- "OK, curren version: <версия БД после обновления>"
-	Если не выведена <версия БД до обновления>, значит
-	некорректно сформирован скрипт отката (down.sql).
-	Если не выведено ничего из этого, вероятнее всего 
-	есть ошибки в скрипте "up_script.sql".
+For creating new DB migration:
+1)  Write upgrade script "up_script.sql". 
+    If you need change function or view 
+    you should change file in corresponding folder and
+    add line in "up_script.sql":
+    "\i 'function/reclada_object.get_schema.sql'" - in this case
+    we changed function reclada_object.get_schema 
+    in file "function/reclada_object.get_schema.sql"
+    First line "-- version = 1" in the file up_script.sql is required, 
+    here you should set integer number is incremented from previous version.
+2)  Write downgrade script in "down.sql" - list of actions,
+    which are necessary for change DB state from new state 
+    to the state which was before.
+    For function or view you can use special comment: 
+    "--{function/reclada_object.get_schema}",
+    which will be replaced on text of function or view current version from DB.
+3)  Run "create_up.sql.py" as result will be created "up.sql" file.
+4)  Connect to database via psql client from "update" folder and use 
+ 	command "\i up.sql" for upgrade database.
+	If migration was applied successful you will see:
+    - "OK, curren version: <DB version before upgrade>"
+    - "OK, curren version: <DB version after upgrade>"
+    If you don't see line "OK, curren version: <DB version before upgrade>", that mean
+    down.sql is incorrect.
