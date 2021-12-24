@@ -13,7 +13,7 @@
 */
 
 DROP FUNCTION IF EXISTS api.reclada_object_update;
-CREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb)
+CREATE OR REPLACE FUNCTION api.reclada_object_update(data jsonb, ver text default '1')
 RETURNS jsonb AS $$
 DECLARE
     class         text;
@@ -25,12 +25,23 @@ DECLARE
 
 BEGIN
 
-    class := coalesce(data ->> '{class}', data ->> 'class');
+    class := CASE ver
+            when '1'
+                then data->>'class'
+            when '2'
+                then data->>'{class}'
+        end;
+
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
-    objid := coalesce(data ->> '{GUID}', data ->> 'GUID');
+    objid := CASE ver
+            when '1'
+                then data->>'GUID'
+            when '2'
+                then data->>'{GUID}'
+        end;
     IF (objid IS NULL) THEN
         RAISE EXCEPTION 'Could not update object with no GUID';
     END IF;
@@ -42,8 +53,8 @@ BEGIN
         RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'update', class;
     END IF;
 
-    if reclada_object.need_flat(class) then
-        _need_flat := true;
+    if ver = '2' then
+
         with recursive j as 
         (
             select  row_number() over() as id,
@@ -83,10 +94,10 @@ BEGIN
                 where id = (select max(j.id) from j)
             INTO data;
     end if;
-    raise notice '%', data#>>'{}';
+    -- raise notice '%', data#>>'{}';
     SELECT reclada_object.update(data, user_info) INTO result;
 
-    if _need_flat then
+    if ver = '2' then
         RETURN '{"status":"OK"}'::jsonb;
     end if;
     return result;
