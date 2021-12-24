@@ -1,7 +1,7 @@
 -- you you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
-
+/*
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
 WHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' and status = reclada_object.get_active_status_obj_id();
@@ -37,7 +37,7 @@ WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.ge
 --{view/reclada.v_parent_field}
 --{view/reclada.v_unifields_idx_cnt}
 --{view/reclada.v_unifields_pivoted}
-DROP MATERIALIZED VIEW       reclada.v_object_unifields;
+DROP MATERIALIZED VIEW reclada.v_object_unifields;
 
 --{function/reclada.get_unifield_index_name}
 --{function/reclada_object.merge}
@@ -90,6 +90,71 @@ with t as
             and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
             and id not in (select id from t);
 --} display
+*/
+
+
+--------------default----------------
+UPDATE reclada.object
+SET attributes = '{
+    "schema": {
+        "id": "expr",
+        "type": "object",
+        "required": [
+          "value",
+          "operator"
+        ],
+        "properties": {
+          "value": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "expr"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "minItems": 1
+          },
+          "operator": {
+            "type": "string"
+          }
+        }
+      },
+    "function": "reclada_object.get_query_condition_filter"
+}'::jsonb
+WHERE attributes->>'function' = 'reclada_object.get_query_condition_filter';
+
+
+UPDATE reclada.object
+SET attributes = attributes #- '{schema, properties, disable}'
+WHERE class IN (SELECT reclada_object.get_GUID_for_class('jsonschema'))
+AND attributes->>'forClass' != 'ObjectDisplay'
+AND attributes->>'forClass' != 'jsonschema';
+
+
+
 
 --{view/reclada.v_class_lite}
 --{view/reclada.v_object_status}
@@ -105,3 +170,7 @@ with t as
 --{view/reclada.v_object_unifields}
 --{view/reclada.v_unifields_pivoted}
 --{view/reclada.v_unifields_idx_cnt}
+
+--{function/reclada_object.built_nested_jsonb}
+--{function/reclada_object.get_query_condition_filter}
+--{function/reclada_object.create_subclass}

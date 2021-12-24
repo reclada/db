@@ -3,7 +3,7 @@
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
-
+/*
 CREATE TYPE reclada.dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert','Merge');
 
 CREATE TABLE reclada_object.cr_dup_behavior (
@@ -104,9 +104,10 @@ with t as
             and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
             and id not in (select id from t);
 --} display
+*/
 
 --------------default----------------
-/*
+
 UPDATE reclada.object
 SET attributes = '{
     "schema": {
@@ -161,17 +162,16 @@ SET attributes = '{
     "function": "reclada_object.get_query_condition_filter"
 }'::jsonb
 WHERE attributes->>'function' = 'reclada_object.get_query_condition_filter';
-*/
+
 UPDATE reclada.object
 SET attributes = (SELECT jsonb_set(attributes, '{schema, properties}', attributes #> '{schema, properties}' || '{"disable": {"type": "boolean", "default": false}}'::jsonb))
 WHERE class IN (SELECT reclada_object.get_GUID_for_class('jsonschema'))
 AND attributes->>'forClass' != 'ObjectDisplay'
 AND attributes->>'forClass' != 'jsonschema';
 
---------------------------------------------------
--- v_class_lite, v_class, v_object, v_active_object
-\i 'function/reclada_object.built_nested_jsonb.sql'
+
 \i 'function/reclada_object.get_query_condition_filter.sql'
+\i 'function/reclada_object.create_subclass.sql'
 
 DROP VIEW IF EXISTS reclada.v_unifields_idx_cnt;
 DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
@@ -180,6 +180,7 @@ DROP VIEW IF EXISTS reclada.v_parent_field;
 DROP VIEW IF EXISTS reclada.v_class;
 DROP VIEW IF EXISTS reclada.v_import_info;
 DROP VIEW IF EXISTS reclada.v_revision;
+DROP VIEW IF EXISTS reclada.v_task;
 DROP VIEW IF EXISTS reclada.v_ui_active_object;
 DROP VIEW IF EXISTS reclada.v_DTO_json_schema;
 DROP VIEW IF EXISTS reclada.v_active_object;
@@ -188,9 +189,9 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 
-
-
+\i 'function/reclada_object.built_nested_jsonb.sql'
 \i 'view/reclada.v_class_lite.sql'
+
 \i 'view/reclada.v_object_status.sql'
 \i 'view/reclada.v_user.sql'
 \i 'view/reclada.v_object.sql'
@@ -205,5 +206,4 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 \i 'view/reclada.v_unifields_pivoted.sql'
 \i 'view/reclada.v_unifields_idx_cnt.sql'
 
---reclada_object.get_query_condition_filter.sql
---reclada_object.create_subclass.sql -- can't use default for name field
+
