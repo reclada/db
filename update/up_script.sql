@@ -106,7 +106,7 @@ with t as
 --} display
 
 --------------default----------------
-
+/*
 UPDATE reclada.object
 SET attributes = '{
     "schema": {
@@ -161,7 +161,7 @@ SET attributes = '{
     "function": "reclada_object.get_query_condition_filter"
 }'::jsonb
 WHERE attributes->>'function' = 'reclada_object.get_query_condition_filter';
-
+*/
 UPDATE reclada.object
 SET attributes = (SELECT jsonb_set(attributes, '{schema, properties}', attributes #> '{schema, properties}' || '{"disable": {"type": "boolean", "default": false}}'::jsonb))
 WHERE class IN (SELECT reclada_object.get_GUID_for_class('jsonschema'))
