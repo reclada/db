@@ -3,6 +3,10 @@
     "parentField": "table",
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "row": {
                 "type": "number"
             },

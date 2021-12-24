@@ -8,6 +8,10 @@
             "dateTime": {
                 "type": "string"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "num": {
                 "type": "number"
             },

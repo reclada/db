@@ -2,6 +2,10 @@
     "forClass": "ImportInfo",
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "name": {
                 "type": "string"
             },

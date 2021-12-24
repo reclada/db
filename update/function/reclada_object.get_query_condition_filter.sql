@@ -121,7 +121,7 @@ BEGIN
             LEFT JOIN reclada.v_filter_inner_operator iop
                 on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('Operator does not allowed ', _f_name)
+    PERFORM reclada.raise_exception('Operator is not allowed ' || t.op, _f_name)
         FROM mytable t
             WHERE t.op IS NULL;
 
@@ -140,11 +140,10 @@ BEGIN
             (
                 SELECT CASE
                         WHEN t.op LIKE '%<@%' AND t.idx=1 AND jsonb_typeof(t.parsed)='string'
-                            THEN --format('data #> ''%s''!= ''[]''::jsonb AND data #> ''%s''!= ''{}''::jsonb AND data #> ''%s''', pt.v, pt.v, pt.v)
-                            format('(COALESCE(data #> ''%s'', default_value #> ''%s'')) != ''[]''::jsonb
-                                AND (COALESCE(data #> ''%s'', default_value #> ''%s'')) != ''{}''::jsonb
-                                AND (COALESCE(data #> ''%s'', default_value #> ''%s''))',
-                                pt.v, pt.v, pt.v, pt.v, pt.v, pt.v)
+                            THEN format('(COALESCE(data #> ''%s'', default_value #> ''%s'')) != ''[]''::jsonb
+                                    AND (COALESCE(data #> ''%s'', default_value #> ''%s'')) != ''{}''::jsonb
+                                    AND (COALESCE(data #> ''%s'', default_value #> ''%s''))',
+                                    pt.v, pt.v, pt.v, pt.v, pt.v, pt.v)
                         WHEN fm.repl is not NULL
                             then
                                 case
@@ -166,13 +165,11 @@ BEGIN
                                         THEN
                                             case
                                                 when t.input_type = 'TEXT'
-                                                    --then format('(data #>> ''%s'')', pt.v)
                                                     then format('(COALESCE(data #>> ''%s'', default_value #>> ''%s''))', pt.v, pt.v)
                                                 when t.input_type = 'JSONB' or t.input_type is null
                                                     --then format('data #> ''%s''', pt.v)
                                                     then format('(COALESCE(data #> ''%s'', default_value #> ''%s''))', pt.v, pt.v)
                                                 else
-                                                    --format('(data #>> ''%s'')::', pt.v) || t.input_type
                                                     format('(COALESCE(data #>> ''%s'', default_value #>> ''%s''))::', pt.v, pt.v) || t.input_type
                                             end
                                     when t.input_type = 'TEXT'

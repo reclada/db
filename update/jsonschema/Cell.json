@@ -15,6 +15,10 @@
             "column": {
                 "type": "number"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "row": {
                 "type": "number"
             },

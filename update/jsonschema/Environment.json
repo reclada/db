@@ -5,6 +5,10 @@
             "description": {
                 "type": "string"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "name": {
                 "type": "string"
             },

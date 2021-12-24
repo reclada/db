@@ -6,6 +6,10 @@
             "caption": {
                 "type": "string"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "tags": {
                 "items": {
                     "type": "string"

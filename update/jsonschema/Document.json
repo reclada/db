@@ -3,6 +3,10 @@
     "parentField": "fileGUID",
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "fileGUID": {
                 "type": "string"
             },

@@ -3,7 +3,7 @@
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
-/*
+
 CREATE TYPE reclada.dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert','Merge');
 
 CREATE TABLE reclada_object.cr_dup_behavior (
@@ -104,7 +104,7 @@ with t as
             and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
             and id not in (select id from t);
 --} display
-*/
+
 
 --------------default----------------
 
@@ -182,9 +182,10 @@ DROP VIEW IF EXISTS reclada.v_import_info;
 DROP VIEW IF EXISTS reclada.v_revision;
 DROP VIEW IF EXISTS reclada.v_task;
 DROP VIEW IF EXISTS reclada.v_ui_active_object;
-DROP VIEW IF EXISTS reclada.v_DTO_json_schema;
+DROP VIEW IF EXISTS reclada.v_dto_json_schema;
 DROP VIEW IF EXISTS reclada.v_active_object;
 DROP VIEW IF EXISTS reclada.v_object;
+DROP VIEW IF EXISTS reclada.v_pk_for_class;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
@@ -194,10 +195,12 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 
 \i 'view/reclada.v_object_status.sql'
 \i 'view/reclada.v_user.sql'
+\i 'view/reclada.v_pk_for_class.sql'
 \i 'view/reclada.v_object.sql'
 \i 'view/reclada.v_active_object.sql'
 \i 'view/reclada.v_dto_json_schema.sql'
 \i 'view/reclada.v_ui_active_object.sql'
+\i 'view/reclada.v_task.sql'
 \i 'view/reclada.v_revision.sql'
 \i 'view/reclada.v_import_info.sql'
 \i 'view/reclada.v_class.sql'

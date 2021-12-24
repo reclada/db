@@ -1,7 +1,6 @@
 -- you you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
-/*
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
 WHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' and status = reclada_object.get_active_status_obj_id();
@@ -90,7 +89,6 @@ with t as
             and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
             and id not in (select id from t);
 --} display
-*/
 
 
 --------------default----------------
@@ -154,15 +152,15 @@ AND attributes->>'forClass' != 'ObjectDisplay'
 AND attributes->>'forClass' != 'jsonschema';
 
 
-
-
 --{view/reclada.v_class_lite}
+--{view/reclada.v_pk_for_class}
 --{view/reclada.v_object_status}
 --{view/reclada.v_user}
 --{view/reclada.v_object}
 --{view/reclada.v_active_object}
 --{view/reclada.v_dto_json_schema}
 --{view/reclada.v_ui_active_object}
+--{view/reclada.v_task.sql}
 --{view/reclada.v_revision}
 --{view/reclada.v_import_info}
 --{view/reclada.v_class}

@@ -9,6 +9,10 @@
             "bucketName": {
                 "type": "string"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "endpointURL": {
                 "type": "string"
             },

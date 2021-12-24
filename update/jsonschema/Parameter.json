@@ -2,6 +2,10 @@
     "forClass": "Parameter",
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "file": {
                 "type": "string"
             },

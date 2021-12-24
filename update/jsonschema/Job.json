@@ -5,6 +5,10 @@
             "command": {
                 "type": "string"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "inputParameters": {
                 "items": {
                     "type": "object"

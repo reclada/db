@@ -2,6 +2,10 @@
     "forClass": "DBAsset",
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "name": {
                 "type": "string"
             },
