@@ -429,28 +429,45 @@ BEGIN
 
         if ver = '2' then
             class_uuid := coalesce(class_uuid, (objects#>>'{0,"{class}"}')::uuid);
-            _exec_text := _pre_query ||',
-            dd as ( 
-                select distinct unnest(obj.display_key) v
-                    FROM '|| _from ||'
-            ),
-            on_data as 
-            (
-                select  jsonb_object_agg(
-                            t.v, 
-                            replace(dd.template,''#@#attrname#@#'',t.v)::jsonb 
-                        ) t
-                    from dd as t
-                    JOIN reclada.v_default_display dd
-                        on t.v like ''%'' || dd.json_type
-            )
-            select jsonb_set(d.attributes,''{table}'', od.t || coalesce(d.table,''{}''::jsonb))
-                from on_data od
-                left join reclada.v_object_display d
-                    on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||'''';
-            EXECUTE _exec_text
-                INTO _object_display;
+            if class_uuid is not null then
+                _class :=   (
+                                select cl.for_class 
+                                    from reclada.v_class_lite cl
+                                        where class_uuid = cl.obj_id
+                                            limit 1
+                            );
 
+                _exec_text := _pre_query ||',
+                dd as (
+                    select distinct unnest(obj.display_key) v
+                        FROM '|| _from ||'
+                ),
+                on_data as 
+                (
+                    select  jsonb_object_agg(
+                                t.v, 
+                                replace(dd.template,''#@#attrname#@#'',t.v)::jsonb 
+                            ) t
+                        from dd as t
+                        JOIN reclada.v_default_display dd
+                            on t.v like ''%'' || dd.json_type
+                )
+                select jsonb_set(templ.v,''{table}'', od.t || coalesce(d.table,coalesce(d.table,templ.v->''table'')))
+                    from on_data od
+                    join (
+                        select replace(template,''#@#classname#@#'','''|| _class ||''')::jsonb v
+                            from reclada.v_default_display 
+                                where json_type = ''ObjectDisplay''
+                                    limit 1
+                    ) templ
+                        on true
+                    left join reclada.v_object_display d
+                        on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||'''';
+
+                raise notice '%',_exec_text;
+                EXECUTE _exec_text
+                    INTO _object_display;
+            end if;
         end if;
 
         _exec_text := _pre_query || '
