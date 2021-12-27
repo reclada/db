@@ -22,7 +22,8 @@ DECLARE
     class               text;
     class_uuid          uuid;
     list_id             bigint[];
-
+    _for_class           text;
+    _uniFields_index_name          text;
 BEGIN
 
     v_obj_id := data->>'GUID';
@@ -35,6 +36,17 @@ BEGIN
 
     class_uuid := reclada.try_cast_uuid(class);
 
+
+
+    IF (class = 'jsonschema') THEN
+        SELECT for_class
+        FROM reclada.v_class
+        WHERE obj_id = v_obj_id
+            INTO _for_class;
+        FOR _uniFields_index_name IN (SELECT unifields_index_name FROM reclada.v_unifields_idx_cnt WHERE for_class=_for_class AND cnt=1) LOOP
+            DROP INDEX IF EXISTS _uniFields_index_name;
+        END LOOP;
+    END IF;
     WITH t AS
     (    
         UPDATE reclada.object u
@@ -77,7 +89,7 @@ BEGIN
     )::jsonb
     INTO data;
 
-    IF (jsonb_array_length(data) = 1) THEN
+    IF (jsonb_array_length(data) <= 1) THEN
         data := data->0;
     END IF;
     

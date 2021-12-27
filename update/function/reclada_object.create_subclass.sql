@@ -16,8 +16,12 @@ DECLARE
     new_class       text;
     attrs           jsonb;
     class_schema    jsonb;
-    version_         integer;
-    class_guid    uuid;
+    version_        integer;
+    class_guid      uuid;
+    _uniFields      jsonb;
+    _idx_name       text;
+    _f_list         text;
+    _idx_cnt        int;
 BEGIN
 
     class := data->>'class';
@@ -75,6 +79,30 @@ BEGIN
         ) el) arr),
     class_guid
     )::jsonb);
+
+    IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
+        FOR _uniFields IN (
+            SELECT jsonb_array_elements(attrs->'dupChecking')->'uniFields'
+        ) LOOP
+            IF ( jsonb_typeof(_uniFields) = 'array' ) THEN
+                SELECT
+                    reclada.get_unifield_index_name( array_agg(f ORDER BY f)) AS idx_name, 
+                    string_agg('(attributes ->> ''' || f || ''')','||' ORDER BY f) AS fields_list
+                FROM (
+                    SELECT jsonb_array_elements_text (_uniFields::jsonb) f
+                ) a
+                    INTO _idx_name, _f_list;
+                SELECT count(*) 
+                FROM pg_catalog.pg_indexes pi2 
+                WHERE schemaname ='reclada' AND tablename ='object' AND indexname =_idx_name
+                    INTO _idx_cnt;
+                IF (_idx_cnt = 0 ) THEN
+                    EXECUTE E'CREATE INDEX ' || _idx_name || ' ON reclada.object USING HASH ((' || _f_list || '))';
+                END IF;
+            END IF;
+        END LOOP;
+        PERFORM reclada_object.refresh_mv('uniFields');
+    END IF;
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
