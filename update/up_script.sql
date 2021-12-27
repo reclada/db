@@ -1,4 +1,4 @@
--- version = 44
+-- version = 45
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
@@ -13,7 +13,6 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'view/reclada.v_object_unifields.sql'
 \i 'view/reclada.v_parent_field.sql'
 \i 'function/reclada.get_unifield_index_name.sql'
-\i 'view/reclada.v_unifields_idx_cnt.sql'
 \i 'view/reclada.v_unifields_pivoted.sql'
 
 \i 'function/reclada_object.get_parent_guid.sql'
@@ -23,6 +22,7 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/reclada_object.update_json_by_guid.sql'
 \i 'function/reclada_object.remove_parent_guid.sql'
 \i 'function/reclada_object.create_relationship.sql'
+\i 'function/reclada_object.create_job.sql'
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.create_subclass.sql'
 \i 'function/reclada_object.delete.sql'

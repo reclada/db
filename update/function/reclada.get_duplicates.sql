@@ -12,7 +12,7 @@ RETURNS TABLE (
     dup_behavior    reclada.dp_bhvr,
     is_cascade      boolean,
     dup_field       text) AS $$
-    SELECT obj_id, dup_behavior, is_cascade, copy_field
+    SELECT vao.obj_id, vup.dup_behavior, vup.is_cascade, vup.copy_field
         FROM reclada.v_active_object vao
         JOIN reclada.v_unifields_pivoted vup ON vao."class" = vup.class_uuid
         WHERE (vao.attrs ->> f1) 

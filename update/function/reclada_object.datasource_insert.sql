@@ -26,15 +26,8 @@ DECLARE
     _pipeline_job_guid  uuid;
     _stage         text;
     _uri           text;
-    _environment   varchar;
-    _rel_cnt       int;
     _dataset2ds_type text = 'defaultDataSet to DataSource';
     _f_name text = 'reclada_object.datasource_insert';
-    dataset_guid  uuid;
-    uri           text;
-    environment   varchar;
-    rel_cnt       int;
-    dataset2ds_type text:= 'defaultDataSet to DataSource';
 BEGIN
     IF _class_name in ('DataSource','File') THEN
 
@@ -44,30 +37,13 @@ BEGIN
         FROM reclada.v_active_object v
         WHERE v.class_name = 'DataSet'
             and v.attrs->>'name' = 'defaultDataSet'
-        INTO _dataset_guid;
-        PERFORM reclada_object.create_relationship(dataset2ds_type, _obj_id, _dataset_guid);
-        SELECT attrs->>'Environment'
-            FROM reclada.v_active_object
-                WHERE class_name = 'Context'
-                ORDER BY created_time DESC
-                LIMIT 1
-            INTO _environment;
-        if _uri like '%inbox/jobs/%' then
-        
-            PERFORM reclada_object.create(
-                    format('{
-                        "class": "Job",
-                        "attributes": {
-                            "task": "c94bff30-15fa-427f-9954-d5c3c151e652",
-                            "status": "new",
-                            "type": "%s",
-                            "command": "./run_pipeline.sh",
-                            "inputParameters": [{"uri": "%s"}, {"dataSourceId": "%s"}]
-                            }
-                        }', _environment, _uri, _obj_id
-                    )::jsonb
-                );
-        
+        INTO _dataset_guid;        
+        IF (_dataset_guid IS NULL) THEN
+            RAISE EXCEPTION 'Can''t found defaultDataSet';
+        END IF;
+        PERFORM reclada_object.create_relationship(_dataset2ds_type, _obj_id, _dataset_guid);
+        IF _uri LIKE '%inbox/jobs/%' THEN
+            PERFORM reclada_object.create_job(_uri, _obj_id);
         ELSE
             
             SELECT data 
@@ -76,7 +52,7 @@ BEGIN
                         LIMIT 1
                 INTO _pipeline_lite;
             _new_guid := public.uuid_generate_v4();
-            IF _uri like '%inbox/pipelines/%/%' then
+            IF _uri LIKE '%inbox/pipelines/%/%' THEN
                 
                 _stage := SPLIT_PART(
                                 SPLIT_PART(_uri,'inbox/pipelines/',2),
@@ -97,52 +73,33 @@ BEGIN
                                             1
                                         )
                                     );
-                if _pipeline_job_guid is null then 
+                IF _pipeline_job_guid IS NULL THEN
                     perform reclada.raise_exception('PIPELINE_JOB_GUID not found',_f_name);
-                end if;
+                END IF;
                 
                 SELECT  data #>> '{attributes,inputParameters,0,uri}',
                         (data #>> '{attributes,inputParameters,1,dataSourceId}')::uuid
-                    from reclada.v_active_object o
-                        where o.obj_id = _pipeline_job_guid
-                    into _uri, _obj_id;
+                    FROM reclada.v_active_object o
+                        WHERE o.obj_id = _pipeline_job_guid
+                    INTO _uri, _obj_id;
 
             ELSE
                 SELECT data 
                     FROM reclada.v_active_object o
-                        where o.class_name = 'Task'
-                            and o.obj_id = (_pipeline_lite #>> '{attributes,tasks,0}')::uuid
-                    into _task;
+                        WHERE o.class_name = 'Task'
+                            AND o.obj_id = (_pipeline_lite #>> '{attributes,tasks,0}')::uuid
+                    INTO _task;
                 _pipeline_job_guid := _new_guid;
             END IF;
             
-            PERFORM reclada_object.create(
-                format('{
-                    "GUID":"%s",
-                    "class": "Job",
-                    "attributes": {
-                        "task": "%s",
-                        "status": "new",
-                        "type": "%s",
-                        "command": "%s",
-                        "inputParameters": [
-                                { "uri"                 :"%s"   }, 
-                                { "dataSourceId"        :"%s"   },
-                                { "PipelineLiteJobGUID" :"%s"   }
-                            ]
-                        }
-                    }',
-                        _new_guid::text,
-                        _task->>'GUID',
-                        _environment, 
-                        _task-> 'attributes' ->>'command',
-                        _uri,
-                        _obj_id,
-                        _pipeline_job_guid::text
-                )::jsonb
+            PERFORM reclada_object.create_job(
+                _uri,
+                _obj_id,
+                _new_guid,
+                _task->>'GUID',
+                _task-> 'attributes' ->>'command',
+                _pipeline_job_guid
             );
-        IF (dataset_guid IS NULL) THEN
-            RAISE EXCEPTION 'Can''t found defaultDataSet';
         END IF;
     END IF;
 END;

@@ -43,20 +43,6 @@ BEGIN
             INTO _class_name_from_uuid;
     END IF;
 
-
-    IF (_class_name_from_uuid = 'jsonschema') THEN
-        SELECT for_class
-        FROM reclada.v_class
-        WHERE obj_id = v_obj_id
-            INTO _for_class;
-        FOR _uniFields_index_name IN (
-            SELECT unifields_index_name
-            FROM reclada.v_unifields_idx_cnt
-            WHERE for_class=_for_class AND cnt=1
-        ) LOOP
-            DROP INDEX IF EXISTS _uniFields_index_name;
-        END LOOP;
-    END IF;
     WITH t AS
     (    
         UPDATE reclada.object u
@@ -107,7 +93,7 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object, no such GUID';
     END IF;
 
-    PERFORM reclada_object.refresh_mv(_class_name_from_uuid);
+    PERFORM reclada_object.refresh_mv(COALESCE(_class_name_from_uuid, _class_name));
 
     PERFORM reclada_notification.send_object_notification('delete', data);
 

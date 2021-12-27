@@ -21,7 +21,6 @@ DECLARE
     _uniFields      jsonb;
     _idx_name       text;
     _f_list         text;
-    _idx_cnt        int;
 BEGIN
 
     class := data->>'class';
@@ -92,11 +91,11 @@ BEGIN
                     SELECT jsonb_array_elements_text (_uniFields::jsonb) f
                 ) a
                     INTO _idx_name, _f_list;
-                SELECT count(*) 
-                FROM pg_catalog.pg_indexes pi2 
-                WHERE schemaname ='reclada' AND tablename ='object' AND indexname =_idx_name
-                    INTO _idx_cnt;
-                IF (_idx_cnt = 0 ) THEN
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_catalog.pg_indexes pi2 
+                    WHERE schemaname ='reclada' AND tablename ='object' AND indexname =_idx_name
+                ) THEN
                     EXECUTE E'CREATE INDEX ' || _idx_name || ' ON reclada.object USING HASH ((' || _f_list || '))';
                 END IF;
             END IF;

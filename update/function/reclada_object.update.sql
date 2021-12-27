@@ -97,7 +97,11 @@ BEGIN
         _parent_guid := old_obj->>'parentGUID';
     END IF;
     
-    IF EXISTS (SELECT 1 FROM reclada.v_unifields_idx_cnt WHERE class_uuid=_class_uuid)
+    IF EXISTS (
+        SELECT 1
+        FROM reclada.v_object_unifields
+        WHERE class_uuid=_class_uuid
+    )
     THEN
         SELECT COUNT(DISTINCT obj_guid), dup_behavior, string_agg(DISTINCT obj_guid::text, ',')
         FROM reclada.get_duplicates(_attrs, _class_uuid, _obj_id)

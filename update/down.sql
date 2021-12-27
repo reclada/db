@@ -35,7 +35,6 @@ SET attributes = attributes - 'dupChecking'
 WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
 
 --{view/reclada.v_parent_field}
---{view/reclada.v_unifields_idx_cnt}
 --{view/reclada.v_unifields_pivoted}
 DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 
@@ -58,6 +57,7 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 --{function/reclada_object.parse_filter}
 --{function/reclada_object.list}
 --{function/reclada_object.create_relationship}
+--{function/reclada_object.create_job}
 
 
 --{function/reclada_object.list}
@@ -87,5 +87,8 @@ DROP INDEX reclada.uri_index_;
 DROP INDEX reclada.checksum_index_;
 
 CREATE INDEX status_index ON reclada.object USING btree (status);
+
+DELETE FROM reclada.draft
+WHERE parent_guid IS NOT NULL;
 
 ALTER TABLE reclada.draft DROP COLUMN IF EXISTS parent_guid;

@@ -52,6 +52,14 @@ BEGIN
     /*TODO: check if some objects have revision AND others do not */
     branch:= data_jsonb->0->'branch';
 
+    CREATE TEMPORARY TABLE IF NOT EXISTS create_duplicate_tmp (
+        obj_guid        uuid,
+        dup_behavior    reclada.dp_bhvr,
+        is_cascade      boolean,
+        dup_field       text
+    )
+    ON COMMIT DROP;
+
     FOR _data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
         skip_insert := false;
@@ -77,10 +85,10 @@ BEGIN
             INTO schema;
             _class_uuid := (schema->>'GUID')::uuid;
         ELSE
-            SELECT v.data 
+            SELECT v.data, v.for_class
             FROM reclada.v_class v
             WHERE _class_uuid = v.obj_id
-            INTO schema;
+            INTO schema, _class_name;
         END IF;
         IF (schema IS NULL) THEN
             RAISE EXCEPTION 'No json schema available for %', _class_name;
@@ -102,16 +110,59 @@ BEGIN
         
         IF EXISTS (
             SELECT 1
-            FROM reclada.v_unifields_idx_cnt
+            FROM reclada.v_object_unifields
             WHERE class_uuid = _class_uuid
         )
         THEN
+            INSERT INTO create_duplicate_tmp
+            SELECT obj_guid,
+                dup_behavior,
+                is_cascade,
+                dup_field
+            FROM reclada.get_duplicates(_attrs, _class_uuid);
+
             IF (_parent_guid IS NOT NULL) THEN
+                _new_guid := null;
+                SELECT attrs->>'object'                    
+                FROM reclada.v_active_object
+                WHERE class_name = 'Relationship'
+                    AND attrs->>'type'                      = _rel_type
+                    AND NULLIF(attrs->>'subject','')::uuid  = _parent_guid
+                        INTO _new_guid;
+
+                IF (_new_guid IS NOT NULL) THEN
+                    SELECT count(DISTINCT obj_guid), string_agg(DISTINCT obj_guid::text, ',')
+                    FROM create_duplicate_tmp
+                        INTO _cnt, _guid_list;
+                    IF (_cnt >1) THEN
+                        RAISE EXCEPTION 'Found more than one duplicates (GUIDs: %). Resolve conflict manually.', _guid_list;
+                    ELSIF (_cnt = 1) THEN
+                        SELECT DISTINCT obj_guid, is_cascade
+                        FROM create_duplicate_tmp
+                            INTO _obj_guid, _is_cascade;
+                        new_data := _data;
+                        IF (_is_cascade) THEN
+                            PERFORM reclada_object.create_relationship(
+                                    _rel_type,
+                                    _obj_guid,
+                                    new_data->>'GUID'::uuid);
+                        END IF;
+                        new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
+                        new_data = reclada_object.update_json_by_guid(_obj_guid, new_data);
+                        SELECT reclada_object.update(new_data)
+                            INTO res;
+                        affected := array_append( affected, _obj_guid);
+                        skip_insert := true;
+                    ELSE
+                        _parent_guid := _new_guid;
+                    END IF;
+                END IF;
                 IF NOT EXISTS (
                     SELECT 1
                     FROM reclada.v_active_object
                     WHERE obj_id = _parent_guid
                 )
+                    AND _new_guid IS NULL
                 THEN
                     IF (_obj_guid IS NULL) THEN
                         RAISE EXCEPTION 'GUID is required.';
@@ -119,47 +170,12 @@ BEGIN
                     INSERT INTO reclada.draft(guid, parent_guid, data)
                         VALUES(_obj_guid, _parent_guid, _data);
                     skip_insert := true;
-                ELSE
-                    SELECT attrs->>'object'                    
-                    FROM reclada.v_active_object
-                    WHERE class_name = 'Relationship'
-                        AND attrs->>'type'                      = _rel_type
-                        AND NULLIF(attrs->>'subject','')::uuid  = _parent_guid
-                            INTO _new_guid;
-
-                    IF (_new_guid IS NOT NULL) THEN
-                        SELECT count(DISTINCT obj_guid), string_agg(DISTINCT obj_guid::text, ',')
-                        FROM reclada.get_duplicates(_attrs, _class_uuid)
-                            INTO _cnt, _guid_list;
-                        IF (_cnt >1) THEN
-                            RAISE EXCEPTION 'Found more than one duplicates (GUIDs: %). Resolve conflict manually.', _guid_list;
-                        ELSIF (_cnt = 1) THEN
-                            SELECT DISTINCT obj_guid, is_cascade
-                            FROM reclada.get_duplicates(_attrs, _class_uuid)
-                                INTO _obj_guid, _is_cascade;
-                            new_data := _data;
-                            IF (_is_cascade) THEN
-                                PERFORM reclada_object.create_relationship(
-                                        _rel_type,
-                                        _obj_guid,
-                                        new_data->>'GUID'::uuid);
-                            END IF;
-                            new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
-                            new_data = reclada_object.update_json_by_guid(_obj_guid, new_data);
-                            SELECT reclada_object.update(new_data)
-                                INTO res;
-                            affected := array_append( affected, _obj_guid);
-                            skip_insert := true;
-                        ELSE
-                            _parent_guid := _new_guid;
-                        END IF;
-                    END IF;
                 END IF;
             END IF;
 
             IF (NOT skip_insert) THEN
                 SELECT COUNT(DISTINCT obj_guid), dup_behavior, string_agg (DISTINCT obj_guid::text, ',')
-                FROM reclada.get_duplicates(_attrs, _class_uuid)
+                FROM create_duplicate_tmp
                 GROUP BY dup_behavior
                     INTO _cnt, _dup_behavior, _guid_list;
                 IF (_cnt>1 AND _dup_behavior IN ('Update','Merge')) THEN
@@ -167,7 +183,7 @@ BEGIN
                 END IF;
                 FOR _obj_guid, _dup_behavior, _is_cascade, _uni_field IN
                     SELECT obj_guid, dup_behavior, is_cascade, dup_field
-                    FROM reclada.get_duplicates(_attrs, _class_uuid)
+                    FROM create_duplicate_tmp
                 LOOP
                     new_data := _data;
                     CASE _dup_behavior
@@ -192,9 +208,7 @@ BEGIN
                             affected := array_append( affected, _obj_guid);
                             skip_insert := true;
                         WHEN 'Reject' THEN
-                            INSERT INTO reclada.draft(guid,  data)
-                                VALUES(new_data->>'GUID'::uuid, _data);
-                            skip_insert := true;
+                            RAISE EXCEPTION 'The object was rejected.';
                         WHEN 'Copy'    THEN
                             _attrs := _attrs || format('{"%s": "%s_%s"}', _uni_field, _attrs->> _uni_field, nextval('reclada.object_id_seq'))::jsonb;
                         WHEN 'Insert' THEN
@@ -209,8 +223,9 @@ BEGIN
                     END CASE;
                 END LOOP;
             END IF;
+            DELETE FROM create_duplicate_tmp;
         END IF;
-
+        
         IF (NOT skip_insert) THEN
             _obj_guid := (_data->>'GUID')::uuid;
             IF EXISTS (
