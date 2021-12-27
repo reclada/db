@@ -151,6 +151,22 @@ WHERE class IN (SELECT reclada_object.get_GUID_for_class('jsonschema'))
 AND attributes->>'forClass' != 'ObjectDisplay'
 AND attributes->>'forClass' != 'jsonschema';
 
+DROP VIEW IF EXISTS reclada.v_unifields_idx_cnt;
+DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
+DROP VIEW IF EXISTS reclada.v_parent_field;
+DROP VIEW IF EXISTS reclada.v_class;
+DROP VIEW IF EXISTS reclada.v_import_info;
+DROP VIEW IF EXISTS reclada.v_revision;
+DROP VIEW IF EXISTS reclada.v_task;
+DROP VIEW IF EXISTS reclada.v_ui_active_object;
+DROP VIEW IF EXISTS reclada.v_dto_json_schema;
+DROP VIEW IF EXISTS reclada.v_active_object;
+DROP VIEW IF EXISTS reclada.v_object;
+DROP VIEW IF EXISTS reclada.v_pk_for_class;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 
 --{view/reclada.v_class_lite}
 --{view/reclada.v_pk_for_class}
