@@ -49,6 +49,7 @@ DROP VIEW reclada.v_pk_for_class;
 
 \i 'view/reclada.v_filter_avaliable_operator.sql'
 \i 'view/reclada.v_ui_active_object.sql'
+\i 'view/reclada.v_default_display.sql'
 
 UPDATE reclada.object
 SET attributes = jsonb_set(attributes,'{parentField}','"table"'::jsonb)

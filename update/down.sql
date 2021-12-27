@@ -67,6 +67,7 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 
 --{view/reclada.v_filter_avaliable_operator}
 --{view/reclada.v_ui_active_object}
+--{view/reclada.v_default_display}
 
 DROP TABLE reclada_object.cr_dup_behavior;
 DROP TYPE reclada.dp_bhvr;
