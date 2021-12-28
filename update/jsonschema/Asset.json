@@ -1,0 +1,25 @@
+{
+    "forClass": "Asset",
+    "schema": {
+        "properties": {
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "uri": {
+                "type": "string"
+            }
+        },
+        "required": [
+            {},
+            "name"
+        ],
+        "type": "object"
+    },
+    "version": "1"
+}

@@ -75,7 +75,7 @@ result:
 */
 
 DROP FUNCTION IF EXISTS reclada_object.get_query_condition_filter;
-CREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter( data JSONB )
+CREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data JSONB)
 RETURNS TEXT AS $$
 DECLARE 
     _count   INT;
@@ -121,7 +121,7 @@ BEGIN
             LEFT JOIN reclada.v_filter_inner_operator iop
                 on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op,'reclada_object.get_query_condition_filter')
+    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op, _f_name)
         FROM mytable t
             WHERE t.op IS NULL;
 
@@ -140,9 +140,12 @@ BEGIN
             (
                 SELECT CASE 
                         WHEN fm.repl is not NULL 
-                            then '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)
-                        -- WHEN pt.v LIKE '{attributes,%}'
-                        --     THEN format('attrs #> ''%s''', REPLACE(pt.v,'{attributes,','{'))
+                            then 
+                                case 
+                                    when t.input_type in ('TEXT')
+                                        then fm.repl || '::TEXT'
+                                    else '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)
+                                end
                         WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')
                             then 
                                 case 
@@ -262,7 +265,7 @@ BEGIN
         FROM mytable
             WHERE lvl = 0 AND rn = 0
         INTO _res;
-    perform reclada.raise_notice( _res);
+    -- perform reclada.raise_notice( _res);
     DROP TABLE mytable;
     RETURN _res;
 END 
