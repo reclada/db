@@ -76,7 +76,7 @@ BEGIN
                     j.key   , 
                     j.value , 
                     o.data
-                from reclada.v_object o
+                from reclada.v_active_object o -- TODO: update archive object
                 join j
                     on true
                     where o.obj_id = 
@@ -87,11 +87,11 @@ BEGIN
         ),
         r as 
         (
-            select id,key,value,jsonb_set(t.data,t.key::text[],t.value) as u, t.data
+            select id,key,value,reclada.jsonb_deep_set(t.data,t.key::text[],t.value) as u, t.data
                 from t
                     where id = 1
             union
-            select t.id,t.key,t.value,jsonb_set(r.u   ,t.key::text[],t.value) as u, t.data
+            select t.id,t.key,t.value,reclada.jsonb_deep_set(r.u   ,t.key::text[],t.value) as u, t.data
                 from r
                 JOIN t
                     on t.id-1 = r.id

@@ -104,4 +104,6 @@ with t as
         where attributes->>'function' = 'reclada_object.list'
             and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
             and id not in (select id from t);
+
+\i 'function/reclada.jsonb_deep_set.sql'
 --} display
