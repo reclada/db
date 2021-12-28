@@ -68,6 +68,7 @@ DECLARE
     user_info           jsonb;
     result              jsonb;
     _filter             jsonb;
+    _guid               uuid;
 BEGIN
 
     if draft != 'false' then
@@ -98,27 +99,49 @@ BEGIN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
+    _guid := CASE ver
+        when '1'
+            then data->>'GUID'
+        when '2'
+            then data->>'{GUID}'
+    end;
+
     _filter = data->'filter';
-    IF _filter IS NOT NULL THEN
+
+    if _guid is not null then
         SELECT format(  '{
-                            "filter":
-                            {
-                                "operator":"AND",
-                                "value":[
-                                    {
-                                        "operator":"=",
-                                        "value":["{class}","%s"]
-                                    },
-                                    %s
-                                ]
-                            }
+                            "operator":"AND",
+                            "value":[
+                                {
+                                    "operator":"=",
+                                    "value":["{class}","%s"]
+                                },
+                                {
+                                    "operator":"=",
+                                    "value":["{GUID}","%s"]
+                                }
+                            ]
+                        }',
+                    _class,
+                    _guid
+                )::jsonb 
+            INTO _filter;
+
+    ELSEIF _filter IS NOT NULL THEN
+        SELECT format(  '{
+                            "operator":"AND",
+                            "value":[
+                                {
+                                    "operator":"=",
+                                    "value":["{class}","%s"]
+                                },
+                                %s
+                            ]
                         }',
                 _class,
                 _filter
             )::jsonb 
             INTO _filter;
-            data := data || _filter;
-        
     ELSEIF ver = '2' then
         SELECT format( '{
                             "operator":"=",
@@ -127,8 +150,9 @@ BEGIN
                 _class
             )::jsonb 
             INTO _filter;
-        data := Jsonb_set(data,'{filter}', _filter);
     END IF;
+    
+    data := Jsonb_set(data,'{filter}', _filter);
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
