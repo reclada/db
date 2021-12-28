@@ -59,19 +59,17 @@ with g as
         select reclada.raise_exception('reclada_object.list has more 2 DTO schema')
             where g.cnt > 2
     ) ex  on true
-),
-upd as (
-    update reclada.object o
-        set status = reclada_object.get_active_status_obj_id()
-        from g
-            where g.obj_id = o.guid
-        RETURNING id
 )
-delete 
-    from reclada.object 
-        where id = 
-            (
-                select max(id) from upd
-            );
+update reclada.object o
+    set status = reclada_object.get_active_status_obj_id()
+    from g
+        where g.obj_id = o.guid;
 
-            
+delete from reclada.object 
+    where id =
+    (
+        SELECT max(id)
+            FROM reclada.v_object 
+                where class_name = 'DTOJsonSchema' 
+                    and attrs->>'function' = 'reclada_object.list' 
+    );
