@@ -12,6 +12,7 @@ d as (
 t as
 (
     SELECT  je.key,
+            1 as q,
             jsonb_typeof(je.value) typ,
             d.obj_id,
             je.value
@@ -22,15 +23,17 @@ t as
     union
     SELECT 
             d.key ||'',''|| je.key as key ,
+            d.q,
             jsonb_typeof(je.value) typ,
             d.obj_id,
             je.value
         from (
-            select  d.data -> t.key as data, 
+            select  d.data #> (''{''||t.key||''}'')::text[] as data, 
+                    t.q+1 as q,
                     t.key,
                     d.obj_id
-            from d 
-            join t
+            from t 
+            join d
                 on t.typ = ''object''
         ) d
         JOIN LATERAL jsonb_each(d.data) je

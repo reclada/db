@@ -421,7 +421,7 @@ BEGIN
     _exec_text := REPLACE(_exec_text, '#@#@#orderby#@#@#'  , order_by          );
     _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
     _exec_text := REPLACE(_exec_text, '#@#@#limit#@#@#'    , limit_            );
-    -- RAISE NOTICE 'conds: %', _exec_text
+    -- RAISE NOTICE 'conds: %', _exec_text;
     EXECUTE _exec_text
         INTO objects;
     objects := coalesce(objects,'[]'::jsonb);
@@ -464,7 +464,7 @@ BEGIN
                     left join reclada.v_object_display d
                         on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||'''';
 
-                raise notice '%',_exec_text;
+                -- raise notice '%',_exec_text;
                 EXECUTE _exec_text
                     INTO _object_display;
             end if;
