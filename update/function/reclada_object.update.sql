@@ -20,6 +20,7 @@ RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $body$
 DECLARE
+    _f_name       TEXT = 'reclada_object.update';
     _class_name   text;
     _class_uuid   uuid;
     _obj_id       uuid;
@@ -38,7 +39,10 @@ BEGIN
 
     _class_name := _data->>'class';
     IF (_class_name IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class is not specified';
+        perform reclada.raise_exception(
+                        'The reclada object class is not specified',
+                        _f_name
+                    );
     END IF;
     _class_uuid := reclada.try_cast_uuid(_class_name);
     _obj_id := _data->>'GUID';
