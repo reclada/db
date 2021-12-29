@@ -65,15 +65,20 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 --{function/api.reclada_object_create}
 --{function/reclada_object.delete}
 
---{view/reclada.v_filter_avaliable_operator}
 DROP VIEW reclada.v_ui_active_object;
 DROP VIEW reclada.v_revision;
 DROP VIEW reclada.v_import_info;
 DROP VIEW reclada.v_dto_json_schema;
 DROP VIEW reclada.v_class;
+DROP VIEW reclada.v_default_display;
+DROP VIEW reclada.v_filter_available_operator;
+DROP VIEW reclada.v_task;
 DROP VIEW reclada.v_active_object;
 --{view/reclada.v_object}
 --{view/reclada.v_active_object}
+--{view/reclada.v_task}
+--{view/reclada.v_default_display}
+--{view/reclada.v_filter_avaliable_operator}
 --{view/reclada.v_class}
 --{view/reclada.v_pk_for_class}
 --{view/reclada.v_dto_json_schema}
@@ -92,3 +97,4 @@ DELETE FROM reclada.draft
 WHERE parent_guid IS NOT NULL;
 
 ALTER TABLE reclada.draft DROP COLUMN IF EXISTS parent_guid;
+ALTER TABLE reclada.draft ALTER COLUMN guid DROP NOT NULL;

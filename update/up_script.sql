@@ -7,6 +7,9 @@
 CREATE TYPE reclada.dp_bhvr AS ENUM ('Replace','Update','Reject','Copy','Insert','Merge');
 
 ALTER TABLE reclada.draft ADD COLUMN IF NOT EXISTS parent_guid uuid;
+DELETE FROM reclada.draft WHERE guid IS NULL;
+ALTER TABLE reclada.draft ALTER COLUMN guid SET NOT NULL;
+ALTER VIEW reclada.v_filter_avaliable_operator RENAME TO v_filter_available_operator;
 
 DROP VIEW reclada.v_pk_for_class;
 
@@ -39,7 +42,7 @@ DROP VIEW reclada.v_pk_for_class;
 \i 'function/api.reclada_object_create.sql'
 \i 'function/reclada_object.delete.sql'
 
-\i 'view/reclada.v_filter_avaliable_operator.sql'
+\i 'view/reclada.v_filter_available_operator.sql'
 \i 'view/reclada.v_object.sql'
 
 UPDATE reclada.object

@@ -89,7 +89,9 @@ BEGIN
                         WHERE o.class_name = 'Task'
                             AND o.obj_id = (_pipeline_lite #>> '{attributes,tasks,0}')::uuid
                     INTO _task;
-                _pipeline_job_guid := _new_guid;
+                IF _task IS NOT NULL THEN
+                    _pipeline_job_guid := _new_guid;
+                END IF;
             END IF;
             
             PERFORM reclada_object.create_job(
