@@ -111,12 +111,12 @@ BEGIN
                 ),
                 src as
                 (
-                    select  jsonb_set('{}'::jsonb,('{'|| i.d ||'}')::text[],'{}'::jsonb) r,
+                    select  reclada.jsonb_deep_set('{}'::jsonb,('{'|| i.d ||'}')::text[],'{}'::jsonb) r,
                             i.rn
                         from inn i
                             where i.rn = 1
                     union
-                    select  jsonb_set(
+                    select  reclada.jsonb_deep_set(
                                 s.r,
                                 i.k,
                                 '{}'::jsonb

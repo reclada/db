@@ -50,7 +50,6 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 --{function/reclada_object.get_query_condition_filter}
 --{function/reclada_object.create}
 --{function/reclada_object.create_subclass}
---{function/reclada_object.delete}
 --{function/reclada_object.refresh_mv}
 --{function/reclada_object.update}
 --{function/reclada_object.datasource_insert}
@@ -61,6 +60,7 @@ DROP MATERIALIZED VIEW       reclada.v_object_unifields;
 
 
 --{function/reclada_object.list}
+--{function/api.reclada_object_list}
 --{function/reclada_object.get_query_condition_filter}
 --{function/api.reclada_object_create}
 --{function/reclada_object.delete}
@@ -86,6 +86,9 @@ DROP VIEW reclada.v_active_object;
 --{view/reclada.v_revision}
 --{view/reclada.v_ui_active_object}
 
+--{view/reclada.v_ui_active_object}
+--{view/reclada.v_default_display}
+
 DROP TYPE reclada.dp_bhvr;
 
 DROP INDEX reclada.uri_index_;
@@ -98,3 +101,21 @@ WHERE parent_guid IS NOT NULL;
 
 ALTER TABLE reclada.draft DROP COLUMN IF EXISTS parent_guid;
 ALTER TABLE reclada.draft ALTER COLUMN guid DROP NOT NULL;
+--{ display
+with t as
+( 
+    update reclada.object
+        set status = reclada_object.get_active_status_obj_id()
+        where attributes->>'function' = 'reclada_object.list'
+            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
+            and status = reclada_object.get_archive_status_obj_id()
+        returning id
+)
+    update reclada.object
+        set status = reclada_object.get_archive_status_obj_id()
+        where attributes->>'function' = 'reclada_object.list'
+            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
+            and id not in (select id from t);
+
+--{function/reclada.jsonb_deep_set}
+--} display

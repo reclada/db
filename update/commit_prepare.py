@@ -88,7 +88,7 @@ if __name__ == "__main__":
                     print(d[i] + d[i+1])
                 input("!!! down.sql invalid !!! Enter to continue . . .")
             else:
-                print("OK: down.sql valid")
+                print("\n\nOK: down.sql valid\n\n")
         else:
             input("!!! down.sql invalid !!! Dumps have different length! Press Enter to continue . . .")
             

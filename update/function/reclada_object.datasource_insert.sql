@@ -34,10 +34,11 @@ BEGIN
         _uri := attributes->>'uri';
 
         SELECT v.obj_id
-        FROM reclada.v_active_object v
-        WHERE v.class_name = 'DataSet'
-            and v.attrs->>'name' = 'defaultDataSet'
-        INTO _dataset_guid;        
+            FROM reclada.v_active_object v
+            WHERE v.class_name = 'DataSet'
+                and v.attrs->>'name' = 'defaultDataSet'
+            INTO _dataset_guid;
+
         IF (_dataset_guid IS NULL) THEN
             RAISE EXCEPTION 'Can''t found defaultDataSet';
         END IF;
