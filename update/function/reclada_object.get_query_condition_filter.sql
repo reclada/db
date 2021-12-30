@@ -111,17 +111,17 @@ BEGIN
                 po.input_type       AS po_input_type,
                 iop.brackets        AS po_inner_brackets
             FROM reclada_object.parse_filter(data) res
-            LEFT JOIN reclada.v_filter_avaliable_operator op
+            LEFT JOIN reclada.v_filter_available_operator op
                 ON res.op = op.operator
             LEFT JOIN reclada_object.parse_filter(data) p
                 on  p.lvl = res.lvl-1
                     and res.prev = p.rn
-            LEFT JOIN reclada.v_filter_avaliable_operator po
+            LEFT JOIN reclada.v_filter_available_operator po
                 on po.operator = p.op
             LEFT JOIN reclada.v_filter_inner_operator iop
                 on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op, _f_name)
+    PERFORM reclada.raise_exception('Operator does not allowed ', _f_name)
         FROM mytable t
             WHERE t.op IS NULL;
 
@@ -139,6 +139,8 @@ BEGIN
             JOIN LATERAL 
             (
                 SELECT CASE 
+                        WHEN t.op LIKE '%<@%' AND t.idx=1 AND jsonb_typeof(t.parsed)='string'
+                            THEN format('data #> ''%s''!= ''[]''::jsonb AND data #> ''%s''!= ''{}''::jsonb AND data #> ''%s''', pt.v, pt.v, pt.v)
                         WHEN fm.repl is not NULL 
                             then 
                                 case 
@@ -204,6 +206,7 @@ BEGIN
             WHERE t.lvl = u.lvl
                 AND t.rn = u.rn
                 AND (f.btwn or f.inop);
+
 
     INSERT INTO mytable (lvl,rn)
         VALUES (0,0);
