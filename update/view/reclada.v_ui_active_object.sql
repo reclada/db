@@ -46,7 +46,8 @@ res as
             rr.data,
             rr.display_key,
             o.attrs,
-            o.created_time
+            o.created_time,
+            o.id
         from
         (
             select  t.obj_id,
@@ -56,7 +57,7 @@ res as
                         t.value
                     ) as data,
                     array_agg(
-                        ''{''||t.key||''}:''||t.typ 
+                        t.key||''#@#@#separator#@#@#''||t.typ 
                     ) as display_key
                 from t 
                     where t.typ != ''object''
