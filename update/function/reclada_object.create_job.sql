@@ -15,14 +15,12 @@ DECLARE
     _obj            jsonb;
 BEGIN
     SELECT attrs->>'Environment'
-    FROM reclada.v_active_object
-    WHERE class_name = 'Context'
-    ORDER BY created_time DESC
-    LIMIT 1
+        FROM reclada.v_active_object
+        WHERE class_name = 'Context'
+        ORDER BY created_time DESC
+        LIMIT 1
         INTO _environment;
-    IF _environment IS NULL THEN
-        PERFORM reclada.raise_exception('Environment variable is blank.', func_name);
-    END IF;
+
     IF COALESCE(_uri, '') = '' THEN
         PERFORM reclada.raise_exception('URI variable is blank.', func_name);
     END IF;
@@ -47,9 +45,9 @@ BEGIN
     IF _new_guid IS NOT NULL THEN
         _obj := jsonb_set(_obj,'{GUID}',format('"%s"',_new_guid)::jsonb);
     END IF;
-    IF _environment != '' THEN
-        _obj := jsonb_set(_obj,'{attributes,type}',format('"%s"',_environment)::jsonb);
-    END IF;
+
+    _obj := jsonb_set(_obj,'{attributes,type}',format('"%s"',_environment)::jsonb);
+
     IF _pipeline_job_guid IS NOT NULL THEN
         _obj := jsonb_set(_obj,'{attributes,inputParameters}',_obj#>'{attributes,inputParameters}' || format('{"PipelineLiteJobGUID" :"%s"}',_pipeline_job_guid)::jsonb);
     END IF;
