@@ -4,35 +4,43 @@
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' and status = reclada_object.get_active_status_obj_id();
+WHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' 
+    and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='f5bcc7ad-1a9b-476d-985e-54cf01377530' and status = reclada_object.get_active_status_obj_id();
+WHERE guid='f5bcc7ad-1a9b-476d-985e-54cf01377530' 
+    and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='3ed1c180-a508-4180-9281-2f9b9a9cd477' and status = reclada_object.get_active_status_obj_id();
+WHERE guid='3ed1c180-a508-4180-9281-2f9b9a9cd477' 
+    and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='85d32073-4a00-4df7-9def-7de8d90b77e0' and status = reclada_object.get_active_status_obj_id();
+WHERE guid='85d32073-4a00-4df7-9def-7de8d90b77e0' 
+    and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='7643b601-43c2-4125-831a-539b9e7418ec' and status = reclada_object.get_active_status_obj_id();
+WHERE guid='7643b601-43c2-4125-831a-539b9e7418ec' 
+    and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'dupBehavior'
-WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' 
+    and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'isCascade'
-WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' 
+    and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'dupChecking'
-WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' and status = reclada_object.get_active_status_obj_id();
+WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' 
+    and status = reclada_object.get_active_status_obj_id();
 
 --{view/reclada.v_parent_field}
 --{view/reclada.v_unifields_pivoted}
@@ -101,6 +109,15 @@ WHERE parent_guid IS NOT NULL;
 
 ALTER TABLE reclada.draft DROP COLUMN IF EXISTS parent_guid;
 ALTER TABLE reclada.draft ALTER COLUMN guid DROP NOT NULL;
+
+select reclada.raise_exception('can''t find 2 DTOJsonSchema for reclada_object.list', 'up_script.sql')
+    where 
+        (
+            select count(*)
+                from reclada.object
+                    where attributes->>'function' = 'reclada_object.list'
+                        and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
+        ) != 2;
 --{ display
 with t as
 ( 

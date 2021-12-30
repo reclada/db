@@ -89,6 +89,15 @@ CREATE INDEX checksum_index_ ON reclada.object USING HASH (((attributes->>'check
 
 DROP INDEX reclada.status_index;
 
+select reclada.raise_exception('can''t find 2 DTOJsonSchema for reclada_object.list', 'up_script.sql')
+    where 
+        (
+            select count(*)
+                from reclada.object
+                    where attributes->>'function' = 'reclada_object.list'
+                        and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
+        ) != 2;
+
 --{ display
 with t as
 ( 
