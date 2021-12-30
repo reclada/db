@@ -314,7 +314,7 @@ BEGIN
     _query_conditions := replace(
             replace(
                 replace((affected)::text,
-                    '{', '('''),
+                    '{', 'obj.obj_id in ('''),
                 '}', '''::uuid)'),
             ',','''::uuid,''');
     _pre_query := (select val from reclada.v_ui_active_object);
