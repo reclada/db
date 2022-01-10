@@ -43,4 +43,6 @@ create table reclada.unique_object_reclada_object
 );
 
 \i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.update.sql'
+\i 'function/reclada.update_unique_object.sql'
 \i 'view/reclada.v_ui_active_object.sql'
