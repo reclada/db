@@ -38,7 +38,7 @@ create table reclada.unique_object_reclada_object
         REFERENCES reclada.unique_object(id),
     id_reclada_object    bigint 
         NOT NULL 
-        REFERENCES reclada.object(id),
+        REFERENCES reclada.object(id) ON DELETE CASCADE,
     PRIMARY KEY(id_unique_object,id_reclada_object)
 );
 
@@ -47,3 +47,4 @@ create table reclada.unique_object_reclada_object
 \i 'function/reclada.update_unique_object.sql'
 \i 'view/reclada.v_ui_active_object.sql'
 \i 'view/reclada.get_children.sql'
+\i 'view/reclada.v_filter_mapping.sql'
