@@ -439,8 +439,16 @@ BEGIN
 
                 _exec_text := _pre_query ||',
                 dd as (
-                    select distinct unnest(obj.display_key) v
+                    select distinct 
+                            ''{''||f.path||''}:''||f.json_type v,
+                            f.json_type
                         FROM '|| _from ||'
+                        JOIN reclada.unique_object_reclada_object as uoc
+                            on uoc.id_reclada_object = obj.id
+                        JOIN reclada.unique_object as uo
+                            on uoc.id_unique_object = uo.id
+                        JOIN reclada.field f
+                            on f.id = ANY (uo.id_field)
                 ),
                 on_data as 
                 (
@@ -450,7 +458,7 @@ BEGIN
                             ) t
                         from dd as t
                         JOIN reclada.v_default_display dd
-                            on t.v like ''%'' || dd.json_type
+                            on t.json_type = dd.json_type
                 )
                 select jsonb_set(templ.v,''{table}'', od.t || coalesce(d.table,coalesce(d.table,templ.v->''table'')))
                     from on_data od
@@ -464,7 +472,7 @@ BEGIN
                     left join reclada.v_object_display d
                         on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||'''';
 
-                -- raise notice '%',_exec_text;
+                raise notice '%',_exec_text;
                 EXECUTE _exec_text
                     INTO _object_display;
             end if;

@@ -44,7 +44,6 @@ res as
 (
     select  rr.obj_id,
             rr.data,
-            rr.display_key,
             o.attrs,
             o.created_time,
             o.id
@@ -55,10 +54,7 @@ res as
                     (
                         ''{''||t.key||''}'',
                         t.value
-                    ) as data,
-                    array_agg(
-                        t.key||''#@#@#separator#@#@#''||t.typ 
-                    ) as display_key
+                    ) as data
                 from t 
                     where t.typ != ''object''
                     group by t.obj_id
