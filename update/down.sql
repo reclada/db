@@ -4,42 +4,42 @@
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='7f56ece0-e780-4496-8573-1ad4d800a3b6' 
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('Cell'))
     and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='f5bcc7ad-1a9b-476d-985e-54cf01377530' 
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('Table'))
     and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='3ed1c180-a508-4180-9281-2f9b9a9cd477' 
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('Page'))
     and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='85d32073-4a00-4df7-9def-7de8d90b77e0' 
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('Document'))
     and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'parentField'
-WHERE guid='7643b601-43c2-4125-831a-539b9e7418ec' 
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('DataRow'))
     and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'dupBehavior'
-WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' 
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('File'))
     and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'isCascade'
-WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' 
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('File'))
     and status = reclada_object.get_active_status_obj_id();
 
 UPDATE reclada.object
 SET attributes = attributes - 'dupChecking'
-WHERE guid='c7fc0455-0572-40d7-987f-583cc2c9630c' 
+WHERE guid IN (SELECT reclada_object.get_guid_for_class('File'))
     and status = reclada_object.get_active_status_obj_id();
 
 --{view/reclada.v_parent_field}
