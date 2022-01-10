@@ -6,4 +6,5 @@ drop table reclada.unique_object;
 drop table reclada.field;
 
 --{function/reclada_object.create}
+--{function/reclada_object.get_schema}
 --{view/reclada.v_ui_active_object}
