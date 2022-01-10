@@ -8,4 +8,4 @@ AS
 	FROM reclada.object obj
    	WHERE class in (select reclada_object.get_GUID_for_class('ObjectStatus'));
 --        and status = reclada_object.get_active_status_obj_id();
--- SELECT * from reclada.v_object_status
+ANALYZE reclada.v_object_status;

@@ -52,8 +52,8 @@ def db_install():
 
 def runtime_install():
     rmdir('reclada.runtime')
-    os.system(f'git clone https://github.com/reclada/reclada.runtime')
-    os.chdir('reclada.runtime/db/objects')
+    os.system(f'git clone https://gitlab.reclada.com/developers/reclada-runtime')
+    os.chdir('reclada-runtime/db/objects')
     os.system(f'git checkout {branch_runtime}')
     run_file('install_objects.sql')
     os.chdir('..')
@@ -64,7 +64,7 @@ def runtime_install():
 
 def scinlp_install():
     rmdir('SciNLP')
-    os.system(f'git clone https://github.com/reclada/SciNLP')
+    os.system(f'git clone https://gitlab.reclada.com/developers/SciNLP')
     os.chdir('SciNLP/src/db')
     os.system(f'git checkout {branch_SciNLP}')
     run_file('bdobjects.sql')
