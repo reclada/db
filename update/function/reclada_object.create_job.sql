@@ -21,9 +21,6 @@ BEGIN
         LIMIT 1
         INTO _environment;
 
-    IF COALESCE(_uri, '') = '' THEN
-        PERFORM reclada.raise_exception('URI variable is blank.', func_name);
-    END IF;
     IF _obj_id IS NULL THEN
         PERFORM reclada.raise_exception('Object ID is blank.', func_name);
     END IF;

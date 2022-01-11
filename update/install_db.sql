@@ -1014,7 +1014,7 @@ CREATE FUNCTION reclada.get_children(_obj_id uuid) RETURNS SETOF uuid
             parent_guid,
             class_name,
             1
-        FROM v_active_object vao 
+        FROM reclada.v_active_object vao 
         WHERE obj_id =_obj_id
             UNION 
         SELECT
@@ -1023,7 +1023,7 @@ CREATE FUNCTION reclada.get_children(_obj_id uuid) RETURNS SETOF uuid
             t2.parent_guid,
             t2.class_name,
             level+1
-        FROM v_active_object t2 JOIN temp1 t1 ON t1.obj_id=t2.parent_guid
+        FROM reclada.v_active_object t2 JOIN temp1 t1 ON t1.obj_id=t2.parent_guid
     )
     SELECT obj_id FROM temp1
 $$;
