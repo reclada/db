@@ -3,7 +3,8 @@
 DROP FUNCTION IF EXISTS reclada.update_unique_object;
 CREATE OR REPLACE FUNCTION reclada.update_unique_object
 (
-    guid_list uuid[]
+    guid_list uuid[],
+    recalc_all bool = false
 )
 RETURNS bool AS $$
 DECLARE
@@ -11,14 +12,18 @@ DECLARE
     _exec_text          text;
     _pre_query          text;
 BEGIN
-    if coalesce(array_length(guid_list,1),0) != 0 then
-
-        _query_conditions := replace(
-                replace(
-                    replace((guid_list)::text,
-                        '{', 'obj.obj_id in ('''),
-                    '}', '''::uuid)'),
-                ',','''::uuid,''');
+    if coalesce(array_length(guid_list,1),0) != 0 or recalc_all then
+        if not recalc_all then
+            _query_conditions := replace(
+                    replace(
+                        replace((guid_list)::text,
+                            '{', 'obj.obj_id in ('''),
+                        '}', '''::uuid)'),
+                    ',','''::uuid,''');
+        else 
+            _query_conditions := 'true';
+        end if;
+        _query_conditions := _query_conditions || ' and obj.class_name not in (''ObjectDisplay'',''jsonschema'')';
         _pre_query := (select val from reclada.v_ui_active_object);
         _pre_query := REPLACE(_pre_query,'#@#@#where#@#@#', _query_conditions);
 

@@ -51,3 +51,5 @@ create table reclada.unique_object_reclada_object
 \i 'view/reclada.get_children.sql'
 \i 'view/reclada.v_filter_mapping.sql'
 \i 'view/reclada.v_ui_active_object.sql'
+
+select reclada.update_unique_object(null, true);
