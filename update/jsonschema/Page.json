@@ -1,5 +1,6 @@
 {
     "forClass": "Page",
+    "parentField": "document",
     "schema": {
         "properties": {
             "bbox": {

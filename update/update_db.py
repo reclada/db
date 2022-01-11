@@ -47,14 +47,22 @@ def psql_str(cmd:str,DB_URI:str = db_URI)->str:
 def json_schema_install(DB_URI=db_URI):
     file_name = 'patched.sql'
     rmdir('postgres-json-schema')
-    os.system(f'git clone https://github.com/gavinwahl/postgres-json-schema.git')
+    os.chdir('..')
+    os.chdir('..')
+    cd = Path('postgres-json-schema').exists()
+    if not cd:
+        os.chdir('db')
+        os.chdir('update')
+        os.system(f'git clone https://github.com/gavinwahl/postgres-json-schema.git')
     os.chdir('postgres-json-schema')
     with open('postgres-json-schema--0.1.1.sql') as s, open(file_name,'w') as d:
         d.write(s.read().replace('@extschema@','public').replace('CREATE OR REPLACE FUNCTION ','CREATE OR REPLACE FUNCTION public.'))
 
     run_file(file_name,DB_URI)
-   
     os.chdir('..')
+    if cd:
+        os.chdir('db')
+        os.chdir('update')
     rmdir('postgres-json-schema')
 
 

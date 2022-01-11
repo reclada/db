@@ -10,3 +10,5 @@ AS
 	FROM reclada.object obj
    	WHERE obj.class = reclada_object.get_jsonschema_GUID();
 --select * from reclada.v_class_lite
+ANALYZE reclada.v_class_lite;
+
