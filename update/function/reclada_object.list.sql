@@ -414,7 +414,16 @@ BEGIN
                             FROM '
                             || _from
                             || ' 
-                            ORDER BY #@#@#orderby#@#@#
+                            ORDER BY #@#@#orderby#@#@#'
+                            || case 
+                                when ver = '2' 
+                                    then ''
+                                else
+                                '
+                                OFFSET #@#@#offset#@#@#
+                                LIMIT #@#@#limit#@#@#'
+                            end
+                            || '
                     ) AS t';
     _exec_text := REPLACE(_exec_text, '#@#@#orderby#@#@#'  , order_by          );
     _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
