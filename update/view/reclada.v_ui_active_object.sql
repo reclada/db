@@ -5,9 +5,13 @@ select
 'with recursive 
 d as ( 
     select  data, 
-            obj_id
+            obj_id,
+            created_time,
+            attrs 
         FROM reclada.v_active_object obj 
             where #@#@#where#@#@#
+                OFFSET #@#@#offset#@#@#
+                LIMIT #@#@#limit#@#@#
 ),
 t as
 (

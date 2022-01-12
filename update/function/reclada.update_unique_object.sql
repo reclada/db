@@ -26,6 +26,8 @@ BEGIN
         _query_conditions := _query_conditions || ' and obj.class_name not in (''ObjectDisplay'',''jsonschema'')';
         _pre_query := (select val from reclada.v_ui_active_object);
         _pre_query := REPLACE(_pre_query,'#@#@#where#@#@#', _query_conditions);
+        _pre_query := REPLACE(_pre_query,'LIMIT #@#@#limit#@#@#', '');
+        _pre_query := REPLACE(_pre_query,'OFFSET #@#@#offset#@#@#', '');
 
         _exec_text := _pre_query ||',
             dd as (

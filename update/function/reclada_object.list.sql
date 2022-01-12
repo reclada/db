@@ -415,8 +415,6 @@ BEGIN
                             || _from
                             || ' 
                             ORDER BY #@#@#orderby#@#@#
-                            OFFSET #@#@#offset#@#@#
-                            LIMIT #@#@#limit#@#@#
                     ) AS t';
     _exec_text := REPLACE(_exec_text, '#@#@#orderby#@#@#'  , order_by          );
     _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
@@ -437,16 +435,23 @@ BEGIN
                                             limit 1
                             );
 
-                _exec_text := _pre_query ||',
+                _exec_text := '
+                with 
+                d as ( 
+                    select id_unique_object
+                        FROM reclada.v_active_object obj 
+                        JOIN reclada.unique_object_reclada_object as uoc
+                            on uoc.id_reclada_object = obj.id
+                                and #@#@#where#@#@#
+                        group by id_unique_object
+                ),
                 dd as (
                     select distinct 
                             ''{''||f.path||''}:''||f.json_type v,
                             f.json_type
-                        FROM '|| _from ||'
-                        JOIN reclada.unique_object_reclada_object as uoc
-                            on uoc.id_reclada_object = obj.id
+                        FROM d 
                         JOIN reclada.unique_object as uo
-                            on uoc.id_unique_object = uo.id
+                            on d.id_unique_object = uo.id
                         JOIN reclada.field f
                             on f.id = ANY (uo.id_field)
                 ),
@@ -472,13 +477,14 @@ BEGIN
                     left join reclada.v_object_display d
                         on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||'''';
 
-                raise notice '%',_exec_text;
+                _exec_text := REPLACE(_exec_text, '#@#@#where#@#@#', query_conditions  );
+                -- raise notice '%',_exec_text;
                 EXECUTE _exec_text
                     INTO _object_display;
             end if;
         end if;
 
-        _exec_text := _pre_query || '
+        _exec_text := '
             SELECT  COUNT(1),
                     TO_CHAR(
                         MAX(
@@ -496,7 +502,11 @@ BEGIN
                         ),
                         ''YYYY-MM-DD hh24:mi:ss.MS TZH''
                     )
-                    FROM '|| _from;
+                    FROM reclada.v_active_object obj 
+                        where #@#@#where#@#@#';
+
+        _exec_text := REPLACE(_exec_text, '#@#@#where#@#@#', query_conditions  );
+        raise notice '%',_exec_text;
         EXECUTE _exec_text
             INTO number_of_objects, last_change;
         
