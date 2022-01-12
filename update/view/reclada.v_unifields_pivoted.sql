@@ -5,6 +5,7 @@ SELECT
     uni_number,
     dup_behavior,
     is_cascade,
+    copy_field,
     MAX(CASE WHEN field_number = 1 THEN unifield END) AS f1,
     MAX(CASE WHEN field_number = 2 THEN unifield END) AS f2,
     MAX(CASE WHEN field_number = 3 THEN unifield END) AS f3,
@@ -15,5 +16,5 @@ SELECT
     MAX(CASE WHEN field_number = 8 THEN unifield END) AS f8
 FROM v_object_unifields vou
 WHERE is_mandatory
-GROUP BY class_uuid, uni_number, dup_behavior,is_cascade
+GROUP BY class_uuid, uni_number, dup_behavior,is_cascade,copy_field
 ORDER BY class_uuid, uni_number, dup_behavior;

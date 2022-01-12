@@ -15,14 +15,15 @@ CREATE OR REPLACE FUNCTION reclada_object.refresh_mv
 RETURNS void AS $$
 
 BEGIN
-    CASE lower(class_name)
-        WHEN 'objectstatus' THEN
+    CASE class_name
+        WHEN 'ObjectStatus' THEN
             REFRESH MATERIALIZED VIEW reclada.v_object_status;
-        WHEN 'user' THEN
+        WHEN 'User' THEN
             REFRESH MATERIALIZED VIEW reclada.v_user;
         WHEN 'jsonschema' THEN
             REFRESH MATERIALIZED VIEW reclada.v_class_lite;
-        WHEN 'unifields' THEN
+        WHEN 'uniFields' THEN
+            REFRESH MATERIALIZED VIEW reclada.v_class_lite;
             REFRESH MATERIALIZED VIEW reclada.v_object_unifields;
         ELSE
             NULL;

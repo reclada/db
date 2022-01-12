@@ -1,5 +1,5 @@
-drop VIEW if EXISTS reclada.v_DTO_json_schema;
-CREATE OR REPLACE VIEW reclada.v_DTO_json_schema
+drop VIEW if EXISTS reclada.v_dto_json_schema;
+CREATE OR REPLACE VIEW reclada.v_dto_json_schema
 AS
     SELECT  obj.id            ,
             obj.obj_id        ,
