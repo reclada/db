@@ -7,9 +7,6 @@
 
 --------------default----------------
 
-\i 'function/reclada_object.get_guid_for_class.sql'
-\i 'function/reclada_object.delete.sql'
-\i 'function/reclada_object.need_flat.sql'
 
 UPDATE reclada.object
 SET attributes = '{
@@ -76,7 +73,7 @@ AND attributes->>'forClass' != 'jsonschema';
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada_object.create_subclass.sql'
 
---DROP VIEW IF EXISTS reclada.v_unifields_idx_cnt;
+
 DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 DROP VIEW IF EXISTS reclada.v_parent_field;
@@ -93,9 +90,14 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 DROP VIEW IF EXISTS reclada.v_object_display;
 
-\i 'view/reclada.v_object_display.sql'
+
 \i 'function/reclada_object.built_nested_jsonb.sql'
 \i 'view/reclada.v_class_lite.sql'
+\i 'function/reclada_object.get_guid_for_class.sql'
+\i 'function/reclada_object.delete.sql'
+\i 'view/reclada.v_object_display.sql'
+\i 'function/reclada_object.need_flat.sql'
+
 \i 'view/reclada.v_object_status.sql'
 \i 'view/reclada.v_user.sql'
 \i 'view/reclada.v_object.sql'

@@ -81,7 +81,15 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 DROP VIEW IF EXISTS reclada.v_object_display;
 
 --{view/reclada.v_object_display}
+--{function/reclada_object.need_flat}
+
+--{function/reclada_object.built_nested_jsonb}
 --{view/reclada.v_class_lite}
+
+
+--{function/reclada_object.get_guid_for_class}
+--{function/reclada_object.delete}
+
 --{view/reclada.v_object_status}
 --{view/reclada.v_user}
 --{view/reclada.v_object}
@@ -95,10 +103,12 @@ DROP VIEW IF EXISTS reclada.v_object_display;
 --{view/reclada.v_parent_field}
 --{view/reclada.v_object_unifields}
 --{view/reclada.v_unifields_pivoted}
---{function/reclada_object.built_nested_jsonb}
+
 --{function/reclada_object.get_query_condition_filter}
 --{function/reclada_object.create_subclass}
 
---{function/reclada_object.get_guid_for_class}
---{function/reclada_object.delete}
---{function/reclada_object.need_flat}
+
+
+
+
+
