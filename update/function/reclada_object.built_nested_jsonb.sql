@@ -11,8 +11,6 @@ DECLARE
     res      jsonb;
 BEGIN
 res := _value;
---res := to_jsonb(_value); --!? unnecessary quotes
---res := _value::jsonb;
 n := array_length(_path, 1);
 FOR i IN reverse n..1 LOOP
     res := format('{"%s":%s}', _path[i], res)::jsonb;

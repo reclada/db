@@ -9,7 +9,8 @@
 
 
 UPDATE reclada.object
-SET attributes = '{
+SET
+attributes = '{
     "schema": {
         "id": "expr",
         "type": "object",
@@ -61,7 +62,8 @@ SET attributes = '{
       },
     "function": "reclada_object.get_query_condition_filter"
 }'::jsonb
-WHERE attributes->>'function' = 'reclada_object.get_query_condition_filter';
+WHERE attributes->>'function' = 'reclada_object.get_query_condition_filter'
+AND class IN (SELECT reclada_object.get_guid_for_class('DTOJsonSchema'));
 
 UPDATE reclada.object
 SET attributes = (SELECT jsonb_set(attributes, '{schema, properties}', attributes #> '{schema, properties}' || '{"disable": {"type": "boolean", "default": false}}'::jsonb))
@@ -72,7 +74,7 @@ AND attributes->>'forClass' != 'jsonschema';
 
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada_object.create_subclass.sql'
-
+\i 'view/reclada.v_filter_available_operator.sql'
 
 DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
@@ -90,7 +92,7 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 DROP VIEW IF EXISTS reclada.v_object_display;
 
-
+\i 'function/reclada_object.get_jsonschema_guid.sql'
 \i 'function/reclada_object.built_nested_jsonb.sql'
 \i 'view/reclada.v_class_lite.sql'
 \i 'function/reclada_object.get_guid_for_class.sql'

@@ -1,5 +1,5 @@
-DROP FUNCTION IF EXISTS reclada_object.get_jsonschema_GUID;
-CREATE OR REPLACE FUNCTION reclada_object.get_jsonschema_GUID()
+DROP FUNCTION IF EXISTS reclada_object.get_jsonschema_guid;
+CREATE OR REPLACE FUNCTION reclada_object.get_jsonschema_guid()
 RETURNS uuid AS $$
     SELECT class
         FROM reclada.object o
@@ -10,4 +10,4 @@ RETURNS uuid AS $$
                             where class is not null 
                     limit 1
                 )
-$$ LANGUAGE SQL STABLE;
+$$ LANGUAGE SQL IMMUTABLE;

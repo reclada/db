@@ -10,7 +10,7 @@ objects_schemas AS (
             obj.attributes,
             obj.status
 	    FROM reclada.object obj
-   	    WHERE class = reclada_object.get_jsonschema_GUID()
+   	    WHERE class = reclada_object.get_jsonschema_guid()
 ),
 paths_to_default AS
 (
