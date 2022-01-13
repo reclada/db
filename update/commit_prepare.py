@@ -1,5 +1,5 @@
 from json.decoder import JSONDecodeError
-from update_db import get_version_from_commit, get_version_from_db
+from update_db import get_version_from_commit, get_version_from_db,clone_db
 from update_db import run_file, db_URI, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test
 
 import os
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     down_test = downgrade_test
 
     downgrade_dump = 'downgrade_dump.sql'
-    current_dump = 'current_dump.sql'
+    current_dump = path = os.path.join('db','update','install_db.sql')
 
     commit_ver = get_version_from_commit()
     try:
@@ -39,8 +39,16 @@ if __name__ == "__main__":
     if install_db:
         os.system('python install_db.py')
         if down_test:
-            print('pg_dump for current version...')
-            os.system(f'pg_dump -f {current_dump} {db_URI}')   
+            print('trying to find dump of current version...')
+            clone_db()
+            os.chdir('..')
+            if os.path.isfile(current_dump):
+                print('success!')
+            else:
+                print('dump not found...')
+                print('pg_dump for current version...')
+                current_dump = 'current_dump.sql'
+                os.system(f'pg_dump -f {current_dump} {db_URI}')
     else:
         print('install_db.py skipped, database has actual version')
         down_test = False

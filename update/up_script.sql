@@ -55,3 +55,18 @@ create table reclada.unique_object_reclada_object
 
 
 select reclada.update_unique_object(null, true);
+
+--{ REC-564
+    SELECT reclada_object.create_subclass('{
+        "class": "RecladaObject",
+        "attrs": {
+            "newClass": "Component",
+            "properties": {
+                "name": {"type": "string"},
+                "commitHash": {"type": "string"},
+                "repository": {"type": "string"}
+            },
+            "required": ["name","commitHash","repository"]
+        }
+    }'::jsonb);
+--}

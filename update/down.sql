@@ -15,3 +15,10 @@ drop table reclada.field;
 --{function/api.reclada_object_list}
 --{view/reclada.v_filter_mapping}
 
+--{ REC-564
+    delete from reclada.object 
+        where class in (select reclada_object.get_GUID_for_class('Component'));
+
+    delete from reclada.object 
+        where guid in (select reclada_object.get_GUID_for_class('Component'));
+--}
