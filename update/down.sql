@@ -12,5 +12,6 @@ drop table reclada.field;
 --{function/reclada_object.list}
 --{function/reclada.update_unique_object}
 --{function/reclada.random_string}
+--{function/api.reclada_object_list}
 --{view/reclada.v_filter_mapping}
 
