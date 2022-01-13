@@ -44,12 +44,6 @@ DECLARE
     _new_parent_guid       uuid;
     _rel_type       text := 'GUID changed for dupBehavior';
     _guid_list      text;
-    
-    _query_conditions   text;
-    _exec_text          text;
-    _pre_query          text;
-    _from               text;
-
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
