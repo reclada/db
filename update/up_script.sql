@@ -47,8 +47,10 @@ create table reclada.unique_object_reclada_object
 \i 'function/reclada_object.list.sql'
 \i 'function/reclada_object.get_schema.sql'
 \i 'function/reclada.update_unique_object.sql'
+\i 'function/reclada.random_string.sql'
 \i 'view/reclada.v_ui_active_object.sql'
 \i 'view/reclada.v_filter_mapping.sql'
 \i 'view/reclada.v_ui_active_object.sql'
+
 
 select reclada.update_unique_object(null, true);
