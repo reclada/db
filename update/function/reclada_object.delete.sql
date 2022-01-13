@@ -49,7 +49,7 @@ BEGIN
             SET status = reclada_object.get_archive_status_obj_id()
             FROM reclada.object o
                 LEFT JOIN
-                (   SELECT obj_id FROM reclada_object.get_GUID_for_class(_class_name)
+                (   SELECT obj_id FROM reclada_object.get_guid_for_class(_class_name)
                     UNION SELECT _class_uuid WHERE _class_uuid IS NOT NULL
                 ) c ON o.class = c.obj_id
                 WHERE u.id = o.id AND

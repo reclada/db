@@ -2,137 +2,103 @@
 -- to add current version of object to downgrade script
 
 
+--------------default----------------
 UPDATE reclada.object
-SET attributes = attributes - 'parentField'
-WHERE guid IN (SELECT reclada_object.get_guid_for_class('Cell'))
-    and status = reclada_object.get_active_status_obj_id();
+SET attributes = '{
+    "schema": {
+        "id": "expr",
+        "type": "object",
+        "required": [
+          "value",
+          "operator"
+        ],
+        "properties": {
+          "value": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "expr"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "minItems": 1
+          },
+          "operator": {
+            "type": "string"
+          }
+        }
+      },
+    "function": "reclada_object.get_query_condition_filter"
+}'::jsonb
+WHERE attributes->>'function' = 'reclada_object.get_query_condition_filter';
+
 
 UPDATE reclada.object
-SET attributes = attributes - 'parentField'
-WHERE guid IN (SELECT reclada_object.get_guid_for_class('Table'))
-    and status = reclada_object.get_active_status_obj_id();
+SET attributes = attributes #- '{schema, properties, disable}'
+WHERE class IN (SELECT reclada_object.get_guid_for_class('jsonschema'))
+AND attributes->>'forClass' != 'ObjectDisplay'
+AND attributes->>'forClass' != 'jsonschema';
 
-UPDATE reclada.object
-SET attributes = attributes - 'parentField'
-WHERE guid IN (SELECT reclada_object.get_guid_for_class('Page'))
-    and status = reclada_object.get_active_status_obj_id();
+DROP VIEW IF EXISTS reclada.v_unifields_idx_cnt;
+DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
+DROP VIEW IF EXISTS reclada.v_parent_field;
+DROP VIEW IF EXISTS reclada.v_class;
+DROP VIEW IF EXISTS reclada.v_import_info;
+DROP VIEW IF EXISTS reclada.v_revision;
+DROP VIEW IF EXISTS reclada.v_task;
+DROP VIEW IF EXISTS reclada.v_ui_active_object;
+DROP VIEW IF EXISTS reclada.v_dto_json_schema;
+DROP VIEW IF EXISTS reclada.v_active_object;
+DROP VIEW IF EXISTS reclada.v_object;
+DROP VIEW IF EXISTS reclada.v_pk_for_class;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
+DROP VIEW IF EXISTS reclada.v_object_display;
 
-UPDATE reclada.object
-SET attributes = attributes - 'parentField'
-WHERE guid IN (SELECT reclada_object.get_guid_for_class('Document'))
-    and status = reclada_object.get_active_status_obj_id();
-
-UPDATE reclada.object
-SET attributes = attributes - 'parentField'
-WHERE guid IN (SELECT reclada_object.get_guid_for_class('DataRow'))
-    and status = reclada_object.get_active_status_obj_id();
-
-UPDATE reclada.object
-SET attributes = attributes - 'dupBehavior'
-WHERE guid IN (SELECT reclada_object.get_guid_for_class('File'))
-    and status = reclada_object.get_active_status_obj_id();
-
-UPDATE reclada.object
-SET attributes = attributes - 'isCascade'
-WHERE guid IN (SELECT reclada_object.get_guid_for_class('File'))
-    and status = reclada_object.get_active_status_obj_id();
-
-UPDATE reclada.object
-SET attributes = attributes - 'dupChecking'
-WHERE guid IN (SELECT reclada_object.get_guid_for_class('File'))
-    and status = reclada_object.get_active_status_obj_id();
-
---{view/reclada.v_parent_field}
---{view/reclada.v_unifields_pivoted}
-DROP MATERIALIZED VIEW       reclada.v_object_unifields;
-
---{function/reclada.get_unifield_index_name}
---{function/reclada_object.merge}
---{function/reclada.get_children}
---{function/reclada.get_duplicates}
---{function/reclada_object.update_json_by_guid}
---{function/reclada_object.update_json}
---{function/reclada_object.remove_parent_guid}
---{function/reclada_object.get_parent_guid}
-
---{function/reclada_object.get_query_condition_filter}
---{function/reclada_object.create}
---{function/reclada_object.create_subclass}
---{function/reclada_object.refresh_mv}
---{function/reclada_object.update}
---{function/reclada_object.datasource_insert}
---{function/reclada_object.parse_filter}
---{function/reclada_object.list}
---{function/reclada_object.create_relationship}
---{function/reclada_object.create_job}
-
-
---{function/reclada_object.list}
---{function/api.reclada_object_list}
---{function/reclada_object.get_query_condition_filter}
---{function/api.reclada_object_create}
---{function/reclada_object.delete}
-
-DROP VIEW reclada.v_ui_active_object;
-DROP VIEW reclada.v_revision;
-DROP VIEW reclada.v_import_info;
-DROP VIEW reclada.v_dto_json_schema;
-DROP VIEW reclada.v_class;
-DROP VIEW reclada.v_default_display;
-DROP VIEW reclada.v_filter_available_operator;
-DROP VIEW reclada.v_task;
-DROP VIEW reclada.v_active_object;
+--{view/reclada.v_object_display}
+--{view/reclada.v_class_lite}
+--{view/reclada.v_object_status}
+--{view/reclada.v_user}
 --{view/reclada.v_object}
 --{view/reclada.v_active_object}
---{view/reclada.v_task}
---{view/reclada.v_default_display}
---{view/reclada.v_filter_avaliable_operator}
---{view/reclada.v_class}
---{view/reclada.v_pk_for_class}
 --{view/reclada.v_dto_json_schema}
---{view/reclada.v_import_info}
+--{view/reclada.v_ui_active_object}
+--{view/reclada.v_task.sql}
 --{view/reclada.v_revision}
---{view/reclada.v_ui_active_object}
+--{view/reclada.v_import_info}
+--{view/reclada.v_class}
+--{view/reclada.v_parent_field}
+--{view/reclada.v_object_unifields}
+--{view/reclada.v_unifields_pivoted}
+--{function/reclada_object.built_nested_jsonb}
+--{function/reclada_object.get_query_condition_filter}
+--{function/reclada_object.create_subclass}
 
---{view/reclada.v_ui_active_object}
---{view/reclada.v_default_display}
-
-DROP TYPE reclada.dp_bhvr;
-
-DROP INDEX reclada.uri_index_;
-DROP INDEX reclada.checksum_index_;
-
-CREATE INDEX status_index ON reclada.object USING btree (status);
-
-DELETE FROM reclada.draft
-WHERE parent_guid IS NOT NULL;
-
-ALTER TABLE reclada.draft DROP COLUMN IF EXISTS parent_guid;
-ALTER TABLE reclada.draft ALTER COLUMN guid DROP NOT NULL;
-
-select reclada.raise_exception('can''t find 2 DTOJsonSchema for reclada_object.list', 'up_script.sql')
-    where 
-        (
-            select count(*)
-                from reclada.object
-                    where attributes->>'function' = 'reclada_object.list'
-                        and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
-        ) != 2;
---{ display
-with t as
-( 
-    update reclada.object
-        set status = reclada_object.get_active_status_obj_id()
-        where attributes->>'function' = 'reclada_object.list'
-            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
-            and status = reclada_object.get_archive_status_obj_id()
-        returning id
-)
-    update reclada.object
-        set status = reclada_object.get_archive_status_obj_id()
-        where attributes->>'function' = 'reclada_object.list'
-            and class in (select reclada_object.get_guid_for_class('DTOJsonSchema'))
-            and id not in (select id from t);
-
---{function/reclada.jsonb_deep_set}
---} display
+--{function/reclada_object.get_guid_for_class}
+--{function/reclada_object.delete}
+--{function/reclada_object.need_flat}
