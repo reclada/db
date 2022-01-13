@@ -1,6 +1,6 @@
 from json.decoder import JSONDecodeError
 from update_db import get_version_from_commit, get_version_from_db,clone_db
-from update_db import run_file, db_URI, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test
+from update_db import run_file, db_URI, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,run_object_create,pg_dump
 
 import os
 import datetime
@@ -39,16 +39,20 @@ if __name__ == "__main__":
     if install_db:
         os.system('python install_db.py')
         if down_test:
-            print('trying to find dump of current version...')
-            clone_db()
-            os.chdir('..')
-            if os.path.isfile(current_dump):
-                print('success!')
+            if run_object_create:
+                print('run_object_create must be false for downgrade_test')
+                downgrade_test = False
             else:
-                print('dump not found...')
-                print('pg_dump for current version...')
-                current_dump = 'current_dump.sql'
-                os.system(f'pg_dump -f {current_dump} {db_URI}')
+                print('trying to find dump of current version...')
+                clone_db()
+                os.chdir('..')
+                if os.path.isfile(current_dump):
+                    print('success!')
+                else:
+                    print('dump not found...')
+                    print('pg_dump for current version...')
+                    current_dump = 'current_dump.sql'
+                    pg_dump(current_dump,t)
     else:
         print('install_db.py skipped, database has actual version')
         down_test = False
@@ -60,15 +64,19 @@ if __name__ == "__main__":
     if down_test:
         run_cmd_scalar('select dev.downgrade_version();')
         print('pg_dump after downgrade version...')
-        os.system(f'pg_dump -f {downgrade_dump} {db_URI}')
+        pg_dump(downgrade_dump,t)
         with open(downgrade_dump, encoding='utf8') as dd, open(current_dump, encoding='utf8') as cd:
             ldd = dd.readlines()
             lcd = cd.readlines()
 
+        skip = 2
         if len(ldd) == len(lcd):
             d = []
             copy = False
             for i in range(len(ldd)):
+                if skip > 0:
+                    skip-=1
+                    continue
                 if not copy:
                     copy = ldd[i].startswith('COPY ')
                     if copy:
@@ -115,22 +123,7 @@ if __name__ == "__main__":
 
     if install_db:
         print('pg_dump...')
-        os.system(f'pg_dump -N public -f install_db.sql -O {db_URI}')
-
-        with open('up_script.sql') as f:
-            ver_str = f.readline()
-            ver = int(ver_str.replace('-- version =',''))
-               
-        with open('install_db.sql',encoding='utf8') as f:
-            scr_str = f.readlines()
-
-        with open('install_db.sql','w',encoding='utf8') as f:
-            f.write(ver_str)
-            f.write(f'-- {t}')
-            for line in scr_str:
-                if line.find('GRANT') != 0 and line.find('REVOKE') != 0:
-                    f.write(line)
-
+        pg_dump('install_db.sql',t)
 
         print('loading jsonschemas..')
         sc = os.popen(psql_str('-c "SELECT for_class,attrs FROM reclada.v_class;"')).readlines()

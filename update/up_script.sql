@@ -59,7 +59,7 @@ select reclada.update_unique_object(null, true);
 --{ REC-564
     SELECT reclada_object.create_subclass('{
         "class": "RecladaObject",
-        "attrs": {
+        "attributes": {
             "newClass": "Component",
             "properties": {
                 "name": {"type": "string"},

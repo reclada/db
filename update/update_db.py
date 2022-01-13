@@ -43,6 +43,22 @@ def psql_str(cmd:str,DB_URI:str = db_URI)->str:
 
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
 
+def pg_dump(file_name:str,t:str):
+    os.system(f'pg_dump -N public -f {file_name} -O {db_URI}')
+
+    with open('up_script.sql') as f:
+        ver_str = f.readline()
+        ver = int(ver_str.replace('-- version =',''))
+            
+    with open(file_name,encoding='utf8') as f:
+        scr_str = f.readlines()
+
+    with open(file_name,'w',encoding='utf8') as f:
+        f.write(ver_str)
+        f.write(f'-- {t}')
+        for line in scr_str:
+            if line.find('GRANT') != 0 and line.find('REVOKE') != 0:
+                f.write(line)
 
 def json_schema_install(DB_URI=db_URI):
     file_name = 'patched.sql'
