@@ -1,3 +1,13 @@
+/*
+Example:
+SELECT reclada_object.built_nested_jsonb(
+           '{nested_1,nested_2,nested_3}',
+           '10'::jsonb
+       );
+output:
+{"nested_1": {"nested_2": {"nested_3": 10}}}
+*/
+
 --DROP FUNCTION IF EXISTS reclada_object.built_nested_jsonb;
 CREATE OR REPLACE FUNCTION reclada_object.built_nested_jsonb
 (

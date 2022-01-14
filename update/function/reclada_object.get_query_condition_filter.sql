@@ -72,6 +72,10 @@ result:
         or (status_caption in (1,2,5,4))
     )
 )
+
+Also there is support for default values.
+If object does not have a field, the default value will be used if it exists.
+
 */
 
 DROP FUNCTION IF EXISTS reclada_object.get_query_condition_filter;
@@ -167,7 +171,6 @@ BEGIN
                                                 when t.input_type = 'TEXT'
                                                     then format('(COALESCE(data #>> ''%s'', default_value #>> ''%s''))', pt.v, pt.v)
                                                 when t.input_type = 'JSONB' or t.input_type is null
-                                                    --then format('data #> ''%s''', pt.v)
                                                     then format('(COALESCE(data #> ''%s'', default_value #> ''%s''))', pt.v, pt.v)
                                                 else
                                                     format('(COALESCE(data #>> ''%s'', default_value #>> ''%s''))::', pt.v, pt.v) || t.input_type
