@@ -64,9 +64,94 @@ select reclada.update_unique_object(null, true);
             "properties": {
                 "name": {"type": "string"},
                 "commitHash": {"type": "string"},
-                "repository": {"type": "string"}
+                "repository": {"type": "string"},
+                "isInstalling": {"type": "boolean"}
             },
-            "required": ["name","commitHash","repository"]
+            "required": ["name","commitHash","repository","isInstalling"]
         }
     }'::jsonb);
+    
+    \i 'view/reclada.v_component.sql'
+    
+    SELECT reclada_object.create(
+        '{
+            "GUID": "b17500cb-e998-4f55-979b-2ba1218a3b45",
+            "class":"Component",
+            "attributes": {
+                "name":"reclada-runtime",
+                "repository":"https://gitlab.reclada.com/developers/reclada-runtime.git",
+                "commitHash":"00000",
+                "isInstalling":false
+            }
+        }'::jsonb);
+
+    update reclada.object
+        set parent_guid = 'b17500cb-e998-4f55-979b-2ba1218a3b45'
+            where class in (select reclada_object.get_GUID_for_class('jsonschema'))
+                and attributes->>'forClass' in ('Connector',
+                                                'Environment',
+                                                'FileExtension',
+                                                'Job',
+                                                'Parameter',
+                                                'Pipeline',
+                                                'Runner',
+                                                'Task',
+                                                'Trigger',
+                                                'Value'
+                                            );
+
+    SELECT reclada_object.create(
+        '{
+            "GUID": "38d35ba3-7910-4e6e-8632-13203269e4b9",
+            "class":"Component",
+            "attributes": {
+                "name":"SciNLP",
+                "repository":"https://gitlab.reclada.com/developers/SciNLP.git",
+                "commitHash":"00000",
+                "isInstalling":false
+            }
+        }'::jsonb);
+    
+    update reclada.object
+        set parent_guid = '38d35ba3-7910-4e6e-8632-13203269e4b9'
+            where class in (select reclada_object.get_GUID_for_class('jsonschema'))
+                and attributes->>'forClass' in ('Document',
+                                                'Page',
+                                                'BBox',
+                                                'TextBlock',
+                                                'Table',
+                                                'Cell',
+                                                'NLPattern',
+                                                'NLPatternAttribute',
+                                                'HeaderTerm',
+                                                'DataRow',
+                                                'Attribute',
+                                                'Data'
+                                            );
+
+    \i 'function/reclada_object.get_parent_guid.sql'
+    
+/*
+delete from reclada.object 
+    where class in (select reclada_object.get_GUID_for_class('jsonschema'))
+        and attributes->>'forClass' in ('BBox',
+                                        'TextBlock',
+                                        'Task',
+                                        'Parameter',
+                                        'Trigger',
+                                        'Pipeline',
+                                        'Job',
+                                        'Value',
+                                        'Environment',
+                                        'FileExtension',
+                                        'Connector',
+                                        'Runner',
+                                        'Document',
+                                        'Relationship',
+                                        'Cell',
+                                        'Table',
+                                        'Page',
+                                        'DataRow'
+                                    );
+*/
 --}

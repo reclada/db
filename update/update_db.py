@@ -104,15 +104,89 @@ def run_file(file_name,DB_URI=db_URI):
 
 
 def run_cmd_scalar(command,DB_URI=db_URI)->str:
+    command = command.replace('"','""').replace('\n',' ')
     cmd = psql_str(f'-c "{command}"',DB_URI)
+    print(cmd)
     return os.popen(cmd).read().strip()
 
 
 def checkout(to:str = branch_db):
     cmd = f'git checkout {to} -q'
-    #print(cmd)
     r = os.popen(cmd).read()
     return r
+
+
+def get_repo_hash(component_name:str,repository:str,branch:str,):
+    rmdir(component_name)
+    os.system(f'git clone {repository}')
+    os.chdir(component_name)
+    res = checkout(branch)
+    cmd = "git log --pretty=format:'%H' -n 1"
+    repo_hash = os.popen(cmd).read()
+    return repo_hash
+    
+
+def runtime_install():
+    os.chdir(os.path.join('db','objects'))
+    run_file('install_objects.sql')
+    os.chdir('..')
+    os.chdir('..')
+
+def scinlp_install():
+    os.chdir(os.path.join('src','db'))
+    run_file('bdobjects.sql')
+    run_file('nlpobjects.sql')
+    run_file('nlpatterns.sql')
+    os.chdir('..')
+    os.chdir('..')
+
+
+def replace_component(name:str,repository:str)->str:
+    if 'SciNLP' == name:
+        component_installer = scinlp_install
+        branch = branch_SciNLP
+    elif 'reclada-runtime' == name:
+        component_installer = runtime_install
+        branch = branch_runtime
+    else:
+        raise Exception('Component does not supported')
+
+    guid = run_cmd_scalar(f"SELECT guid FROM reclada.v_component WHERE name = '{name}'")
+
+    repo_hash = get_repo_hash(name,repository,branch)
+    if guid != '':
+        db_hash = run_cmd_scalar(f"SELECT commit_hash FROM reclada.v_component WHERE guid = '{guid}'")
+        if db_hash == repo_hash:
+            os.chdir('..')
+            rmdir(name)
+            print(f'Component {name} has actual version')
+            return
+        else:
+            cmd = '''SELECT reclada_object.delete('{"GUID":"'''+guid+'''"}'::jsonb)'''
+            res = run_cmd_scalar(cmd)
+            cmd = f"""update reclada.object
+                    set status = reclada_object.get_archive_status_obj_id()
+                        where parent_guid = '{guid}'
+                            and status != reclada_object.get_archive_status_obj_id()"""
+            res = run_cmd_scalar(cmd)
+    guid = str(uuid.uuid4())
+    cmd = '''SELECT reclada_object.create(
+            '{
+                "GUID": "''' + guid + '''",
+                "class":"Component",
+                "attributes": {
+                    "name":"''' + name + '''",
+                    "repository":"''' + repository + '''",
+                    "commitHash":"''' + repo_hash + '''",
+                    "isInstalling":true
+                }
+            }'::jsonb);'''
+    res = run_cmd_scalar(cmd)
+    component_installer(repository)
+    cmd = cmd.replace('"isInstalling":true','"isInstalling":false')
+    res = run_cmd_scalar(cmd)
+    os.chdir('..')
+    rmdir(name)
 
 
 def rmdir(top:str): 

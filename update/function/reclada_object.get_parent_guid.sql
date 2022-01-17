@@ -23,6 +23,15 @@ BEGIN
     IF (_parent_guid IS NULL AND _parent_field IS NOT NULL) THEN
         _parent_guid = _data->'attributes'->>_parent_field;
     END IF;
+
+    _parent_guid := coalesce(_parent_guid,
+                                (
+                                    SELECT guid 
+                                        FROM reclada.v_component 
+                                            WHERE is_installing
+                                )
+                            );
+
     RETURN QUERY
     SELECT _parent_guid,
         _parent_field;
