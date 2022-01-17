@@ -12,25 +12,24 @@ RETURNS TABLE (
     dup_behavior    reclada.dp_bhvr,
     is_cascade      boolean,
     dup_field       text) AS $$
-    SELECT vao.obj_id, vup.dup_behavior, vup.is_cascade, vup.copy_field
-        FROM reclada.v_active_object vao
-        JOIN reclada.v_unifields_pivoted vup ON vao."class" = vup.class_uuid
-        WHERE (vao.attrs ->> f1) 
-                || COALESCE((vao.attrs ->> f2),'') 
-                || COALESCE((vao.attrs ->> f3),'') 
-                || COALESCE((vao.attrs ->> f4),'') 
-                || COALESCE((vao.attrs ->> f5),'') 
-                || COALESCE((vao.attrs ->> f6),'') 
-                || COALESCE((vao.attrs ->> f7),'') 
-                || COALESCE((vao.attrs ->> f8),'')
-            = (_attrs ->> f1) 
-                || COALESCE((_attrs ->> f2),'') 
-                || COALESCE((_attrs ->> f3),'') 
-                || COALESCE((_attrs ->> f4),'') 
-                || COALESCE((_attrs ->> f5),'') 
-                || COALESCE((_attrs ->> f6),'') 
-                || COALESCE((_attrs ->> f7),'') 
-                || COALESCE((_attrs ->> f8),'')
-            AND vao."class" = _class_uuid
-            AND (vao.obj_id != exclude_uuid OR exclude_uuid IS NULL)
-$$ LANGUAGE SQL STABLE;
+DECLARE
+    q text;
+BEGIN
+    SELECT val
+    FROM reclada.v_get_duplicates_query
+    LIMIT 1
+        INTO q;
+    q := REPLACE(q, '@#@#@attrs@#@#@',          _attrs::text);
+    q := REPLACE(q, '@#@#@class_uuid@#@#@',     _class_uuid::text);
+    IF exclude_uuid IS NULL THEN
+        q := REPLACE(q, '@#@#@exclude_uuid@#@#@',   ''::text);    
+    ELSE
+        q := REPLACE(q, '@#@#@exclude_uuid@#@#@',   ' || ''AND obj_id != '''::text || exclude_uuid::text || '''');
+    END IF;
+
+    EXECUTE q
+        INTO q;
+    
+    RETURN QUERY EXECUTE q;
+END;            
+$$ LANGUAGE PLPGSQL STABLE;

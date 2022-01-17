@@ -122,7 +122,7 @@ BEGIN
             FROM reclada.v_active_object
             WHERE class_name = 'Relationship'
                 AND attrs->>'type'                      = _rel_type
-                AND NULLIF(attrs->>'subject','')::uuid  = _parent_guid
+                AND (attrs->>'subject')::uuid  = _parent_guid
                     INTO _new_parent_guid, _dup_behavior, _is_cascade;
 
             IF _new_parent_guid IS NOT NULL THEN
