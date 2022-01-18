@@ -106,7 +106,6 @@ def run_file(file_name,DB_URI=db_URI):
 def run_cmd_scalar(command,DB_URI=db_URI)->str:
     command = command.replace('"','""').replace('\n',' ')
     cmd = psql_str(f'-c "{command}"',DB_URI)
-    print(cmd)
     return os.popen(cmd).read().strip()
 
 
@@ -121,7 +120,7 @@ def get_repo_hash(component_name:str,repository:str,branch:str,):
     os.system(f'git clone {repository}')
     os.chdir(component_name)
     res = checkout(branch)
-    cmd = "git log --pretty=format:'%H' -n 1"
+    cmd = "git log --pretty=format:%H -n 1"
     repo_hash = os.popen(cmd).read()
     return repo_hash
     
@@ -142,6 +141,9 @@ def scinlp_install():
 
 
 def replace_component(name:str,repository:str)->str:
+    '''
+        replace or install reclada-component
+    '''
     if 'SciNLP' == name:
         component_installer = scinlp_install
         branch = branch_SciNLP
@@ -182,8 +184,9 @@ def replace_component(name:str,repository:str)->str:
                 }
             }'::jsonb);'''
     res = run_cmd_scalar(cmd)
-    component_installer(repository)
+    component_installer()
     cmd = cmd.replace('"isInstalling":true','"isInstalling":false')
+    cmd = cmd.replace('SELECT reclada_object.create','SELECT reclada_object.update')
     res = run_cmd_scalar(cmd)
     os.chdir('..')
     rmdir(name)
@@ -311,6 +314,10 @@ def run_test():
     os.chdir('..')
     rmdir('QAAutotests')
 
+def install_components():
+    replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git')
+    replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git')
+    install_objects()
 
 if __name__ == "__main__":
         

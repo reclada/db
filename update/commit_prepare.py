@@ -1,5 +1,5 @@
 from json.decoder import JSONDecodeError
-from update_db import get_version_from_commit, get_version_from_db,clone_db,replace_component
+from update_db import get_version_from_commit, get_version_from_db,clone_db,install_components
 from update_db import run_file, db_URI, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,run_object_create,pg_dump
 
 import os
@@ -21,8 +21,6 @@ def upgrade():
     run_file('up.sql')
 
 if __name__ == "__main__":
-
-    replace_component('SciNLP','','')
 
     t = str(datetime.datetime.now())
     
@@ -150,5 +148,9 @@ if __name__ == "__main__":
         print('If evrything okay - run this script again before commit to update jsonschemas and install_db.sql')
     
     input("Press Enter to run testing . . .")
+    
+    print("Installing components . . .")
+    install_components()
+    print("done")
     
     run_test()

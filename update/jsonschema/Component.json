@@ -5,6 +5,9 @@
             "commitHash": {
                 "type": "string"
             },
+            "isInstalling": {
+                "type": "boolean"
+            },
             "name": {
                 "type": "string"
             },
@@ -20,6 +23,7 @@
         },
         "required": [
             "repository",
+            "isInstalling",
             "name",
             "commitHash"
         ],

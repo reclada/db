@@ -1,4 +1,4 @@
-from update_db import clone_db, get_commit_history,run_object_create,install_objects, get_version_from_commit, rmdir, run_file, recreate_db, quick_install,version,config_version, json_schema_install,replace_component
+from update_db import clone_db, get_commit_history,run_object_create,install_components, get_version_from_commit, rmdir, run_file, recreate_db, quick_install,version,config_version, json_schema_install
 
 
 import os
@@ -53,10 +53,9 @@ if __name__ == "__main__":
     
     recreate_db()
     need_update, use_dump = db_install()
+
     if need_update:
         os.system('python update_db.py')
-        if not use_dump:
-            replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP')
-            replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime')
+
     if run_object_create:
-        install_objects()
+        install_components()
