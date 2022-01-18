@@ -60,6 +60,7 @@ def pg_dump(file_name:str,t:str):
             if line.find('GRANT') != 0 and line.find('REVOKE') != 0:
                 f.write(line)
 
+
 def json_schema_install(DB_URI=db_URI):
     file_name = 'patched.sql'
     rmdir('postgres-json-schema')
@@ -82,22 +83,6 @@ def json_schema_install(DB_URI=db_URI):
     rmdir('postgres-json-schema')
 
 
-def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
-    file_name = 'object_create_patched.sql'
-    with open('object_create.sql') as f:
-        obj_cr = f.read()
-
-    obj_cr = obj_cr.replace('#@#lname#@#', l_name)
-    obj_cr = obj_cr.replace('#@#lregion#@#', l_region)
-    obj_cr = obj_cr.replace('#@#ename#@#', e_name)
-
-    with open(file_name,'w') as f:
-        f.write(obj_cr)
-
-    run_file(file_name,DB_URI)
-    os.remove(file_name)
-
-
 def run_file(file_name,DB_URI=db_URI):
     cmd = psql_str(f'-f "{file_name}"',DB_URI)
     os.system(cmd)
@@ -115,21 +100,70 @@ def checkout(to:str = branch_db):
     return r
 
 
-def get_repo_hash(component_name:str,repository:str,branch:str,):
+def clone(component_name:str,repository:str,branch:str):
+    # folder: update
     rmdir(component_name)
-    os.system(f'git clone {repository}')
-    os.chdir(component_name)
+    os.chdir('..') #folder: db
+    os.chdir('..') #folder: repos
+
+    if not (os.path.exists(component_name) and os.path.isdir(component_name)):
+        os.system(f'git clone {repository}')
+        os.chdir(component_name)
+        res = checkout(branch)
+        os.chdir('..')
+
+    folder_sourse = component_name
+    if component_name == 'db':
+        folder_sourse = f'db_copy_{str(uuid.uuid4())}'
+        shutil.copytree('db',folder_sourse)
+        os.chdir(folder_sourse)
+        checkout('.')
+        os.chdir('..')
+    
+    path_dest = os.path.join('db','update',component_name)
+
+    shutil.copytree(folder_sourse, path_dest)
+    if component_name == 'db':
+        rmdir(folder_sourse)
+
+    os.chdir(path_dest)
     res = checkout(branch)
+    #folder: repos/db/update/component_name
+        
+
+def get_repo_hash(component_name:str,repository:str,branch:str):
+    # folder: update
+    rmdir(component_name)
+    clone(component_name,repository,branch)
+    #folder: repos/db/update/component_name
     cmd = "git log --pretty=format:%H -n 1"
     repo_hash = os.popen(cmd).read()
     return repo_hash
-    
+
+#{ Components
+
+def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
+    file_name = 'object_create_patched.sql'
+    with open('object_create.sql') as f:
+        obj_cr = f.read()
+
+    obj_cr = obj_cr.replace('#@#lname#@#', l_name)
+    obj_cr = obj_cr.replace('#@#lregion#@#', l_region)
+    obj_cr = obj_cr.replace('#@#ename#@#', e_name)
+
+    with open(file_name,'w') as f:
+        f.write(obj_cr)
+
+    run_file(file_name,DB_URI)
+    os.remove(file_name)
+
 
 def runtime_install():
     os.chdir(os.path.join('db','objects'))
     run_file('install_objects.sql')
     os.chdir('..')
     os.chdir('..')
+
 
 def scinlp_install():
     os.chdir(os.path.join('src','db'))
@@ -139,6 +173,7 @@ def scinlp_install():
     os.chdir('..')
     os.chdir('..')
 
+#} Components
 
 def replace_component(name:str,repository:str)->str:
     '''
@@ -203,19 +238,10 @@ def rmdir(top:str):
                 os.rmdir(os.path.join(root, name))
         os.rmdir(top)
 
+
 def clone_db():
-    rmdir('db')
-    os.chdir('..')
-    os.chdir('..')
-    folder_name = f'db_copy_{str(uuid.uuid4())}'
-    shutil.copytree('db',folder_name)
-    os.chdir(folder_name)
-    checkout('.')
-    os.chdir('..')
-    path = os.path.join('db','update','db')
-    shutil.move(folder_name, path)
-    os.chdir(path)
-    checkout(branch_db)
+    clone('db','db',branch_db)
+
 
 def get_commit_history(branch:str = branch_db, need_comment:bool = False):
     checkout(branch)
@@ -301,10 +327,7 @@ def recreate_db():
     execute(f'''CREATE DATABASE {db};''')
 
 def run_test():
-    rmdir('QAAutotests')
-    os.system(f'git clone https://github.com/reclada/QAAutotests')
-    os.chdir('QAAutotests')
-    os.system(f'git checkout {branch_QAAutotests}')
+    clone('QAAutotests','https://github.com/reclada/QAAutotests.git',branch_QAAutotests)
     os.system(f'pip install -r requirements.txt')
     os.system(f'pytest '
         + 'tests/components/security/test_database_sql_injections.py '

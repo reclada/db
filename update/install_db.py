@@ -1,4 +1,5 @@
-from update_db import clone_db, get_commit_history,run_object_create,install_components, get_version_from_commit, rmdir, run_file, recreate_db, quick_install,version,config_version, json_schema_install
+from update_db import clone_db, get_commit_history,run_object_create,install_components, get_version_from_commit, rmdir, run_file, recreate_db 
+from update_db import quick_install,version,config_version, json_schema_install
 
 
 import os
