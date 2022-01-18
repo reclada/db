@@ -83,23 +83,6 @@ def json_schema_install(DB_URI=db_URI):
     rmdir('postgres-json-schema')
 
 
-def run_file(file_name,DB_URI=db_URI):
-    cmd = psql_str(f'-f "{file_name}"',DB_URI)
-    os.system(cmd)
-
-
-def run_cmd_scalar(command,DB_URI=db_URI)->str:
-    command = command.replace('"','""').replace('\n',' ')
-    cmd = psql_str(f'-c "{command}"',DB_URI)
-    return os.popen(cmd).read().strip()
-
-
-def checkout(to:str = branch_db):
-    cmd = f'git checkout {to} -q'
-    r = os.popen(cmd).read()
-    return r
-
-
 def clone(component_name:str,repository:str,branch:str):
     # folder: update
     rmdir(component_name)
@@ -157,6 +140,22 @@ def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONME
     run_file(file_name,DB_URI)
     os.remove(file_name)
 
+
+def run_file(file_name,DB_URI=db_URI):
+    cmd = psql_str(f'-f "{file_name}"',DB_URI)
+    os.system(cmd)
+
+
+def run_cmd_scalar(command,DB_URI=db_URI)->str:
+    command = command.replace('"','""').replace('\n',' ')
+    cmd = psql_str(f'-c "{command}"',DB_URI)
+    return os.popen(cmd).read().strip()
+
+
+def checkout(to:str = branch_db):
+    cmd = f'git checkout {to} -q'
+    r = os.popen(cmd).read()
+    return r
 
 def runtime_install():
     os.chdir(os.path.join('db','objects'))
