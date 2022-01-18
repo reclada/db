@@ -319,6 +319,37 @@ def install_components():
     replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git')
     install_objects()
 
+def clear_db_from_components():
+    cmd = """delete from reclada.object 
+        where (class in (select reclada_object.get_GUID_for_class('jsonschema'))
+            and attributes->>'forClass' in (    'BBox',
+                                                'TextBlock',
+                                                'Task',
+                                                
+                                                'Parameter',
+                                                'Trigger',
+                                                'Pipeline',
+
+                                                'Job',
+                                                'Value',
+                                                'Environment',
+
+                                                'FileExtension',
+                                                'Connector',
+                                                'Runner',
+
+                                                'Document',
+                                                'Relationship',
+                                                'Cell',
+
+                                                'Table',
+                                                'Page',
+                                                'DataRow'
+                                            ))
+                or (class in (select reclada_object.get_GUID_for_class('Component')));"""
+    run_cmd_scalar(cmd)
+
+
 if __name__ == "__main__":
         
     DB_URI = db_URI

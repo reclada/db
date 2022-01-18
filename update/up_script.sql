@@ -72,7 +72,7 @@ select reclada.update_unique_object(null, true);
     }'::jsonb);
     
     \i 'view/reclada.v_component.sql'
-/*    
+
     SELECT reclada_object.create(
         '{
             "GUID": "b17500cb-e998-4f55-979b-2ba1218a3b45",
@@ -128,35 +128,7 @@ select reclada.update_unique_object(null, true);
                                                     'Attribute',
                                                     'Data'
                                                 );
-*/
 
     \i 'function/reclada_object.get_parent_guid.sql'
-
-    delete from reclada.object 
-        where class in (select reclada_object.get_GUID_for_class('jsonschema'))
-            and attributes->>'forClass' in (    'BBox',
-                                                'TextBlock',
-                                                'Task',
-                                                
-                                                'Parameter',
-                                                'Trigger',
-                                                'Pipeline',
-
-                                                'Job',
-                                                'Value',
-                                                'Environment',
-
-                                                'FileExtension',
-                                                'Connector',
-                                                'Runner',
-
-                                                'Document',
-                                                'Relationship',
-                                                'Cell',
-
-                                                'Table',
-                                                'Page',
-                                                'DataRow'
-                                            );
 
 --}
