@@ -108,7 +108,7 @@ select reclada.update_unique_object(null, true);
 
     BEGIN
         
-        select reclada_object.create_relationship
+        PERFORM reclada_object.create_relationship
                             (
                                 'data of reclada-component',
                                 'b17500cb-e998-4f55-979b-2ba1218a3b45',
@@ -130,7 +130,7 @@ select reclada.update_unique_object(null, true);
                                                         'Value'
                                                     );
 
-        select reclada_object.create_relationship
+        PERFORM reclada_object.create_relationship
                             (
                                 'data of reclada-component',
                                 '38d35ba3-7910-4e6e-8632-13203269e4b9',
