@@ -44,6 +44,7 @@ DECLARE
     _new_parent_guid       uuid;
     _rel_type       text := 'GUID changed for dupBehavior';
     _guid_list      text;
+    _component_guid uuid;
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -59,6 +60,12 @@ BEGIN
         dup_field       text
     )
     ON COMMIT DROP;
+
+    _component_guid :=  (
+                        SELECT guid 
+                            FROM reclada.v_component 
+                                WHERE is_installing
+                    );
 
     FOR _data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
@@ -236,7 +243,7 @@ BEGIN
         END IF;
         
         IF (NOT skip_insert) THEN
-            _obj_guid := (_data->>'GUID')::uuid;
+            _obj_guid := coalesce((_data->>'GUID')::uuid, public.uuid_generate_v4());
             IF EXISTS (
                 SELECT 1
                 FROM reclada.object 
@@ -246,17 +253,28 @@ BEGIN
             END IF;
             --raise notice 'schema: %',schema;
 
+            if _component_guid is not null then
+                if _class_uuid not in (select reclada_object.get_GUID_for_class('Relationship')) then
+                    perform reclada_object.create_relationship
+                        (
+                            'data of reclada-component',
+                            _component_guid,
+                            _obj_guid,
+                            '{}'::jsonb,
+                            _component_guid
+                        );
+                else
+                    _parent_guid := coalesce(_parent_guid,_component_guid);
+                end if;
+            end if;
+
             INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)
-                SELECT  CASE
-                            WHEN _obj_guid IS NULL
-                                THEN public.uuid_generate_v4()
-                            ELSE _obj_guid
-                        END AS GUID,
+                SELECT  _obj_guid AS GUID,
                         _class_uuid, 
                         _attrs,
                         tran_id,
-                        _parent_guid
-            RETURNING GUID INTO _obj_guid;
+                        _parent_guid;
+
             affected := array_append( affected, _obj_guid);
             inserted := array_append( inserted, _obj_guid);
             PERFORM reclada_object.datasource_insert

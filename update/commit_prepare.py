@@ -1,6 +1,6 @@
 from json.decoder import JSONDecodeError
-from update_db import get_version_from_commit, get_version_from_db,clone_db,install_components,clear_db_from_components
-from update_db import run_file, db_URI, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,run_object_create,pg_dump
+from update_db import get_version_from_commit, get_version_from_db,clone_db,install_components,clear_db_from_components,branch_SciNLP,scinlp_install
+from update_db import run_file, db_URI, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,run_object_create,pg_dump,replace_component
 
 import os
 import datetime
@@ -21,6 +21,7 @@ def upgrade():
     run_file('up.sql')
 
 if __name__ == "__main__":
+    #replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
 
     t = str(datetime.datetime.now())
     
@@ -122,8 +123,9 @@ if __name__ == "__main__":
     input("Press Enter to update jsonschemas and install_db.sql . . .")
 
     if install_db:
-        print('pg_dump...')
+        print('clear db from components...')
         clear_db_from_components()
+        print('pg_dump...')
         pg_dump('install_db.sql',t)
 
         print('loading jsonschemas..')

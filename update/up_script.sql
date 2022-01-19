@@ -42,7 +42,6 @@ create table reclada.unique_object_reclada_object
     PRIMARY KEY(id_unique_object,id_reclada_object)
 );
 
-\i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.update.sql'
 \i 'function/reclada_object.list.sql'
 \i 'function/reclada_object.get_schema.sql'
@@ -57,6 +56,13 @@ create table reclada.unique_object_reclada_object
 select reclada.update_unique_object(null, true);
 
 --{ REC-564
+    \i 'view/reclada.v_component.sql'
+    \i 'view/reclada.v_relationship.sql'
+    \i 'view/reclada.v_component_object.sql'
+    \i 'function/reclada_object.get_parent_guid.sql'
+    \i 'function/reclada_object.create_relationship.sql'
+    \i 'function/reclada_object.create.sql'
+
     SELECT reclada_object.create_subclass('{
         "class": "RecladaObject",
         "attributes": {
@@ -70,8 +76,6 @@ select reclada.update_unique_object(null, true);
             "required": ["name","commitHash","repository","isInstalling"]
         }
     }'::jsonb);
-    
-    \i 'view/reclada.v_component.sql'
 
     SELECT reclada_object.create(
         '{
@@ -85,21 +89,6 @@ select reclada.update_unique_object(null, true);
             }
         }'::jsonb);
 
-    update reclada.object
-        set parent_guid = 'b17500cb-e998-4f55-979b-2ba1218a3b45'
-            where class in (select reclada_object.get_GUID_for_class('jsonschema'))
-                and attributes->>'forClass' in (    'Connector',
-                                                    'Environment',
-                                                    'FileExtension',
-                                                    'Job',
-                                                    'Parameter',
-                                                    'Pipeline',
-                                                    'Runner',
-                                                    'Task',
-                                                    'Trigger',
-                                                    'Value'
-                                                );
-
     SELECT reclada_object.create(
         '{
             "GUID": "38d35ba3-7910-4e6e-8632-13203269e4b9",
@@ -112,23 +101,60 @@ select reclada.update_unique_object(null, true);
             }
         }'::jsonb);
     
-    update reclada.object
-        set parent_guid = '38d35ba3-7910-4e6e-8632-13203269e4b9'
-            where class in (select reclada_object.get_GUID_for_class('jsonschema'))
-                and attributes->>'forClass' in (    'Document',
-                                                    'Page',
-                                                    'BBox',
-                                                    'TextBlock',
-                                                    'Table',
-                                                    'Cell',
-                                                    'NLPattern',
-                                                    'NLPatternAttribute',
-                                                    'HeaderTerm',
-                                                    'DataRow',
-                                                    'Attribute',
-                                                    'Data'
-                                                );
+    DO
+    $do$
+    DECLARE
+        res text;
 
-    \i 'function/reclada_object.get_parent_guid.sql'
+    BEGIN
+        
+        select reclada_object.create_relationship
+                            (
+                                'data of reclada-component',
+                                'b17500cb-e998-4f55-979b-2ba1218a3b45',
+                                o.guid,
+                                '{}'::jsonb,
+                                'b17500cb-e998-4f55-979b-2ba1218a3b45'
+                            )
+            from reclada.object o
+                where o.class in (select reclada_object.get_GUID_for_class('jsonschema'))
+                    and o.attributes->>'forClass' in (  'Connector',
+                                                        'Environment',
+                                                        'FileExtension',
+                                                        'Job',
+                                                        'Parameter',
+                                                        'Pipeline',
+                                                        'Runner',
+                                                        'Task',
+                                                        'Trigger',
+                                                        'Value'
+                                                    );
+
+        select reclada_object.create_relationship
+                            (
+                                'data of reclada-component',
+                                '38d35ba3-7910-4e6e-8632-13203269e4b9',
+                                o.guid,
+                                '{}'::jsonb,
+                                '38d35ba3-7910-4e6e-8632-13203269e4b9'
+                            )
+            from reclada.object o
+                where o.class in (select reclada_object.get_GUID_for_class('jsonschema'))
+                    and o.attributes->>'forClass' in (  'Document',
+                                                        'Page',
+                                                        'BBox',
+                                                        'TextBlock',
+                                                        'Table',
+                                                        'Cell',
+                                                        'NLPattern',
+                                                        'NLPatternAttribute',
+                                                        'HeaderTerm',
+                                                        'DataRow',
+                                                        'Attribute',
+                                                        'Data'
+                                                    );
+
+    END
+    $do$;
 
 --}

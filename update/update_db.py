@@ -126,6 +126,7 @@ def get_repo_hash(component_name:str,repository:str,branch:str):
 #{ Components
 
 def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
+    os.chdir('update')
     file_name = 'object_create_patched.sql'
     with open('object_create.sql') as f:
         obj_cr = f.read()
@@ -139,6 +140,7 @@ def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONME
 
     run_file(file_name,DB_URI)
     os.remove(file_name)
+    os.chdir('..')
 
 
 def run_file(file_name,DB_URI=db_URI):
@@ -174,18 +176,10 @@ def scinlp_install():
 
 #} Components
 
-def replace_component(name:str,repository:str)->str:
+def replace_component(name:str,repository:str,branch:str,component_installer)->str:
     '''
         replace or install reclada-component
     '''
-    if 'SciNLP' == name:
-        component_installer = scinlp_install
-        branch = branch_SciNLP
-    elif 'reclada-runtime' == name:
-        component_installer = runtime_install
-        branch = branch_runtime
-    else:
-        raise Exception('Component does not supported')
 
     guid = run_cmd_scalar(f"SELECT guid FROM reclada.v_component WHERE name = '{name}'")
 
@@ -198,13 +192,25 @@ def replace_component(name:str,repository:str)->str:
             print(f'Component {name} has actual version')
             return
         else:
-            cmd = '''SELECT reclada_object.delete('{"GUID":"'''+guid+'''"}'::jsonb)'''
+            cmd = """with d as (
+                        SELECT component_guid, obj_id, relationship_guid
+                            FROM reclada.v_component_object
+                                where component_name = '"""+name+"""'
+                    )
+                    SELECT reclada_object.delete(('{"GUID":"'||guid::text||'"}')::jsonb)
+                        from reclada.object 
+                            where guid in 
+                            (
+                                SELECT component_guid FROM d
+                                union
+                                SELECT obj_id FROM d
+                                union
+                                SELECT relationship_guid FROM d
+                            )
+                                and status != reclada_object.get_archive_status_obj_id()
+                    """
             res = run_cmd_scalar(cmd)
-            cmd = f"""update reclada.object
-                    set status = reclada_object.get_archive_status_obj_id()
-                        where parent_guid = '{guid}'
-                            and status != reclada_object.get_archive_status_obj_id()"""
-            res = run_cmd_scalar(cmd)
+
     guid = str(uuid.uuid4())
     cmd = '''SELECT reclada_object.create(
             '{
@@ -337,39 +343,27 @@ def run_test():
     rmdir('QAAutotests')
 
 def install_components():
-    replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git')
-    replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git')
-    install_objects()
+    replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
+    replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git',branch_runtime,runtime_install)
+    replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
 
 def clear_db_from_components():
-    cmd = """delete from reclada.object 
-        where (class in (select reclada_object.get_GUID_for_class('jsonschema'))
-            and attributes->>'forClass' in (    'BBox',
-                                                'TextBlock',
-                                                'Task',
-                                                
-                                                'Parameter',
-                                                'Trigger',
-                                                'Pipeline',
 
-                                                'Job',
-                                                'Value',
-                                                'Environment',
+    cmd = f"""with d as (
+                    SELECT component_guid, obj_id, relationship_guid
+                        FROM reclada.v_component_object
+                )
+                delete from reclada.object 
+                    where guid in 
+                    (
+                        SELECT component_guid FROM d
+                        union
+                        SELECT obj_id FROM d
+                        union
+                        SELECT relationship_guid FROM d
+                    )"""
+    res = run_cmd_scalar(cmd)
 
-                                                'FileExtension',
-                                                'Connector',
-                                                'Runner',
-
-                                                'Document',
-                                                'Relationship',
-                                                'Cell',
-
-                                                'Table',
-                                                'Page',
-                                                'DataRow'
-                                            ))
-                or (class in (select reclada_object.get_GUID_for_class('Component')));"""
-    run_cmd_scalar(cmd)
 
 
 if __name__ == "__main__":
