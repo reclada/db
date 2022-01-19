@@ -125,7 +125,7 @@ BEGIN
             LEFT JOIN reclada.v_filter_inner_operator iop
                 on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('Operator is not allowed ' || t.op, _f_name)
+    PERFORM reclada.raise_exception('Operator is not allowed ', _f_name)
         FROM mytable t
             WHERE t.op IS NULL;
 

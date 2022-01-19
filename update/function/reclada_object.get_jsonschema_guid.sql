@@ -10,4 +10,4 @@ RETURNS uuid AS $$
                             where class is not null 
                     limit 1
                 )
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE SQL STABLE;
