@@ -37,7 +37,9 @@ BEGIN
             _obj_GUID,
             _subj_GUID)::jsonb;
         _obj := jsonb_set (_obj, '{attributes}', _obj->'attributes' || _extra_attrs);   
-        _obj := jsonb_set (_obj, '{parentGUID}', to_jsonb(_parent_guid) );   
+        if _parent_guid is not null then
+            _obj := jsonb_set (_obj, '{parentGUID}', to_jsonb(_parent_guid) );   
+        end if;
 
         RETURN  reclada_object.create( _obj);
     ELSE
