@@ -126,7 +126,8 @@ def get_repo_hash(component_name:str,repository:str,branch:str):
 #{ Components
 
 def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
-    os.chdir('update')
+    if Path('update').exists():
+        os.chdir('update') # for v_45 and lower don't need
     file_name = 'object_create_patched.sql'
     with open('object_create.sql') as f:
         obj_cr = f.read()
@@ -343,9 +344,13 @@ def run_test():
     rmdir('QAAutotests')
 
 def install_components():
-    replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
-    replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git',branch_runtime,runtime_install)
-    replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
+    v = get_version_from_db()
+    if v < 46:
+        install_objects()
+    else:
+        replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
+        replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git',branch_runtime,runtime_install)
+        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
 
 def clear_db_from_components():
 

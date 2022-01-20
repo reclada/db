@@ -101,6 +101,18 @@ select reclada.update_unique_object(null, true);
             }
         }'::jsonb);
     
+    SELECT reclada_object.create(
+        '{
+            "GUID": "7534ae14-df31-47aa-9b46-2ad3e60b4b6e",
+            "class":"Component",
+            "attributes": {
+                "name":"db",
+                "repository":"https://gitlab.reclada.com/developers/db.git",
+                "commitHash":"00000",
+                "isInstalling":false
+            }
+        }'::jsonb);
+
     DO
     $do$
     DECLARE
@@ -153,6 +165,22 @@ select reclada.update_unique_object(null, true);
                                                         'Attribute',
                                                         'Data'
                                                     );
+
+        PERFORM reclada_object.create_relationship
+                            (
+                                'data of reclada-component',
+                                '7534ae14-df31-47aa-9b46-2ad3e60b4b6e',
+                                o.guid,
+                                '{}'::jsonb,
+                                '7534ae14-df31-47aa-9b46-2ad3e60b4b6e'
+                            )
+            from reclada.object o
+                where o.class in 
+                (
+                    select reclada_object.get_GUID_for_class('Runner')
+                    UNION 
+                    select reclada_object.get_GUID_for_class('Context')
+                );
 
     END
     $do$;
