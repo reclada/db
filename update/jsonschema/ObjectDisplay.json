@@ -1,6 +1,6 @@
 {
     "forClass": "ObjectDisplay",
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "$defs": {
             "displayType": {

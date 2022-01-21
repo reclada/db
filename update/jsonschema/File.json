@@ -16,7 +16,7 @@
     ],
     "forClass": "File",
     "isCascade": true,
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "properties": {
             "checksum": {

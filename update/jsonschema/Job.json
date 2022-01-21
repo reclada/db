@@ -1,6 +1,6 @@
 {
     "forClass": "Job",
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "properties": {
             "command": {

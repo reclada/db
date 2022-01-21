@@ -1,6 +1,6 @@
 {
     "forClass": "revision",
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "properties": {
             "branch": {

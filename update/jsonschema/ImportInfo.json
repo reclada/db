@@ -1,6 +1,6 @@
 {
     "forClass": "ImportInfo",
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "properties": {
             "name": {

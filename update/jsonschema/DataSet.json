@@ -1,6 +1,6 @@
 {
     "forClass": "DataSet",
-    "parentList": null,
+    "parentList": [],
     "revision": "23a3251b-6269-456f-a5b7-09ce1b0df3e3",
     "schema": {
         "properties": {

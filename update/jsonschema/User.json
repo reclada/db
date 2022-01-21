@@ -1,6 +1,6 @@
 {
     "forClass": "User",
-    "parentList": null,
+    "parentList": [],
     "revision": "de7cfae5-c8c3-4ecc-b147-1427eb792f82",
     "schema": {
         "properties": {

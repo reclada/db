@@ -2,17 +2,17 @@
  * Function reclada_object.create_subclass creates subclass.
  * A jsonb object with the following parameters is required.
  * Required parameters:
- *  class - the name of parent class
- *  attributes - the attributes of objects of the class. The field contains:
- *      forClass - the name of class to create
- *      schema - the schema for the class
+ *  _class_list - the name of parent _class_list
+ *  attributes - the attributes of objects of the _class_list. The field contains:
+ *      forClass - the name of _class_list to create
+ *      schema - the schema for the _class_list
  */
 
 DROP FUNCTION IF EXISTS reclada_object.create_subclass;
 CREATE OR REPLACE FUNCTION reclada_object.create_subclass(data jsonb)
 RETURNS VOID AS $$
 DECLARE
-    class           jsonb;
+    _class_list     jsonb;
     _class          text;
     _properties     jsonb;
     _required       jsonb;
@@ -25,15 +25,16 @@ DECLARE
     _uniFields      jsonb;
     _idx_name       text;
     _f_list         text;
+    _f_name         text = 'reclada_object.create_subclass';
 BEGIN
 
-    class := data->'class';
-    IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class is not specified';
+    _class_list := data->'class';
+    IF (_class_list IS NULL) THEN
+        perform reclada.raise_exception('The reclada object class is not specified',_f_name);
     END IF;
 
-    IF (jsonb_typeof(class) != 'array') THEN
-        class := '[]'::jsonb || class;
+    IF (jsonb_typeof(_class_list) != 'array') THEN
+        _class_list := '[]'::jsonb || _class_list;
     END IF;
 
     attrs := data->'attributes';
@@ -44,7 +45,7 @@ BEGIN
     new_class = attrs->>'newClass';
     _properties := coalesce((attrs->'properties'),'{}'::jsonb);
     _required   := coalesce((attrs -> 'required'),'[]'::jsonb);
-    FOR _class IN SELECT jsonb_array_elements(class)#>>'{}'
+    FOR _class IN SELECT jsonb_array_elements_text(_class_list)
     LOOP
 
         SELECT reclada_object.get_schema(_class) 

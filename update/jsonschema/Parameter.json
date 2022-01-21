@@ -1,6 +1,6 @@
 {
     "forClass": "Parameter",
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "properties": {
             "file": {

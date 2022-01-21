@@ -1,6 +1,6 @@
 {
     "forClass": "Context",
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "properties": {
             "Environment": {

@@ -1,6 +1,6 @@
 {
     "forClass": "Trigger",
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "properties": {
             "nextTask": {

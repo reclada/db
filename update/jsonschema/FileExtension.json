@@ -1,6 +1,6 @@
 {
     "forClass": "FileExtension",
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "properties": {
             "extension": {

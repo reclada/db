@@ -1,6 +1,6 @@
 {
     "forClass": "ObjectStatus",
-    "parentList": null,
+    "parentList": [],
     "revision": "0b3c19cb-85f6-4481-bd91-30d004197cac",
     "schema": {
         "properties": {

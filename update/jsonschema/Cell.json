@@ -1,7 +1,7 @@
 {
     "forClass": "Cell",
     "parentField": "table",
-    "parentList": null,
+    "parentList": [],
     "schema": {
         "properties": {
             "bbox": {
