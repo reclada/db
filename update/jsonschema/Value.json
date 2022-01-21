@@ -1,5 +1,6 @@
 {
     "forClass": "Value",
+    "parentList": null,
     "schema": {
         "properties": {
             "name": {

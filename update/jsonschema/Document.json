@@ -1,6 +1,7 @@
 {
     "forClass": "Document",
     "parentField": "fileGUID",
+    "parentList": null,
     "schema": {
         "properties": {
             "fileGUID": {

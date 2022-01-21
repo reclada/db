@@ -1,5 +1,6 @@
 {
     "forClass": "Task",
+    "parentList": null,
     "schema": {
         "properties": {
             "command": {

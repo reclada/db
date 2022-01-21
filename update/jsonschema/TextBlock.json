@@ -1,5 +1,6 @@
 {
     "forClass": "TextBlock",
+    "parentList": null,
     "schema": {
         "properties": {
             "bbox": {

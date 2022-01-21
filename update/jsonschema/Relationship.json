@@ -1,5 +1,6 @@
 {
     "forClass": "Relationship",
+    "parentList": null,
     "schema": {
         "properties": {
             "object": {

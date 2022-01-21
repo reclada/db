@@ -1,5 +1,6 @@
 {
     "forClass": "BBox",
+    "parentList": null,
     "schema": {
         "properties": {
             "height": {

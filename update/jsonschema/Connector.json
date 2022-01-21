@@ -1,5 +1,6 @@
 {
     "forClass": "Connector",
+    "parentList": null,
     "schema": {
         "properties": {
             "command": {

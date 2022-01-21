@@ -12,7 +12,11 @@ DROP FUNCTION IF EXISTS reclada_object.create_subclass;
 CREATE OR REPLACE FUNCTION reclada_object.create_subclass(data jsonb)
 RETURNS VOID AS $$
 DECLARE
-    class           text;
+    class           jsonb;
+    _class          text;
+    _properties     jsonb;
+    _required       jsonb;
+    _parent_list    jsonb := '[]';
     new_class       text;
     attrs           jsonb;
     class_schema    jsonb;
@@ -23,9 +27,13 @@ DECLARE
     _f_list         text;
 BEGIN
 
-    class := data->>'class';
+    class := data->'class';
     IF (class IS NULL) THEN
         RAISE EXCEPTION 'The reclada object class is not specified';
+    END IF;
+
+    IF (jsonb_typeof(class) != 'array') THEN
+        class := '[]'::jsonb || class;
     END IF;
 
     attrs := data->'attributes';
@@ -34,13 +42,40 @@ BEGIN
     END IF;
 
     new_class = attrs->>'newClass';
+    _properties := coalesce((attrs->'properties'),'{}'::jsonb);
+    _required   := coalesce((attrs -> 'required'),'{}'::jsonb);
+    FOR _class IN SELECT jsonb_array_elements(class)#>>'{}'
+    LOOP
 
-    SELECT reclada_object.get_schema(class) INTO class_schema;
+        SELECT reclada_object.get_schema(_class) 
+            INTO class_schema;
 
-    IF (class_schema IS NULL) THEN
-        RAISE EXCEPTION 'No json schema available for %', class;
-    END IF;
+        IF (class_schema IS NULL) THEN
+            RAISE EXCEPTION 'No json schema available for %', _class;
+        END IF;
 
+        _properties :=  coalesce((class_schema->'properties'),'{}'::jsonb) || _properties;
+
+        SELECT jsonb_agg(el) 
+            FROM 
+            (
+                SELECT DISTINCT 
+                        pg_catalog.jsonb_array_elements(
+                            coalesce((class_schema -> 'required'),'{}'::jsonb) || _required
+                        ) as el
+            ) arr
+            INTO _required;
+
+            SELECT obj_id
+            FROM reclada.v_class
+            WHERE for_class = _class
+            ORDER BY version DESC
+            LIMIT 1
+            INTO class_guid;
+        
+        _parent_list := _parent_list || to_jsonb(class_guid);
+
+    END LOOP;
     SELECT max(version) + 1
     FROM reclada.v_class_lite v
     WHERE v.for_class = new_class
@@ -48,13 +83,6 @@ BEGIN
 
     version_ := coalesce(version_,1);
     class_schema := class_schema->'attributes'->'schema';
-
-    SELECT obj_id
-    FROM reclada.v_class
-    WHERE for_class = class
-    ORDER BY version DESC
-    LIMIT 1
-    INTO class_guid;
 
     PERFORM reclada_object.create(format('{
         "class": "jsonschema",
@@ -65,18 +93,15 @@ BEGIN
                 "type": "object",
                 "properties": %s,
                 "required": %s
-            }
-        },
-        "parent_guid" : "%s"
+            },
+            "parentList":%s
+        }
     }',
     new_class,
     version_,
-    (class_schema->'properties') || coalesce((attrs->'properties'),'{}'::jsonb),
-    (SELECT jsonb_agg(el) FROM (
-        SELECT DISTINCT pg_catalog.jsonb_array_elements(
-            (class_schema -> 'required') || coalesce((attrs -> 'required'),'{}'::jsonb)
-        ) el) arr),
-    class_guid
+    _properties,
+    _required,
+    _parent_list
     )::jsonb);
 
     IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN

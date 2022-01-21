@@ -1,5 +1,6 @@
 {
     "forClass": "Pipeline",
+    "parentList": null,
     "schema": {
         "properties": {
             "command": {

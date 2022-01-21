@@ -1,5 +1,6 @@
 {
     "forClass": "Runner",
+    "parentList": null,
     "schema": {
         "properties": {
             "command": {
