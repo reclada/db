@@ -2,6 +2,7 @@
 -- to add current version of object to downgrade script
 
 --{function/reclada_object.create_subclass}
+--{function/reclada_object.create}
 
 update reclada.object
     set attributes = attributes - 'parentList'

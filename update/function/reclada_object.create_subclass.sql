@@ -43,7 +43,7 @@ BEGIN
 
     new_class = attrs->>'newClass';
     _properties := coalesce((attrs->'properties'),'{}'::jsonb);
-    _required   := coalesce((attrs -> 'required'),'{}'::jsonb);
+    _required   := coalesce((attrs -> 'required'),'[]'::jsonb);
     FOR _class IN SELECT jsonb_array_elements(class)#>>'{}'
     LOOP
 
@@ -61,9 +61,10 @@ BEGIN
             (
                 SELECT DISTINCT 
                         pg_catalog.jsonb_array_elements(
-                            coalesce((class_schema -> 'required'),'{}'::jsonb) || _required
+                            coalesce((class_schema -> 'required'),'null'::jsonb) || _required
                         ) as el
             ) arr
+                WHERE jsonb_typeof(el) != 'null'
             INTO _required;
 
             SELECT obj_id

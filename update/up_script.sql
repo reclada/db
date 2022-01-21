@@ -5,6 +5,7 @@
 */
 
 \i 'function/reclada_object.create_subclass.sql'
+\i 'function/reclada_object.create.sql'
 
 update reclada.object
     set attributes = attributes || jsonb_build_object('parentList',parent_guid)
