@@ -1,4 +1,4 @@
--- you you can use "--{function/reclada_object.get_schema}"
+-- you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
 
@@ -64,6 +64,11 @@ AND attributes->>'forClass' != 'ObjectDisplay'
 AND attributes->>'forClass' != 'jsonschema';
 
 
+--{function/reclada_object.get_query_condition_filter}
+--{function/reclada_object.create_subclass}
+--{view/reclada.v_filter_available_operator}
+
+
 DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 DROP VIEW IF EXISTS reclada.v_parent_field;
@@ -81,8 +86,9 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 DROP VIEW IF EXISTS reclada.v_object_display;
 
 --{function/reclada_object.get_jsonschema_guid}
---{function/reclada_object.built_nested_jsonb}
+
 --{view/reclada.v_class_lite}
+
 --{function/reclada_object.get_guid_for_class}
 --{function/reclada_object.delete}
 --{view/reclada.v_object_display}
@@ -102,8 +108,6 @@ DROP VIEW IF EXISTS reclada.v_object_display;
 --{view/reclada.v_object_unifields}
 --{view/reclada.v_unifields_pivoted}
 
---{function/reclada_object.get_query_condition_filter}
---{function/reclada_object.create_subclass}
 
 
 

@@ -93,7 +93,6 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 DROP VIEW IF EXISTS reclada.v_object_display;
 
 \i 'function/reclada_object.get_jsonschema_guid.sql'
-\i 'function/reclada_object.built_nested_jsonb.sql'
 \i 'view/reclada.v_class_lite.sql'
 \i 'function/reclada_object.get_guid_for_class.sql'
 \i 'function/reclada_object.delete.sql'

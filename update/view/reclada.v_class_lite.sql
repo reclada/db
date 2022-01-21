@@ -32,25 +32,20 @@ paths_to_default AS
 tmp AS
 (
     SELECT
-            reclada_object.built_nested_jsonb(
-                t.path_head[array_position(t.path_head, 'properties') + 1 : ], -- {schema,properties,nested_1,nested_2,nested_3} -> {nested_1,nested_2,nested_3}
-                t.path_tail->'default'
-            ) AS default_jsonb,
+            format('"%s":%s',
+                  (array_prepend('attributes', t.path_head[array_position(t.path_head, 'properties') + 1 : ]))::text, -- {attributes,schema,properties,nested_1,nested_2,nested_3} -> {nested_1,nested_2,nested_3}
+                  t.path_tail->'default'
+            )
+             AS default_jsonb,
             t.obj_id
         FROM paths_to_default t
         WHERE t.path_tail->'default' IS NOT NULL
 ),
 default_field AS
 (
-    SELECT   format('{"attributes":%s}', json_object_agg(default_key, default_value))::jsonb AS default_value,
+    SELECT   format('{%s}', string_agg(default_jsonb, ','))::jsonb AS default_value,
              obj_id
-        FROM (
-            SELECT
-                    tmp.obj_id,
-                    d.key AS default_key,
-                    d.value AS default_value
-                FROM tmp, jsonb_each(tmp.default_jsonb) d
-            ) def
+        FROM tmp
         GROUP BY obj_id
 )
 SELECT
@@ -65,6 +60,7 @@ SELECT
     FROM objects_schemas obj
         LEFT JOIN default_field def
         ON def.obj_id = obj.obj_id;
+
 ANALYZE reclada.v_class_lite;
 
 --SELECT * FROM reclada.v_class_lite;

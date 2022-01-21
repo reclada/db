@@ -144,9 +144,9 @@ BEGIN
             (
                 SELECT CASE
                         WHEN t.op LIKE '%<@%' AND t.idx=1 AND jsonb_typeof(t.parsed)='string'
-                            THEN format('(COALESCE(data #> ''%s'', default_value #> ''%s'')) != ''[]''::jsonb
-                                    AND (COALESCE(data #> ''%s'', default_value #> ''%s'')) != ''{}''::jsonb
-                                    AND (COALESCE(data #> ''%s'', default_value #> ''%s''))',
+                            THEN format('(COALESCE(data #> ''%s'', default_value -> (''%s'')::text)) != ''[]''::jsonb
+                                    AND (COALESCE(data #> ''%s'', default_value -> (''%s'')::text)) != ''{}''::jsonb
+                                    AND (COALESCE(data #> ''%s'', default_value -> (''%s'')::text))',
                                     pt.v, pt.v, pt.v, pt.v, pt.v, pt.v)
                         WHEN fm.repl is not NULL
                             then
@@ -169,11 +169,11 @@ BEGIN
                                         THEN
                                             case
                                                 when t.input_type = 'TEXT'
-                                                    then format('(COALESCE(data #>> ''%s'', default_value #>> ''%s''))', pt.v, pt.v)
+                                                    then format('(COALESCE(data #>> ''%s'', default_value ->> (''%s'')::text))', pt.v, pt.v)
                                                 when t.input_type = 'JSONB' or t.input_type is null
-                                                    then format('(COALESCE(data #> ''%s'', default_value #> ''%s''))', pt.v, pt.v)
+                                                    then format('(COALESCE(data #> ''%s'', default_value -> (''%s'')::text))', pt.v, pt.v)
                                                 else
-                                                    format('(COALESCE(data #>> ''%s'', default_value #>> ''%s''))::', pt.v, pt.v) || t.input_type
+                                                    format('(COALESCE(data #>> ''%s'', default_value ->> (''%s'')::text))::', pt.v, pt.v) || t.input_type
                                             end
                                     when t.input_type = 'TEXT'
                                         then ''''||REPLACE(pt.v,'''','''''')||''''
