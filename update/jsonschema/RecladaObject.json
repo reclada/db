@@ -1,5 +1,6 @@
 {
     "forClass": "RecladaObject",
+    "parentList": [],
     "revision": "6035277c-e142-4a27-ae34-4800cee8c89c",
     "schema": {
         "properties": {

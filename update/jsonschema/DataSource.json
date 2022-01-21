@@ -1,5 +1,6 @@
 {
     "forClass": "DataSource",
+    "parentList": [],
     "revision": "559af2a2-371c-432f-92a7-e567da60565d",
     "schema": {
         "properties": {
