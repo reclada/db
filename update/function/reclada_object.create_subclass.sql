@@ -54,24 +54,22 @@ BEGIN
             RAISE EXCEPTION 'No json schema available for %', _class;
         END IF;
 
-        _properties :=  coalesce((class_schema->'properties'),'{}'::jsonb) || _properties;
+        _properties :=  coalesce((class_schema#>'{attributes,schema,properties}'),'{}'::jsonb) || _properties;
 
         SELECT jsonb_agg(el) 
             FROM 
             (
                 SELECT DISTINCT 
                         pg_catalog.jsonb_array_elements(
-                            coalesce((class_schema -> 'required'),'null'::jsonb) || _required
+                            coalesce(   class_schema#> '{attributes,schema,required}',
+                                        'null'::jsonb
+                                    ) || _required
                         ) as el
             ) arr
                 WHERE jsonb_typeof(el) != 'null'
             INTO _required;
 
-            SELECT obj_id
-            FROM reclada.v_class
-            WHERE for_class = _class
-            ORDER BY version DESC
-            LIMIT 1
+        SELECT class_schema->>'GUID'
             INTO class_guid;
         
         _parent_list := _parent_list || to_jsonb(class_guid);
