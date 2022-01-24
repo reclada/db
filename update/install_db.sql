@@ -1651,7 +1651,12 @@ BEGIN
         END IF;
 
         IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', _attrs))) THEN
-            RAISE EXCEPTION 'JSON invalid: %', _attrs;
+            RAISE EXCEPTION 'JSON invalid: 
+                %, 
+                schema: 
+                %', 
+                _attrs,
+                schema#>>'{attributes,schema}';
         END IF;
         
         IF _data->>'id' IS NOT NULL THEN
@@ -1991,7 +1996,11 @@ CREATE FUNCTION reclada_object.create_subclass(data jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    class           text;
+    _class_list     jsonb;
+    _class          text;
+    _properties     jsonb;
+    _required       jsonb;
+    _parent_list    jsonb := '[]';
     new_class       text;
     attrs           jsonb;
     class_schema    jsonb;
@@ -2000,11 +2009,16 @@ DECLARE
     _uniFields      jsonb;
     _idx_name       text;
     _f_list         text;
+    _f_name         text = 'reclada_object.create_subclass';
 BEGIN
 
-    class := data->>'class';
-    IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class is not specified';
+    _class_list := data->'class';
+    IF (_class_list IS NULL) THEN
+        perform reclada.raise_exception('The reclada object class is not specified',_f_name);
+    END IF;
+
+    IF (jsonb_typeof(_class_list) != 'array') THEN
+        _class_list := '[]'::jsonb || _class_list;
     END IF;
 
     attrs := data->'attributes';
@@ -2013,13 +2027,39 @@ BEGIN
     END IF;
 
     new_class = attrs->>'newClass';
+    _properties := coalesce((attrs->'properties'),'{}'::jsonb);
+    _required   := coalesce((attrs -> 'required'),'[]'::jsonb);
+    FOR _class IN SELECT jsonb_array_elements_text(_class_list)
+    LOOP
 
-    SELECT reclada_object.get_schema(class) INTO class_schema;
+        SELECT reclada_object.get_schema(_class) 
+            INTO class_schema;
 
-    IF (class_schema IS NULL) THEN
-        RAISE EXCEPTION 'No json schema available for %', class;
-    END IF;
+        IF (class_schema IS NULL) THEN
+            RAISE EXCEPTION 'No json schema available for %', _class;
+        END IF;
 
+        _properties :=  coalesce((class_schema#>'{attributes,schema,properties}'),'{}'::jsonb) || _properties;
+
+        SELECT jsonb_agg(el) 
+            FROM 
+            (
+                SELECT DISTINCT 
+                        pg_catalog.jsonb_array_elements(
+                            coalesce(   class_schema#> '{attributes,schema,required}',
+                                        'null'::jsonb
+                                    ) || _required
+                        ) as el
+            ) arr
+                WHERE jsonb_typeof(el) != 'null'
+            INTO _required;
+
+        SELECT class_schema->>'GUID'
+            INTO class_guid;
+        
+        _parent_list := _parent_list || to_jsonb(class_guid);
+
+    END LOOP;
     SELECT max(version) + 1
     FROM reclada.v_class_lite v
     WHERE v.for_class = new_class
@@ -2027,13 +2067,6 @@ BEGIN
 
     version_ := coalesce(version_,1);
     class_schema := class_schema->'attributes'->'schema';
-
-    SELECT obj_id
-    FROM reclada.v_class
-    WHERE for_class = class
-    ORDER BY version DESC
-    LIMIT 1
-    INTO class_guid;
 
     PERFORM reclada_object.create(format('{
         "class": "jsonschema",
@@ -2044,18 +2077,15 @@ BEGIN
                 "type": "object",
                 "properties": %s,
                 "required": %s
-            }
-        },
-        "parent_guid" : "%s"
+            },
+            "parentList":%s
+        }
     }',
     new_class,
     version_,
-    (class_schema->'properties') || coalesce((attrs->'properties'),'{}'::jsonb),
-    (SELECT jsonb_agg(el) FROM (
-        SELECT DISTINCT pg_catalog.jsonb_array_elements(
-            (class_schema -> 'required') || coalesce((attrs -> 'required'),'{}'::jsonb)
-        ) el) arr),
-    class_guid
+    _properties,
+    _required,
+    _parent_list
     )::jsonb);
 
     IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
@@ -5319,14 +5349,11 @@ COPY reclada.object (id, status, attributes, transaction_id, created_time, creat
 71	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"type": "PipelineLite stage 6", "command": "./pipeline/loading_results_to_db.sh"}	70	2021-12-21 13:28:11.224553+00	16d789c1-1b4e-4815-b70c-4ef060e90884	ba7211ce-92e5-4cbb-aa1b-a3259a9a4f54	83fbb176-adb7-4da0-bd1f-4ce4aba1b87a	\N
 72	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"type": "PipelineLite stage 7", "command": "./pipeline/custom_task.sh"}	71	2021-12-21 13:28:11.224553+00	16d789c1-1b4e-4815-b70c-4ef060e90884	ba7211ce-92e5-4cbb-aa1b-a3259a9a4f54	27de6e85-1749-4946-8a53-4316321fc1e8	\N
 73	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"type": "PipelineLite stage 8", "command": "./pipeline/coping_results.sh"}	72	2021-12-21 13:28:11.224553+00	16d789c1-1b4e-4815-b70c-4ef060e90884	ba7211ce-92e5-4cbb-aa1b-a3259a9a4f54	4478768c-0d01-4ad9-9a10-2bef4d4b8007	\N
-74	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"$defs": {"displayType": {"type": "object", "required": ["orderColumn", "orderRow"], "properties": {"orderRow": {"type": "array", "items": {"type": "object", "patternProperties": {"^{.*}$": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "orderColumn": {"type": "array", "items": {"type": "string"}}}}}, "required": ["classGUID", "caption"], "properties": {"card": {"$ref": "#/$defs/displayType"}, "flat": {"type": "bool"}, "list": {"$ref": "#/$defs/displayType"}, "table": {"$ref": "#/$defs/displayType"}, "caption": {"type": "string"}, "preview": {"$ref": "#/$defs/displayType"}, "classGUID": {"type": "string"}}}, "version": "1", "forClass": "ObjectDisplay"}	73	2021-12-23 09:40:36.185045+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	0ed53027-e432-4ef8-a669-b90dab42353a	\N
-84	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": [{}, "name"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": "1", "forClass": "Asset"}	83	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	83cc2a18-ee18-44b8-ab73-689dadb7c0d0	92a95f66-e28e-4ebc-9f33-3568fc5a281e
-85	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": [{}, "name"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}}}, "version": "1", "forClass": "DBAsset"}	84	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	c72ad73a-9e85-4277-9a3a-1d2d28d7a84f	83cc2a18-ee18-44b8-ab73-689dadb7c0d0
-50	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["subject", "type", "object"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "type": {"type": "string", "enum ": ["params"]}, "object": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "subject": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}}}, "version": "1", "forClass": "Relationship"}	27	2021-09-22 14:53:04.158111+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	2d054574-8f7a-4a9a-a3b3-0400ad9d0489	\N
 86	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"card": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"]}, "list": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"]}, "table": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"], "{GUID}:string": {"width": 250, "caption": "GUID", "displayCSS": "GUID"}, "{status}:string": {"width": 250, "caption": "Status", "displayCSS": "status"}, "{createdTime}:string": {"width": 250, "caption": "Created time", "displayCSS": "createdTime"}, "{transactionID}:number": {"width": 250, "caption": "Transaction", "displayCSS": "transactionID"}, "{attributes,tags}:array": {"items": {"class": "e12e729b-ac44-45bc-8271-9f0c6d4fa27b", "behavior": "preview", "displayCSS": "link"}, "width": 250, "caption": "Tags", "displayCSS": "arrayLink"}, "{attributes,name}:string": {"width": 250, "caption": "File name", "behavior": "preview", "displayCSS": "name"}, "{attributes,checksum}:string": {"width": 250, "caption": "Checksum", "displayCSS": "checksum"}, "{attributes,mimeType}:string": {"width": 250, "caption": "Mime type", "displayCSS": "mimeType"}}, "caption": "Files", "preview": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"]}, "classGUID": "c7fc0455-0572-40d7-987f-583cc2c9630c"}	85	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0ed53027-e432-4ef8-a669-b90dab42353a	fb19dd42-f2a2-4e34-90ea-a6e5f5ea6dff	\N
 87	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 2, "user": "", "branch": "", "dateTime": "2021-12-28 14:18:07.480088+00"}	86	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	1da6ba10-b175-4e1d-8cdd-668d52387c08	\N
 59	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["checksum", "name", "mimeType"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "checksum": {"type": "string"}, "mimeType": {"type": "string"}}}, "version": "1", "forClass": "File", "isCascade": true, "dupBehavior": "Replace", "dupChecking": [{"uniFields": ["uri"], "isMandatory": true}, {"uniFields": ["checksum"], "isMandatory": true}]}	58	2021-10-04 08:06:30.979167+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	c7fc0455-0572-40d7-987f-583cc2c9630c	\N
 62	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "anyOf": [{"required": ["transactionID"]}, {"required": ["class"]}, {"required": ["filter"]}], "properties": {"class": {"type": "string"}, "limit": {"anyOf": [{"enum": ["ALL"], "type": "string"}, {"type": "integer"}]}, "filter": {"type": "object"}, "offset": {"type": "integer"}, "orderBy": {"type": "array", "items": {"type": "object", "required": ["field"], "properties": {"field": {"type": "string"}, "order": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "transactionID": {"type": "integer"}}}, "function": "reclada_object.list"}	61	2021-11-08 11:01:49.274513+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	d87ad26e-a522-4907-a41a-a82a916fdcf9	\N
+60	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["schema", "function"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "schema": {"type": "object"}, "function": {"type": "string"}}}, "version": "1", "forClass": "DTOJsonSchema", "parentList": ["ab9ab26c-8902-43dd-9f1a-743b14a89825"]}	59	2021-11-08 11:01:49.274513+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	d90dd69c-fc00-4573-b747-c04f39c20b25	ab9ab26c-8902-43dd-9f1a-743b14a89825
 88	9dc0a032-90d6-4638-956e-9cd64cd2900c	{"schema": {"type": "object", "anyOf": [{"required": ["transactionID", "class"]}, {"required": ["class"]}, {"required": ["filter", "class"]}], "properties": {"class": {"type": "string"}, "limit": {"anyOf": [{"enum": ["ALL"], "type": "string"}, {"type": "integer"}]}, "filter": {"type": "object"}, "offset": {"type": "integer"}, "orderBy": {"type": "array", "items": {"type": "object", "required": ["field"], "properties": {"field": {"type": "string"}, "order": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "transactionID": {"type": "integer"}}}, "function": "reclada_object.list", "revision": "1da6ba10-b175-4e1d-8cdd-668d52387c08"}	61	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	d87ad26e-a522-4907-a41a-a82a916fdcf9	\N
 89	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["repository", "isInstalling", "name", "commitHash"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "commitHash": {"type": "string"}, "repository": {"type": "string"}, "isInstalling": {"type": "boolean"}}}, "version": "1", "forClass": "Component"}	87	2022-01-20 10:30:11.372958+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	1b71db74-e11a-427d-a64a-b9ffec710823	\N
 92	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"name": "db", "commitHash": "00000", "repository": "https://gitlab.reclada.com/developers/db.git", "isInstalling": false}	90	2022-01-20 10:30:11.372958+00	16d789c1-1b4e-4815-b70c-4ef060e90884	1b71db74-e11a-427d-a64a-b9ffec710823	7534ae14-df31-47aa-9b46-2ad3e60b4b6e	\N

@@ -102,7 +102,12 @@ BEGIN
         END IF;
 
         IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', _attrs))) THEN
-            RAISE EXCEPTION 'JSON invalid: %', _attrs;
+            RAISE EXCEPTION 'JSON invalid: 
+                %, 
+                schema: 
+                %', 
+                _attrs,
+                schema#>>'{attributes,schema}';
         END IF;
         
         IF _data->>'id' IS NOT NULL THEN

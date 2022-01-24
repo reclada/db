@@ -1,5 +1,6 @@
 {
-    "forClass": "Component",
+    "forClass": "Parameter",
+    "parentList": [],
     "schema": {
         "properties": {
             "commitHash": {
