@@ -155,11 +155,13 @@ BEGIN
                         FROM create_duplicate_tmp
                             INTO _obj_guid, _is_cascade;
                         new_data := _data;
-                        PERFORM reclada_object.create_relationship(
-                                _rel_type,
-                                _obj_guid,
-                                (new_data->>'GUID')::uuid,
-                                format('{"dupBehavior": "Update", "isCascade": %s}', _is_cascade::text)::jsonb);
+                        IF new_data->>'GUID' IS NOT NULL THEN
+                            PERFORM reclada_object.create_relationship(
+                                    _rel_type,
+                                    _obj_guid,
+                                    (new_data->>'GUID')::uuid,
+                                    format('{"dupBehavior": "Update", "isCascade": %s}', _is_cascade::text)::jsonb);
+                        END IF;
                         new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
                         new_data = reclada_object.update_json_by_guid(_obj_guid, new_data);
                         SELECT reclada_object.update(new_data)
@@ -206,11 +208,13 @@ BEGIN
                                 PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_guid)::jsonb);
                             END IF;
                         WHEN 'Update' THEN
-                            PERFORM reclada_object.create_relationship(
-                                _rel_type,
-                                _obj_guid,
-                                (new_data->>'GUID')::uuid,
-                                format('{"dupBehavior": "Update", "isCascade": %s}', _is_cascade::text)::jsonb);
+                            IF new_data->>'GUID' IS NOT NULL THEN
+                                PERFORM reclada_object.create_relationship(
+                                    _rel_type,
+                                    _obj_guid,
+                                    (new_data->>'GUID')::uuid,
+                                    format('{"dupBehavior": "Update", "isCascade": %s}', _is_cascade::text)::jsonb);
+                            END IF;
                             new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
                             new_data := reclada_object.update_json_by_guid(_obj_guid, new_data);
                             SELECT reclada_object.update(new_data)

@@ -24,7 +24,7 @@ BEGIN
     IF exclude_uuid IS NULL THEN
         q := REPLACE(q, '@#@#@exclude_uuid@#@#@',   ''::text);    
     ELSE
-        q := REPLACE(q, '@#@#@exclude_uuid@#@#@',   ' || ''AND obj_id != '''::text || exclude_uuid::text || '''');
+        q := REPLACE(q, '@#@#@exclude_uuid@#@#@',   ' || ''AND obj_id != '''''::text || exclude_uuid::text || '''''''');
     END IF;
 
     EXECUTE q

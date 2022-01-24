@@ -26,7 +26,7 @@ AS
                                 os.caption   as "status"            ,
                                 t.attributes as "attributes"        ,
                                 t.transaction_id as "transactionID" ,
-                                t.parent_guid as "parentGUID"       ,
+                                t.parent_guid as "parent_guid"       ,
                                 t.created_time as "createdTime"
                     ) as tmp
             )::jsonb as data,

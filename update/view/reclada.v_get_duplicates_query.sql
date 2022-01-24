@@ -7,6 +7,7 @@ SELECT
           dup_behavior , is_cascade , copy_field
           FROM v_object_unifields vou 
           WHERE class_uuid = ''@#@#@class_uuid@#@#@''
+            AND is_mandatory
           GROUP BY uni_number, dup_behavior , is_cascade , copy_field) a
          GROUP BY dup_behavior , is_cascade , copy_field
 ' AS val
