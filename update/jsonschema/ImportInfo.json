@@ -1,5 +1,6 @@
 {
     "forClass": "ImportInfo",
+    "parentList": [],
     "schema": {
         "properties": {
             "disable": {

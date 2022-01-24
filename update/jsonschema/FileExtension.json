@@ -1,5 +1,6 @@
 {
     "forClass": "FileExtension",
+    "parentList": [],
     "schema": {
         "properties": {
             "disable": {

@@ -1,5 +1,6 @@
 {
     "forClass": "Value",
+    "parentList": [],
     "schema": {
         "properties": {
             "disable": {

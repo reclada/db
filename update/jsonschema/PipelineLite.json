@@ -1,5 +1,8 @@
 {
     "forClass": "PipelineLite",
+    "parentList": [
+        "ba7211ce-92e5-4cbb-aa1b-a3259a9a4f54"
+    ],
     "schema": {
         "properties": {
             "command": {
