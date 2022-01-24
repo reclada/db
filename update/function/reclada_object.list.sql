@@ -414,9 +414,16 @@ BEGIN
                             FROM '
                             || _from
                             || ' 
-                            ORDER BY #@#@#orderby#@#@#
-                            OFFSET #@#@#offset#@#@#
-                            LIMIT #@#@#limit#@#@#
+                            ORDER BY #@#@#orderby#@#@#'
+                            || case 
+                                when ver = '2' 
+                                    then ''
+                                else
+                                '
+                                OFFSET #@#@#offset#@#@#
+                                LIMIT #@#@#limit#@#@#'
+                            end
+                            || '
                     ) AS t';
     _exec_text := REPLACE(_exec_text, '#@#@#orderby#@#@#'  , order_by          );
     _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
@@ -437,10 +444,25 @@ BEGIN
                                             limit 1
                             );
 
-                _exec_text := _pre_query ||',
+                _exec_text := '
+                with 
+                d as ( 
+                    select id_unique_object
+                        FROM reclada.v_active_object obj 
+                        JOIN reclada.unique_object_reclada_object as uoc
+                            on uoc.id_reclada_object = obj.id
+                                and #@#@#where#@#@#
+                        group by id_unique_object
+                ),
                 dd as (
-                    select distinct unnest(obj.display_key) v
-                        FROM '|| _from ||'
+                    select distinct 
+                            ''{''||f.path||''}:''||f.json_type v,
+                            f.json_type
+                        FROM d 
+                        JOIN reclada.unique_object as uo
+                            on d.id_unique_object = uo.id
+                        JOIN reclada.field f
+                            on f.id = ANY (uo.id_field)
                 ),
                 on_data as 
                 (
@@ -450,7 +472,7 @@ BEGIN
                             ) t
                         from dd as t
                         JOIN reclada.v_default_display dd
-                            on t.v like ''%'' || dd.json_type
+                            on t.json_type = dd.json_type
                 )
                 select jsonb_set(templ.v,''{table}'', od.t || coalesce(d.table,coalesce(d.table,templ.v->''table'')))
                     from on_data od
@@ -464,13 +486,14 @@ BEGIN
                     left join reclada.v_object_display d
                         on d.class_guid::text = '''|| coalesce( class_uuid::text, '' ) ||'''';
 
+                _exec_text := REPLACE(_exec_text, '#@#@#where#@#@#', query_conditions  );
                 -- raise notice '%',_exec_text;
                 EXECUTE _exec_text
                     INTO _object_display;
             end if;
         end if;
 
-        _exec_text := _pre_query || '
+        _exec_text := '
             SELECT  COUNT(1),
                     TO_CHAR(
                         MAX(
@@ -488,7 +511,11 @@ BEGIN
                         ),
                         ''YYYY-MM-DD hh24:mi:ss.MS TZH''
                     )
-                    FROM '|| _from;
+                    FROM reclada.v_active_object obj 
+                        where #@#@#where#@#@#';
+
+        _exec_text := REPLACE(_exec_text, '#@#@#where#@#@#', query_conditions  );
+        raise notice '%',_exec_text;
         EXECUTE _exec_text
             INTO number_of_objects, last_change;
         

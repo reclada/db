@@ -305,6 +305,8 @@ BEGIN
     DELETE FROM reclada.draft 
         WHERE guid = ANY (affected);
 
+    PERFORM reclada.update_unique_object(affected);
+        
     PERFORM reclada_notification.send_object_notification
         (
             'create',
