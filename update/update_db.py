@@ -345,7 +345,7 @@ def run_test():
 
 def install_components():
     v = get_version_from_db()
-    if v < 46:
+    if v < 47:
         install_objects()
     else:
         replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
