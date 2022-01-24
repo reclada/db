@@ -42,6 +42,10 @@ BEGIN
         RAISE EXCEPTION 'The reclada object must have attributes';
     END IF;
 
+    IF attrs #>'{properties, default}' IS NOT NULL THEN
+        RAISE EXCEPTION 'Cannot use reserved words for field name';
+    END IF;
+
     new_class = attrs->>'newClass';
     _properties := coalesce((attrs->'properties'),'{}'::jsonb);
     _required   := coalesce((attrs -> 'required'),'[]'::jsonb);
