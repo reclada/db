@@ -1,6 +1,7 @@
 {
     "forClass": "Page",
     "parentField": "document",
+    "parentList": [],
     "schema": {
         "properties": {
             "bbox": {

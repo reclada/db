@@ -2,17 +2,21 @@
  * Function reclada_object.create_subclass creates subclass.
  * A jsonb object with the following parameters is required.
  * Required parameters:
- *  class - the name of parent class
- *  attributes - the attributes of objects of the class. The field contains:
- *      forClass - the name of class to create
- *      schema - the schema for the class
+ *  _class_list - the name of parent _class_list
+ *  attributes - the attributes of objects of the _class_list. The field contains:
+ *      forClass - the name of _class_list to create
+ *      schema - the schema for the _class_list
  */
 
 DROP FUNCTION IF EXISTS reclada_object.create_subclass;
 CREATE OR REPLACE FUNCTION reclada_object.create_subclass(data jsonb)
 RETURNS VOID AS $$
 DECLARE
-    class           text;
+    _class_list     jsonb;
+    _class          text;
+    _properties     jsonb;
+    _required       jsonb;
+    _parent_list    jsonb := '[]';
     new_class       text;
     attrs           jsonb;
     class_schema    jsonb;
@@ -21,11 +25,16 @@ DECLARE
     _uniFields      jsonb;
     _idx_name       text;
     _f_list         text;
+    _f_name         text = 'reclada_object.create_subclass';
 BEGIN
 
-    class := data->>'class';
-    IF (class IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object class is not specified';
+    _class_list := data->'class';
+    IF (_class_list IS NULL) THEN
+        perform reclada.raise_exception('The reclada object class is not specified',_f_name);
+    END IF;
+
+    IF (jsonb_typeof(_class_list) != 'array') THEN
+        _class_list := '[]'::jsonb || _class_list;
     END IF;
 
     attrs := data->'attributes';
@@ -34,13 +43,39 @@ BEGIN
     END IF;
 
     new_class = attrs->>'newClass';
+    _properties := coalesce((attrs->'properties'),'{}'::jsonb);
+    _required   := coalesce((attrs -> 'required'),'[]'::jsonb);
+    FOR _class IN SELECT jsonb_array_elements_text(_class_list)
+    LOOP
 
-    SELECT reclada_object.get_schema(class) INTO class_schema;
+        SELECT reclada_object.get_schema(_class) 
+            INTO class_schema;
 
-    IF (class_schema IS NULL) THEN
-        RAISE EXCEPTION 'No json schema available for %', class;
-    END IF;
+        IF (class_schema IS NULL) THEN
+            RAISE EXCEPTION 'No json schema available for %', _class;
+        END IF;
 
+        _properties :=  coalesce((class_schema#>'{attributes,schema,properties}'),'{}'::jsonb) || _properties;
+
+        SELECT jsonb_agg(el) 
+            FROM 
+            (
+                SELECT DISTINCT 
+                        pg_catalog.jsonb_array_elements(
+                            coalesce(   class_schema#> '{attributes,schema,required}',
+                                        'null'::jsonb
+                                    ) || _required
+                        ) as el
+            ) arr
+                WHERE jsonb_typeof(el) != 'null'
+            INTO _required;
+
+        SELECT class_schema->>'GUID'
+            INTO class_guid;
+        
+        _parent_list := _parent_list || to_jsonb(class_guid);
+
+    END LOOP;
     SELECT max(version) + 1
     FROM reclada.v_class_lite v
     WHERE v.for_class = new_class
@@ -48,13 +83,6 @@ BEGIN
 
     version_ := coalesce(version_,1);
     class_schema := class_schema->'attributes'->'schema';
-
-    SELECT obj_id
-    FROM reclada.v_class
-    WHERE for_class = class
-    ORDER BY version DESC
-    LIMIT 1
-    INTO class_guid;
 
     PERFORM reclada_object.create(format('{
         "class": "jsonschema",
@@ -65,18 +93,15 @@ BEGIN
                 "type": "object",
                 "properties": %s,
                 "required": %s
-            }
-        },
-        "parent_guid" : "%s"
+            },
+            "parentList":%s
+        }
     }',
     new_class,
     version_,
-    (class_schema->'properties') || coalesce((attrs->'properties'),'{}'::jsonb),
-    (SELECT jsonb_agg(el) FROM (
-        SELECT DISTINCT pg_catalog.jsonb_array_elements(
-            (class_schema -> 'required') || coalesce((attrs -> 'required'),'{}'::jsonb)
-        ) el) arr),
-    class_guid
+    _properties,
+    _required,
+    _parent_list
     )::jsonb);
 
     IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
