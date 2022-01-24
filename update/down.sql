@@ -6,13 +6,14 @@ drop table reclada.unique_object;
 drop table reclada.field;
 
 --{function/reclada_object.create}
+--{function/reclada_object.create_subclass}
 --{function/reclada_object.get_schema}
 --{function/reclada_object.update}
 --{function/reclada_object.list}
 --{function/reclada.update_unique_object}
 --{function/reclada_object.explode_jsonb}
 --{function/reclada_object.refresh_mv}
---{view/reclada.get_children}
+--{view/reclada.get_duplicates}
 --{view/reclada.v_filter_mapping}
 --{view/reclada.v_unifields_pivoted}
 --{view/reclada.v_get_duplicates_query}
@@ -65,6 +66,7 @@ BEGIN
 END$$;
 
 ALTER TABLE reclada.object ALTER COLUMN status DROP DEFAULT;
+DROP VIEW reclada.v_ui_active_object;
 DROP VIEW reclada.v_revision;
 DROP VIEW reclada.v_import_info;
 DROP VIEW reclada.v_dto_json_schema;

@@ -1,4 +1,4 @@
--- version = 46
+-- version = 47
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
@@ -43,12 +43,13 @@ create table reclada.unique_object_reclada_object
 );
 
 \i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.create_subclass.sql'
 \i 'function/reclada_object.update.sql'
 \i 'function/reclada_object.list.sql'
 \i 'function/reclada_object.get_schema.sql'
 \i 'function/reclada_object.explode_jsonb.sql'
 \i 'function/reclada.update_unique_object.sql'
-\i 'function/reclada.get_children.sql'
+\i 'function/reclada.get_duplicates.sql'
 \i 'function/reclada_object.refresh_mv.sql'
 \i 'view/reclada.v_filter_mapping.sql'
 \i 'view/reclada.v_get_duplicates_query.sql'
@@ -80,6 +81,7 @@ ALTER TABLE reclada.object ALTER COLUMN status SET DEFAULT reclada_object.get_ac
 \i 'view/reclada.v_dto_json_schema.sql'
 \i 'view/reclada.v_import_info.sql'
 \i 'view/reclada.v_revision.sql'
+\i 'view/reclada.v_ui_active_object.sql'
 
 CREATE INDEX relationship_type_subject_object_index ON reclada.object USING btree ((attributes->>'type'), ((attributes->>'subject')::uuid), status, ((attributes->>'object')::uuid))
 WHERE attributes->>'subject' IS NOT NULL AND attributes->>'object' IS NOT NULL  AND status=reclada_object.get_active_status_obj_id();

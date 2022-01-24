@@ -69,7 +69,7 @@ BEGIN
                 "required": %s
             }
         },
-        "parent_guid" : "%s"
+        "parentGUID" : "%s"
     }',
     new_class,
     version_,
@@ -107,8 +107,9 @@ BEGIN
     END IF;
 
     FOR _field_name IN 
-        SELECT SELECT DISTINCT pg_catalog.jsonb_array_elements(
-                (class_schema -> 'required') || coalesce((attrs -> 'required'),'{}'::jsonb)
+        SELECT DISTINCT el
+        FROM pg_catalog.jsonb_array_elements_text(
+                (class_schema -> 'required') || coalesce((attrs -> 'required'),'[]'::jsonb)
             ) el
         WHERE NOT EXISTS (
             SELECT relname, ind_expr
@@ -125,7 +126,7 @@ BEGIN
                 AND strpos(ind_expr,el) > 0
         )
     LOOP
-        EXECUTE E'CREATE INDEX ' || _field_name || '_index_ ON reclada.object USING BTREE (() attributes ->>''' || _field_name || ''')) WHERE attributes ->>''' || _field_name || ''' IS NOT NULL';
+        EXECUTE E'CREATE INDEX ' || _field_name || '_index_ ON reclada.object USING BTREE (( attributes ->>''' || _field_name || ''')) WHERE attributes ->>''' || _field_name || ''' IS NOT NULL';
     END LOOP;
 
 END;
