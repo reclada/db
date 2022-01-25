@@ -27,6 +27,7 @@ AS
                                 t.attributes as "attributes"        ,
                                 t.transaction_id as "transactionID" ,
                                 t.parent_guid as "parentGUID"       ,
+                                t.created_by  as "createdBy"        ,
                                 t.created_time as "createdTime"
                     ) as tmp
             )::jsonb as data,

@@ -42,6 +42,7 @@ create table reclada.unique_object_reclada_object
     PRIMARY KEY(id_unique_object,id_reclada_object)
 );
 
+\i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.create_subclass.sql'
 \i 'function/reclada_object.update.sql'
@@ -82,6 +83,8 @@ ALTER TABLE reclada.object ALTER COLUMN status SET DEFAULT reclada_object.get_ac
 \i 'view/reclada.v_import_info.sql'
 \i 'view/reclada.v_revision.sql'
 \i 'view/reclada.v_ui_active_object.sql'
+\i 'view/reclada.v_filter_mapping.sql'
+
 
 CREATE INDEX relationship_type_subject_object_index ON reclada.object USING btree ((attributes->>'type'), ((attributes->>'subject')::uuid), status, ((attributes->>'object')::uuid))
 WHERE attributes->>'subject' IS NOT NULL AND attributes->>'object' IS NOT NULL  AND status=reclada_object.get_active_status_obj_id();

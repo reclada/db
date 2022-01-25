@@ -101,3 +101,5 @@ ANALYZE reclada.v_user;
 --{view/reclada.v_import_info}
 --{view/reclada.v_revision}
 --{view/reclada.v_ui_active_object}
+--{view/reclada.v_filter_mapping}
+--{function/reclada_object.get_query_condition_filter}
