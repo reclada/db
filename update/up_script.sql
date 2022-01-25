@@ -193,3 +193,9 @@ select reclada.update_unique_object(null, true);
 \i 'function/reclada_object.get_query_condition_filter.sql'
 
 --} REC-594
+
+--{ REC-562
+\i 'function/reclada_object.list.sql'
+\i 'function/reclada.validate_json_schema.sql'
+
+--} REC-562

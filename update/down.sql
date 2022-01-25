@@ -60,3 +60,11 @@ DROP VIEW reclada.v_active_object;
 --{function/reclada_object.get_query_condition_filter}
 
 --} REC-594
+
+
+--{ REC-562
+
+--{function/reclada_object.list}
+--{function/reclada.validate_json_schema}
+
+--} REC-562

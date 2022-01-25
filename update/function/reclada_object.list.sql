@@ -515,7 +515,7 @@ BEGIN
                         where #@#@#where#@#@#';
 
         _exec_text := REPLACE(_exec_text, '#@#@#where#@#@#', query_conditions  );
-        raise notice '%',_exec_text;
+        -- raise notice '%',_exec_text;
         EXECUTE _exec_text
             INTO number_of_objects, last_change;
         
