@@ -38,45 +38,27 @@ DECLARE
     _guid_list      text;
 BEGIN
 
-    _class_name := _data->>'class';
-    IF (_class_name IS NULL) THEN
-        perform reclada.raise_exception(
-                        'The reclada object class is not specified',
-                        _f_name
-                    );
-    END IF;
-    _class_uuid := reclada.try_cast_uuid(_class_name);
+    SELECT  schema_obj, 
+            attributes,
+            class_name,
+            class_guid 
+        FROM reclada.validate_json_schema(_data)
+        INTO    schema      , 
+                _attrs      ,
+                _class_name ,
+                _class_uuid ;
+
+
     _obj_id := _data->>'GUID';
     IF (_obj_id IS NULL) THEN
-        RAISE EXCEPTION 'Could not update object with no GUID';
+        perform reclada.raise_exception('Could not update object with no GUID',_f_name);
     END IF;
 
-    _attrs := _data->'attributes';
-    IF (_attrs IS NULL) THEN
-        RAISE EXCEPTION 'The reclada object must have attributes';
-    END IF;
 
-    if _class_uuid is null then
-        SELECT reclada_object.get_schema(_class_name) 
-            INTO schema;
-    else
-        select v.data, v.for_class 
-            from reclada.v_class v
-                where _class_uuid = v.obj_id
-            INTO schema, _class_name;
+    -- don't allow update jsonschema
+    if _class_name = 'jsonschema' then
+        perform reclada.raise_exception('Can''t update jsonschema',_f_name);
     end if;
-    -- TODO: don't allow update jsonschema
-    IF (schema IS NULL) THEN
-        RAISE EXCEPTION 'No json schema available for %', _class_name;
-    END IF;
-
-    IF (_class_uuid IS NULL) THEN
-        _class_uuid := (schema->>'GUID')::uuid;
-    END IF;
-    schema := schema #> '{attributes,schema}';
-    IF (NOT(public.validate_json_schema(schema, _attrs))) THEN
-        RAISE EXCEPTION 'JSON invalid: %', _attrs;
-    END IF;
 
     SELECT 	v.data
         FROM reclada.v_object v
@@ -85,7 +67,7 @@ BEGIN
 	    INTO old_obj;
 
     IF (old_obj IS NULL) THEN
-        RAISE EXCEPTION 'Could not update object, no such id';
+        perform reclada.raise_exception('Could not update object, no such id');
     END IF;
 
     branch := _data->'branch';

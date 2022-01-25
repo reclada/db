@@ -69,47 +69,24 @@ BEGIN
 
     FOR _data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
+
+        SELECT  schema_obj, 
+                attributes,
+                class_name,
+                class_guid 
+            FROM reclada.validate_json_schema(_data)
+            INTO    schema      , 
+                    _attrs      ,
+                    _class_name ,
+                    _class_uuid ;
+
         skip_insert := false;
-        _class_name := _data->>'class';
-
-        IF (_class_name IS NULL) THEN
-            RAISE EXCEPTION 'The reclada object class is not specified';
-        END IF;
-        _class_uuid := reclada.try_cast_uuid(_class_name);
-
-        _attrs := _data->'attributes';
-        IF (_attrs IS NULL) THEN
-            RAISE EXCEPTION 'The reclada object must have attributes';
-        END IF;
 
         tran_id := (_data->>'transactionID')::bigint;
         IF tran_id IS NULL THEN
             tran_id := reclada.get_transaction_id();
         END IF;
 
-        IF _class_uuid IS NULL THEN
-            SELECT reclada_object.get_schema(_class_name) 
-            INTO schema;
-            _class_uuid := (schema->>'GUID')::uuid;
-        ELSE
-            SELECT v.data, v.for_class
-            FROM reclada.v_class v
-            WHERE _class_uuid = v.obj_id
-            INTO schema, _class_name;
-        END IF;
-        IF (schema IS NULL) THEN
-            RAISE EXCEPTION 'No json schema available for %', _class_name;
-        END IF;
-
-        IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', _attrs))) THEN
-            RAISE EXCEPTION 'JSON invalid: 
-                %, 
-                schema: 
-                %', 
-                _attrs,
-                schema#>>'{attributes,schema}';
-        END IF;
-        
         IF _data->>'id' IS NOT NULL THEN
             RAISE EXCEPTION '%','Field "id" not allow!!!';
         END IF;
@@ -231,11 +208,20 @@ BEGIN
                             -- DO nothing
                         WHEN 'Merge' THEN
                             PERFORM reclada_object.create_relationship(
-                                _rel_type,
-                                _obj_guid,
-                                (new_data->>'GUID')::uuid,
-                                '{"dupBehavior": "Merge"}'::jsonb);
-                            SELECT reclada_object.update(reclada_object.merge(new_data - 'class', data,schema->'attributes'->'schema') || format('{"GUID": "%s"}', _obj_guid)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
+                                    _rel_type,
+                                    _obj_guid,
+                                    (new_data->>'GUID')::uuid,
+                                    '{"dupBehavior": "Merge"}'::jsonb
+                                );
+                            SELECT reclada_object.update(
+                                    reclada_object.merge(
+                                            new_data - 'class', 
+                                            data,
+                                            schema#>'{attributes,schema}'
+                                        ) 
+                                        || format('{"GUID": "%s"}', _obj_guid)::jsonb 
+                                        || format('{"transactionID": %s}', tran_id)::jsonb
+                                )
                             FROM reclada.v_active_object
                             WHERE obj_id = _obj_guid
                                 INTO res;

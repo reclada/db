@@ -196,6 +196,8 @@ select reclada.update_unique_object(null, true);
 
 --{ REC-562
 \i 'function/reclada_object.list.sql'
+\i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.update.sql'
 \i 'function/reclada.validate_json_schema.sql'
 
 --} REC-562
