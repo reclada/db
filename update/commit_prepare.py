@@ -21,7 +21,6 @@ def upgrade():
     run_file('up.sql')
 
 if __name__ == "__main__":
-    #replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
 
     t = str(datetime.datetime.now())
     

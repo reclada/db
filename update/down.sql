@@ -34,4 +34,29 @@ drop table reclada.field;
 
     delete from reclada.object 
         where guid in (select reclada_object.get_GUID_for_class('Component'));
---}
+--} REC-564
+
+
+--{ REC-594
+
+--{view/reclada.v_filter_mapping}
+
+DROP VIEW reclada.v_revision;
+DROP VIEW reclada.v_import_info;
+DROP VIEW reclada.v_dto_json_schema;
+DROP VIEW reclada.v_class;
+DROP VIEW reclada.v_task;
+DROP VIEW reclada.v_object_display;
+DROP VIEW reclada.v_active_object;
+--{view/reclada.v_object}
+--{view/reclada.v_active_object}
+--{view/reclada.v_object_display}
+--{view/reclada.v_task}
+--{view/reclada.v_class}
+--{view/reclada.v_dto_json_schema}
+--{view/reclada.v_import_info}
+--{view/reclada.v_revision}
+
+--{function/reclada_object.get_query_condition_filter}
+
+--} REC-594
