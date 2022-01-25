@@ -12,7 +12,7 @@ BEGIN
 		RETURN QUERY 
 			SELECT b.f_path,b.f_type
 			FROM jsonb_each(obj) a
-			JOIN  reclada_object.explode_jsonb(value, addr || ',' || KEY) b ON 1=1;
+			CROSS JOIN  reclada_object.explode_jsonb(value, addr || ',' || KEY) b;
 	ELSE
 		RETURN QUERY SELECT addr,_f_type;
 	END IF;

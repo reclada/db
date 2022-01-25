@@ -449,16 +449,10 @@ BEGIN
                             on uoc.id_unique_object = uo.id
                         JOIN reclada.field f
                             on f.id = ANY (uo.id_field)
-                    UNION
-                    SELECT   ''{GUID}:string'', ''string''
-UNION 
-SELECT 	''{transactionID}:number'', ''number''
-UNION 
-SELECT	''{status}:string'',''string''
-UNION
-SELECT	''{createdTime}:string'',''string''
-UNION 
-SELECT	''{class}:string'',''string''
+                        UNION
+                    SELECT pattern||'':''||CASE WHEN pattern=''transactionID'' THEN ''number'' ELSE ''string'' END,
+                        CASE WHEN pattern=''transactionID'' THEN ''number'' ELSE ''string'' END 
+                    FROM reclada.v_filter_mapping vfm
                 ),
                 on_data as 
                 (

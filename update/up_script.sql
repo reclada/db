@@ -122,43 +122,43 @@ WHERE attributes ->> 'uri' IS NOT NULL;
 DO $$
 DECLARE
 _field_name text;
-_fields		TEXT[];
+_fields        TEXT[];
 BEGIN
     SELECT array_agg(req_field)
     FROM (
-    	SELECT req_field
-    	FROM (
-    		SELECT DISTINCT lower(jsonb_array_elements_text(attrs->'schema'->'required')) AS req_field
-			FROM reclada.v_class vc
-		) a
-		WHERE req_field NOT IN ( '{}')
-			EXCEPT       
-		SELECT substring(ind_expr, cut_start+5, cut_end-cut_start-6)
-		FROM (
-			SELECT relname,
-				ind_expr,
-				strpos(ind_expr,'->>') AS cut_start,
-				strpos(ind_expr,'::text') AS cut_end
-			FROM (
-				SELECT i.relname,
-					pg_catalog.pg_get_expr(ix.indexprs, ix.indrelid) AS ind_expr
-				FROM pg_catalog.pg_index ix
-				JOIN pg_catalog.pg_class i ON i.oid = ix.indexrelid 
-				JOIN pg_catalog.pg_class t ON t.oid = ix.indrelid 
-				WHERE t.relname = 'object'
-					AND ix.indexprs IS NOT NULL
-			) a
-		WHERE length(ind_expr) - length(REPLACE(ind_expr,'->>',''))= 3
-		) b
-		ORDER BY 1
-	) c
+        SELECT req_field
+        FROM (
+            SELECT DISTINCT lower(jsonb_array_elements_text(attrs->'schema'->'required')) AS req_field
+            FROM reclada.v_class vc
+        ) a
+        WHERE req_field NOT IN ( '{}')
+            EXCEPT       
+        SELECT substring(ind_expr, cut_start+5, cut_end-cut_start-6)
+        FROM (
+            SELECT relname,
+                ind_expr,
+                strpos(ind_expr,'->>') AS cut_start,
+                strpos(ind_expr,'::text') AS cut_end
+            FROM (
+                SELECT i.relname,
+                    pg_catalog.pg_get_expr(ix.indexprs, ix.indrelid) AS ind_expr
+                FROM pg_catalog.pg_index ix
+                JOIN pg_catalog.pg_class i ON i.oid = ix.indexrelid 
+                JOIN pg_catalog.pg_class t ON t.oid = ix.indrelid 
+                WHERE t.relname = 'object'
+                    AND ix.indexprs IS NOT NULL
+            ) a
+        WHERE length(ind_expr) - length(REPLACE(ind_expr,'->>',''))= 3
+        ) b
+        ORDER BY 1
+    ) c
     INTO _fields;
     
-	IF _fields IS NOT NULL THEN
-		FOREACH _field_name IN ARRAY _fields LOOP
-			EXECUTE 'CREATE INDEX '|| _field_name || '_index_v46 ON reclada.object USING BTREE ( (attributes->>'''||_field_name ||''')) WHERE attributes ->>'''||_field_name ||''' IS NOT NULL';
-		END LOOP;
-	END IF;
+    IF _fields IS NOT NULL THEN
+        FOREACH _field_name IN ARRAY _fields LOOP
+            EXECUTE 'CREATE INDEX '|| _field_name || '_index_v47 ON reclada.object USING BTREE ( (attributes->>'''||_field_name ||''')) WHERE attributes ->>'''||_field_name ||''' IS NOT NULL';
+        END LOOP;
+    END IF;
 END$$;
 
 DROP VIEW reclada.v_unifields_pivoted;

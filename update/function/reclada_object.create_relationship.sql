@@ -12,7 +12,7 @@ DECLARE
     _obj        jsonb;
 BEGIN
 
-    IF (_obj_GUID IS NULL OR _subj_GUID IS NULL) THEN
+    IF (COALESCE(_obj_GUID,'') = '' OR COALESCE(_subj_GUID,'') = '') THEN
         RAISE EXCEPTION 'Object GUID or Subject GUID IS NULL';
     END IF;
 

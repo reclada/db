@@ -49,20 +49,20 @@ CREATE INDEX uri_index_ ON reclada.object USING hash ((attributes ->> 'uri'));
 DO $$
 DECLARE
 _index_name text;
-_indexes		TEXT[];
+_indexes        TEXT[];
 BEGIN
     SELECT array_agg(indexname)
     FROM pg_catalog.pg_indexes
-	WHERE indexname LIKE '%_v46'
-		AND schemaname ='reclada'
-		AND tablename ='object'
+    WHERE indexname LIKE '%_v47'
+        AND schemaname ='reclada'
+        AND tablename ='object'
     INTO _indexes;
     
-	IF _indexes IS NOT NULL THEN
-		FOREACH _index_name IN ARRAY _indexes LOOP
-			EXECUTE 'DROP INDEX '|| _index_name;
-		END LOOP;
-	END IF;
+    IF _indexes IS NOT NULL THEN
+        FOREACH _index_name IN ARRAY _indexes LOOP
+            EXECUTE 'DROP INDEX '|| _index_name;
+        END LOOP;
+    END IF;
 END$$;
 
 ALTER TABLE reclada.object ALTER COLUMN status DROP DEFAULT;
@@ -88,8 +88,8 @@ AS
             obj.attributes->>'login' as login,
             obj.created_time  ,
             obj.attributes as attrs
-	FROM reclada.object obj
-   	WHERE class in (select reclada_object.get_GUID_for_class('User')) 
+    FROM reclada.object obj
+       WHERE class in (select reclada_object.get_GUID_for_class('User')) 
         and status = reclada_object.get_active_status_obj_id();
 ANALYZE reclada.v_user;
 --{view/reclada.v_object}
