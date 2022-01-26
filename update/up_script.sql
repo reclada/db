@@ -150,17 +150,19 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 DROP VIEW IF EXISTS reclada.v_object_display;
 
-\i 'function/reclada_object.get_active_status_obj_id.sql'
-\i 'function/reclada_object.get_archive_status_obj_id.sql'
-
 \i 'function/reclada_object.get_jsonschema_guid.sql'
 \i 'view/reclada.v_class_lite.sql'
 \i 'function/reclada_object.get_guid_for_class.sql'
+\i 'view/reclada.v_object_status.sql'
+\i 'function/reclada_object.get_active_status_obj_id.sql'
+\i 'function/reclada_object.get_archive_status_obj_id.sql'
+
+
 \i 'function/reclada_object.delete.sql'
 \i 'view/reclada.v_object_display.sql'
 \i 'function/reclada_object.need_flat.sql'
 
-\i 'view/reclada.v_object_status.sql'
+
 \i 'view/reclada.v_user.sql'
 \i 'view/reclada.v_object.sql'
 \i 'view/reclada.v_active_object.sql'

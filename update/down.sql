@@ -134,6 +134,8 @@ AND attributes->>'forClass' != 'jsonschema';
 --{function/reclada_object.create_subclass}
 --{view/reclada.v_filter_available_operator}
 
+
+
 ALTER TABLE reclada.object ALTER COLUMN status DROP DEFAULT;
 DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
@@ -152,10 +154,7 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 DROP VIEW IF EXISTS reclada.v_object_display;
 
 --{function/reclada_object.get_jsonschema_guid}
---{function/reclada_object.get_active_status_obj_id}
---{function/reclada_object.get_archive_status_obj_id}
 
-ALTER TABLE reclada.object ALTER COLUMN status SET DEFAULT reclada_object.get_active_status_obj_id();
 
 CREATE MATERIALIZED VIEW reclada.v_class_lite
 AS
@@ -170,9 +169,6 @@ AS
    	WHERE obj.class = reclada_object.get_jsonschema_GUID();
 
 --{function/reclada_object.get_guid_for_class}
---{function/reclada_object.delete}
---{view/reclada.v_object_display}
---{function/reclada_object.need_flat}
 
 CREATE MATERIALIZED VIEW reclada.v_object_status
 AS
@@ -183,7 +179,9 @@ AS
             obj.attributes as attrs
 	FROM reclada.object obj
    	WHERE class in (select reclada_object.get_guid_for_class('ObjectStatus'));
-
+     
+--{function/reclada_object.get_active_status_obj_id}
+--{function/reclada_object.get_archive_status_obj_id}
 
 CREATE MATERIALIZED VIEW reclada.v_user
 AS
@@ -196,6 +194,16 @@ AS
    	WHERE class in (select reclada_object.get_guid_for_class('User'))
         and status = reclada_object.get_active_status_obj_id();
 ANALYZE reclada.v_user;
+
+
+
+ALTER TABLE reclada.object ALTER COLUMN status SET DEFAULT reclada_object.get_active_status_obj_id();
+
+
+--{function/reclada_object.delete}
+--{view/reclada.v_object_display}
+--{function/reclada_object.need_flat}
+
 --{view/reclada.v_object}
 --{view/reclada.v_object_display}
 --{view/reclada.v_active_object}
