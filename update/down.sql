@@ -13,7 +13,7 @@ drop table reclada.field;
 --{function/reclada.update_unique_object}
 --{function/reclada_object.explode_jsonb}
 --{function/reclada_object.refresh_mv}
---{view/reclada.get_duplicates}
+--{function/reclada.get_duplicates}
 --{view/reclada.v_filter_mapping}
 --{view/reclada.v_unifields_pivoted}
 --{view/reclada.v_get_duplicates_query}
