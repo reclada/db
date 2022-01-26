@@ -23,7 +23,7 @@ DECLARE
     _f_name         text = 'reclada.validate_json_schema';
 BEGIN
 
-    perform reclada.raise_notice(_data#>>'{}');
+    -- perform reclada.raise_notice(_data#>>'{}');
     _class := _data->>'class';
 
     IF (_class IS NULL) THEN

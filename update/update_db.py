@@ -181,7 +181,7 @@ def replace_component(name:str,repository:str,branch:str,component_installer)->s
     '''
         replace or install reclada-component
     '''
-
+    print(f'installing {name}...')
     guid = run_cmd_scalar(f"SELECT guid FROM reclada.v_component WHERE name = '{name}'")
 
     repo_hash = get_repo_hash(name,repository,branch)
@@ -361,11 +361,11 @@ def clear_db_from_components():
                 delete from reclada.object 
                     where guid in 
                     (
-                        SELECT component_guid FROM d
-                        union
                         SELECT obj_id FROM d
                         union
                         SELECT relationship_guid FROM d
+                        union 
+                        SELECT guid FROM reclada.v_component
                     )"""
     res = run_cmd_scalar(cmd)
 

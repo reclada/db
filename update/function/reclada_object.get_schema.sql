@@ -12,6 +12,7 @@ RETURNS jsonb AS $$
     FROM reclada.v_class_lite v
     JOIN reclada.v_active_object vao ON v.id=vao.id
     WHERE v.for_class = _class
+        OR v.obj_id::text = _class
     ORDER BY v.version DESC
     LIMIT 1
 $$ LANGUAGE SQL STABLE;

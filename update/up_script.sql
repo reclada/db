@@ -42,7 +42,7 @@ create table reclada.unique_object_reclada_object
     PRIMARY KEY(id_unique_object,id_reclada_object)
 );
 
-\i 'function/reclada_object.update.sql'
+-- \i 'function/reclada_object.update.sql'
 \i 'function/reclada_object.list.sql'
 \i 'function/reclada_object.get_schema.sql'
 \i 'function/reclada.update_unique_object.sql'
@@ -61,7 +61,7 @@ select reclada.update_unique_object(null, true);
     \i 'view/reclada.v_component_object.sql'
     \i 'function/reclada_object.get_parent_guid.sql'
     \i 'function/reclada_object.create_relationship.sql'
-    \i 'function/reclada_object.create.sql'
+    -- \i 'function/reclada_object.create.sql'
 
     SELECT reclada_object.create_subclass('{
         "class": "RecladaObject",
@@ -195,9 +195,11 @@ select reclada.update_unique_object(null, true);
 --} REC-594
 
 --{ REC-562
+\i 'function/reclada.validate_json_schema.sql'
 \i 'function/reclada_object.list.sql'
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.update.sql'
-\i 'function/reclada.validate_json_schema.sql'
+\i 'function/reclada_object.get_schema.sql'
+\i 'function/reclada_object.create_subclass.sql'
 
 --} REC-562
