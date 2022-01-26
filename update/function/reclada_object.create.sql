@@ -49,7 +49,7 @@ DECLARE
     _exec_text          text;
     _pre_query          text;
     _from               text;
-
+    
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
@@ -57,14 +57,6 @@ BEGIN
     END IF;
     /*TODO: check if some objects have revision AND others do not */
     branch:= data_jsonb->0->'branch';
-
-    CREATE TEMPORARY TABLE IF NOT EXISTS create_duplicate_tmp (
-        obj_guid        uuid,
-        dup_behavior    reclada.dp_bhvr,
-        is_cascade      boolean,
-        dup_field       text
-    )
-    ON COMMIT DROP;
 
     FOR _data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
@@ -136,23 +128,16 @@ BEGIN
             WHERE class_uuid = _class_uuid
         )
         THEN
-            INSERT INTO create_duplicate_tmp
-            SELECT obj_guid,
-                dup_behavior,
-                is_cascade,
-                dup_field
-            FROM reclada.get_duplicates(_attrs, _class_uuid);
-
             IF (_parent_guid IS NOT NULL) THEN
                 IF (_dup_behavior = 'Update' AND _is_cascade) THEN
                     SELECT count(DISTINCT obj_guid), string_agg(DISTINCT obj_guid::text, ',')
-                    FROM create_duplicate_tmp
+                    FROM reclada.get_duplicates(_attrs, _class_uuid)
                         INTO _cnt, _guid_list;
                     IF (_cnt >1) THEN
                         RAISE EXCEPTION 'Found more than one duplicates (GUIDs: %). Resolve conflict manually.', _guid_list;
                     ELSIF (_cnt = 1) THEN
                         SELECT DISTINCT obj_guid, is_cascade
-                        FROM create_duplicate_tmp
+                        FROM reclada.get_duplicates(_attrs, _class_uuid)
                             INTO _obj_guid, _is_cascade;
                         new_data := _data;
                         IF new_data->>'GUID' IS NOT NULL THEN
@@ -188,7 +173,7 @@ BEGIN
 
             IF (NOT skip_insert) THEN
                 SELECT COUNT(DISTINCT obj_guid), dup_behavior, string_agg (DISTINCT obj_guid::text, ',')
-                FROM create_duplicate_tmp
+                FROM reclada.get_duplicates(_attrs, _class_uuid)
                 GROUP BY dup_behavior
                     INTO _cnt, _dup_behavior, _guid_list;
                 IF (_cnt>1 AND _dup_behavior IN ('Update','Merge')) THEN
@@ -196,7 +181,7 @@ BEGIN
                 END IF;
                 FOR _obj_guid, _dup_behavior, _is_cascade, _uni_field IN
                     SELECT obj_guid, dup_behavior, is_cascade, dup_field
-                    FROM create_duplicate_tmp
+                    FROM reclada.get_duplicates(_attrs, _class_uuid)
                 LOOP
                     new_data := _data;
                     CASE _dup_behavior
@@ -242,7 +227,6 @@ BEGIN
                     END CASE;
                 END LOOP;
             END IF;
-            DELETE FROM create_duplicate_tmp;
         END IF;
         
         IF (NOT skip_insert) THEN
