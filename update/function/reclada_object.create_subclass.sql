@@ -26,6 +26,8 @@ DECLARE
     _idx_name       text;
     _f_list         text;
     _f_name         text = 'reclada_object.create_subclass';
+    _partial_clause text;
+    _field_name     text;
 BEGIN
 
     _class_list := data->'class';
@@ -115,7 +117,8 @@ BEGIN
             IF ( jsonb_typeof(_uniFields) = 'array' ) THEN
                 SELECT
                     reclada.get_unifield_index_name( array_agg(f ORDER BY f)) AS idx_name, 
-                    string_agg('(attributes ->> ''' || f || ''')','||' ORDER BY f) AS fields_list
+                    string_agg('(attributes ->> ''' || f || ''')','||' ORDER BY f) AS fields_list,
+                    string_agg('attributes ->> ''' || f || ''' IS NOT NULL',' AND ' ORDER BY f) AS partial_clause
                 FROM (
                     SELECT jsonb_array_elements_text (_uniFields::jsonb) f
                 ) a
@@ -125,12 +128,35 @@ BEGIN
                     FROM pg_catalog.pg_indexes pi2 
                     WHERE schemaname ='reclada' AND tablename ='object' AND indexname =_idx_name
                 ) THEN
-                    EXECUTE E'CREATE INDEX ' || _idx_name || ' ON reclada.object USING HASH ((' || _f_list || '))';
+                    EXECUTE E'CREATE INDEX ' || _idx_name || ' ON reclada.object USING HASH ((' || _f_list || ')) WHERE ' || _partial_clause;
                 END IF;
             END IF;
         END LOOP;
         PERFORM reclada_object.refresh_mv('uniFields');
     END IF;
+
+    FOR _field_name IN 
+        SELECT DISTINCT el
+        FROM pg_catalog.jsonb_array_elements_text(
+                (class_schema -> 'required') || coalesce((attrs -> 'required'),'[]'::jsonb)
+            ) el
+        WHERE NOT EXISTS (
+            SELECT relname, ind_expr
+            FROM (
+                SELECT i.relname, pg_get_expr(ix.indexprs, ix.indrelid) AS ind_expr
+                FROM pg_index ix
+                JOIN pg_class i ON i.oid = ix.indexrelid 
+                JOIN pg_class t ON t.oid = ix.indrelid 
+                WHERE t.relname = 'object'
+                AND ix.indexprs IS NOT NULL
+            ) a
+            WHERE
+                length(ind_expr) - length(REPLACE(ind_expr,'->>',''))= 3
+                AND strpos(ind_expr,el) > 0
+        )
+    LOOP
+        EXECUTE E'CREATE INDEX ' || _field_name || '_index_ ON reclada.object USING BTREE (( attributes ->>''' || _field_name || ''')) WHERE attributes ->>''' || _field_name || ''' IS NOT NULL';
+    END LOOP;
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
