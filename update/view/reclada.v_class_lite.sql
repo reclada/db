@@ -33,7 +33,7 @@ tmp AS
 (
     SELECT
             format('"%s":%s',
-                  (array_prepend('attributes', t.path_head[array_position(t.path_head, 'properties') + 1 : ]))::text, -- {attributes,schema,properties,nested_1,nested_2,nested_3} -> {nested_1,nested_2,nested_3}
+                  (t.path_head[array_position(t.path_head, 'properties') + 1 : ])::text, -- {schema,properties,nested_1,nested_2,nested_3} -> {nested_1,nested_2,nested_3}
                   t.path_tail->'default'
             )
              AS default_jsonb,
