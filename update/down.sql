@@ -6,6 +6,7 @@ drop table reclada.unique_object_reclada_object;
 drop table reclada.unique_object;
 drop table reclada.field;
 
+--{view/reclada.v_unifields_pivoted}
 --{function/reclada_object.create}
 --{function/reclada_object.create_subclass}
 --{function/reclada_object.get_schema}
@@ -18,7 +19,6 @@ drop table reclada.field;
 --{function/reclada_object.refresh_mv}
 --{function/reclada.get_duplicates}
 --{view/reclada.v_filter_mapping}
---{view/reclada.v_unifields_pivoted}
 --{view/reclada.v_get_duplicates_query}
 
 DROP INDEX relationship_type_subject_object_index;
@@ -261,7 +261,8 @@ AS
 
 --{view/reclada.v_unifields_pivoted}
 
-
+CREATE INDEX class_lite_class_idx ON reclada.v_class_lite USING btree (for_class);
+CREATE INDEX class_lite_obj_idx ON reclada.v_class_lite USING btree (obj_id);
 
 
 
