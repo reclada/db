@@ -20,6 +20,7 @@ drop table reclada.field;
 --{function/reclada.get_duplicates}
 --{view/reclada.v_filter_mapping}
 --{view/reclada.v_get_duplicates_query}
+--{function/reclada.get_unifield_index_name}
 
 DROP INDEX relationship_type_subject_object_index;
 

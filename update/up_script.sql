@@ -59,6 +59,7 @@ create table reclada.unique_object_reclada_object
 \i 'function/reclada_object.refresh_mv.sql'
 \i 'view/reclada.v_filter_mapping.sql'
 \i 'view/reclada.v_get_duplicates_query.sql'
+\i 'function/reclada.get_unifield_index_name.sql'
 
 
 select reclada.update_unique_object(null, true);
