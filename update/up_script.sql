@@ -128,9 +128,6 @@ WHERE class IN (SELECT reclada_object.get_guid_for_class('jsonschema'))
 AND attributes->>'forClass' != 'ObjectDisplay'
 AND attributes->>'forClass' != 'jsonschema';
 
-
-\i 'function/reclada_object.get_query_condition_filter.sql'
-\i 'function/reclada_object.create_subclass.sql'
 \i 'view/reclada.v_filter_available_operator.sql'
 
 ALTER TABLE reclada.object ALTER COLUMN status DROP DEFAULT;

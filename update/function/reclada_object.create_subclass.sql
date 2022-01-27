@@ -28,6 +28,7 @@ DECLARE
     _f_name         text = 'reclada_object.create_subclass';
     _partial_clause text;
     _field_name     text;
+    _create_obj     jsonb;
 BEGIN
 
     _class_list := data->'class';
@@ -90,7 +91,7 @@ BEGIN
     version_ := coalesce(version_,1);
     class_schema := class_schema->'attributes'->'schema';
 
-    PERFORM reclada_object.create(format('{
+    _create_obj := format('{
         "class": "jsonschema",
         "attributes": {
             "forClass": "%s",
@@ -108,7 +109,23 @@ BEGIN
     _properties,
     _required,
     _parent_list
-    )::jsonb);
+    )::jsonb;
+    IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
+        _create_obj := jsonb_set(_create_obj, '{attributes,dupChecking}',attrs->'dupChecking');
+        IF ( jsonb_typeof(attrs->'dupBehavior') = 'string' ) THEN
+            _create_obj := jsonb_set(_create_obj, '{attributes,dupBehavior}',attrs->'dupBehavior');
+        END IF;
+        IF ( jsonb_typeof(attrs->'isCascade') = 'boolean' ) THEN
+            _create_obj := jsonb_set(_create_obj, '{attributes,isCascade}',attrs->'isCascade');
+        END IF;
+        IF ( jsonb_typeof(attrs->'copyField') = 'string' ) THEN
+            _create_obj := jsonb_set(_create_obj, '{attributes,copyField}',attrs->'copyField');
+        END IF;
+    END IF;
+    IF ( jsonb_typeof(attrs->'parentField') = 'string' ) THEN
+        _create_obj := jsonb_set(_create_obj, '{attributes,parentField}',attrs->'parentField');
+    END IF;
+    PERFORM reclada_object.create(_create_obj);
 
     IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
         FOR _uniFields IN (
@@ -120,9 +137,9 @@ BEGIN
                     string_agg('(attributes ->> ''' || f || ''')','||' ORDER BY f) AS fields_list,
                     string_agg('attributes ->> ''' || f || ''' IS NOT NULL',' AND ' ORDER BY f) AS partial_clause
                 FROM (
-                    SELECT jsonb_array_elements_text (_uniFields::jsonb) f
+                    SELECT jsonb_array_elements_text (_uniFields) f
                 ) a
-                    INTO _idx_name, _f_list;
+                    INTO _idx_name, _f_list, _partial_clause;
                 IF NOT EXISTS (
                     SELECT 1
                     FROM pg_catalog.pg_indexes pi2 

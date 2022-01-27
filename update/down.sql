@@ -215,7 +215,6 @@ ALTER TABLE reclada.object ALTER COLUMN status SET DEFAULT reclada_object.get_ac
 --{view/reclada.v_class}
 --{view/reclada.v_parent_field}
 --{view/reclada.v_filter_mapping}
---{function/reclada_object.get_query_condition_filter}
 
 
 CREATE MATERIALIZED VIEW reclada.v_object_unifields
