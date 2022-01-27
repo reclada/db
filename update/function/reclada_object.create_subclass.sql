@@ -45,9 +45,8 @@ BEGIN
         perform reclada.raise_exception('The reclada object must have attributes',_f_name);
     END IF;
 
-    _new_class = attrs->>'newClass';
-    _properties := coalesce(attrs -> 'properties','{}'::jsonb);
-    _required   := coalesce(attrs -> 'required'  ,'[]'::jsonb);
+    
+
     FOR _class IN SELECT jsonb_array_elements_text(_class_list)
     LOOP
 
@@ -58,54 +57,19 @@ BEGIN
             perform reclada.raise_exception('No json schema available for ' || _class, _f_name);
         END IF;
         
-        _p_properties := coalesce(class_schema#>'{attributes,schema,properties}','{}'::jsonb);
-        SELECT key
-            FROM 
-            (
-                SELECT  je.key, 1 id
-                    FROM jsonb_each(_p_properties) je
-                UNION -- TODO: INTERSECT
-                SELECT  je.key, 2 id
-                    FROM jsonb_each(  _properties) je
-            ) t
-                GROUP BY key
-                HAVING COUNT(*) > 1
-                limit 1
-            into _field;
-        if _field is not null THEN
-            perform reclada.raise_exception('Field "'|| _field ||'" conflicts with class: ' || _class, _f_name);
-        END IF;
-        _properties :=  _p_properties || _properties;
-
-        _p_required := coalesce(class_schema#> '{attributes,schema,required}','[]'::jsonb );
-        SELECT t.value
-            FROM 
-            (
-                SELECT  je.value, 1 id
-                    FROM jsonb_array_elements(_p_required) je
-                UNION -- TODO: INTERSECT
-                SELECT  je.value, 2 id
-                    FROM jsonb_array_elements(  _required) je
-            ) t
-                GROUP BY t.value
-                HAVING COUNT(*) > 1
-                limit 1
-            into _field;
-        if _field is not null THEN
-            perform reclada.raise_exception('Required "'|| _field ||'" conflicts with class: ' || _class, _f_name);
-        END IF;
-        _required :=  _p_required || _required;
-
         SELECT class_schema->>'GUID'
             INTO class_guid;
         
         _parent_list := _parent_list || to_jsonb(class_guid);
 
     END LOOP;
+
+    _new_class = attrs->>'newClass';
+   
     SELECT max(version) + 1
     FROM reclada.v_class_lite v
     WHERE v.for_class = _new_class
-    INTO _version;
+        INTO _version;
 
     _version := coalesce(_version,1);
     _properties := coalesce(attrs -> 'properties','{}'::jsonb);

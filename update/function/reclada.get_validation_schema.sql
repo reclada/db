@@ -1,9 +1,15 @@
-DROP FUNCTION IF EXISTS reclada.validate_json_schema;
-CREATE OR REPLACE FUNCTION reclada.validate_json_schema
+DROP FUNCTION IF EXISTS reclada.get_validation_schema;
+CREATE OR REPLACE FUNCTION reclada.get_validation_schema
 (
-    _data       jsonb
+    class_guid uuid
 )
-RETURNS jsonb
+RETURNS TABLE
+(
+    schema_obj  jsonb , 
+    attributes  jsonb ,
+    class_name  text  ,
+    class_guid  uuid
+)
 AS $$
 DECLARE
     _schema_obj     jsonb;
@@ -13,7 +19,7 @@ DECLARE
     _class          text ;
     _class_name     text ;
     _class_guid     uuid ;
-    _f_name         text = 'reclada.validate_json_schema';
+    _f_name         text = 'reclada.get_validation_schema';
 BEGIN
 
     -- perform reclada.raise_notice(_data#>>'{}');
