@@ -195,11 +195,45 @@ select reclada.update_unique_object(null, true);
 --} REC-594
 
 --{ REC-562
+\i 'function/reclada_object.get_schema.sql'
+\i 'function/reclada.get_validation_schema.sql'
+
+
+drop VIEW reclada.v_unifields_pivoted;
+DROP MATERIALIZED VIEW reclada.v_object_unifields;
+DROP VIEW reclada.v_parent_field;
+DROP view reclada.v_class;
+DROP view reclada.v_revision;
+DROP view reclada.v_task;
+DROP view reclada.v_component_object;
+DROP view reclada.v_component;
+DROP view reclada.v_relationship;
+DROP view reclada.v_dto_json_schema;
+DROP view reclada.v_import_info;
+DROP view reclada.v_active_object;
+DROP VIEW reclada.v_object;
+DROP MATERIALIZED VIEW reclada.v_class_lite;
+-- !!!
+\i 'view/reclada.v_class_lite.sql' 
+select reclada.raise_notice('123');
+\i 'view/reclada.v_object.sql' 
+\i 'view/reclada.v_active_object.sql' 
+\i 'view/reclada.v_import_info.sql' 
+\i 'view/reclada.v_dto_json_schema.sql' 
+\i 'view/reclada.v_relationship.sql' 
+\i 'view/reclada.v_component.sql' 
+\i 'view/reclada.v_component_object.sql' 
+\i 'view/reclada.v_task.sql' 
+\i 'view/reclada.v_revision.sql' 
+\i 'view/reclada.v_parent_field.sql' 
+\i 'view/reclada.v_object_unifields.sql' 
+\i 'view/reclada.v_unifields_pivoted.sql' 
+
+
 \i 'function/reclada.validate_json_schema.sql'
 \i 'function/reclada_object.list.sql'
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.update.sql'
-\i 'function/reclada_object.get_schema.sql'
 \i 'function/reclada_object.create_subclass.sql'
 
 --} REC-562

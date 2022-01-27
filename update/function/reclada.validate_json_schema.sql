@@ -8,7 +8,6 @@ AS $$
 DECLARE
     _schema_obj     jsonb;
     _valid_schema   jsonb;
-    _new_data       jsonb;
     _attrs          jsonb;
     _class          text ;
     _class_name     text ;
@@ -18,7 +17,6 @@ BEGIN
 
     -- perform reclada.raise_notice(_data#>>'{}');
     _class := _data->>'class';
-
 
     IF (_class IS NULL) THEN
         perform reclada.raise_exception('The reclada object class is not specified',_f_name);
@@ -45,10 +43,10 @@ BEGIN
         perform reclada.raise_exception('The reclada object must have attributes',_f_name);
     END IF;
 
-    IF (NOT(public.validate_json_schema(_schema_obj #> '{attributes,schema}' , _attrs))) THEN
+    IF (NOT(public.validate_json_schema(_valid_schema, _attrs))) THEN
         perform reclada.raise_exception(format('JSON invalid: %s, schema: %s', 
                                                 _attrs #>> '{}'   , 
-                                                _schema_obj #>> '{attributes,schema}' 
+                                                _valid_schema #>> '{}'
                                             ),
                                         _f_name);
     END IF;
