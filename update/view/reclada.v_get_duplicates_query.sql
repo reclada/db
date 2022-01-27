@@ -4,7 +4,7 @@ AS
 SELECT
 'SELECT ''
     SELECT vao.obj_id, 
-            '''''' || dup_behavior || ''''''::dp_bhvr,
+            '''''' || dup_behavior || ''''''::reclada.dp_bhvr,
             '' || is_cascade || '',
             '' || COALESCE (copy_field,'''''''''''') ||'' FROM reclada.v_active_object vao WHERE '' ||  string_agg(predicate, '' OR '') @#@#@exclude_uuid@#@#@
           FROM (SELECT string_agg(''(vao.attrs ->>'''''' || unifield || '''''')'', ''||'' ORDER BY field_number) || ''='''''' || string_agg(COALESCE((''@#@#@attrs@#@#@''::jsonb) ->> unifield,''''),''''  ORDER BY field_number) || '''''''' AS predicate,
