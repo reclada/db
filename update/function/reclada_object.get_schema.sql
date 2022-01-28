@@ -9,8 +9,7 @@ DROP FUNCTION IF EXISTS reclada_object.get_schema;
 CREATE OR REPLACE FUNCTION reclada_object.get_schema(_class text)
 RETURNS jsonb AS $$
     SELECT data
-    FROM reclada.v_class_lite v
-    JOIN reclada.v_active_object vao ON v.id=vao.id
+    FROM reclada.v_class v
     WHERE v.for_class = _class
         OR v.obj_id::text = _class
     ORDER BY v.version DESC

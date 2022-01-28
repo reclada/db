@@ -5,7 +5,6 @@ AS
             obj.attributes->>'forClass' as for_class,
             (attributes->>'version')::bigint as version,
             obj.created_time,
-            reclada.get_validation_schema(obj.GUID) as validation_schema,
             obj.attributes,
             obj.status        
 	FROM reclada.object obj

@@ -3,7 +3,13 @@ CREATE OR REPLACE FUNCTION reclada.validate_json_schema
 (
     _data       jsonb
 )
-RETURNS jsonb
+RETURNS TABLE
+(
+    schema_obj  jsonb , 
+    attributes  jsonb ,
+    class_name  text  ,
+    class_guid  uuid
+)
 AS $$
 DECLARE
     _schema_obj     jsonb;
@@ -33,7 +39,7 @@ BEGIN
 
     SELECT  v.for_class, 
             validation_schema
-        FROM reclada.v_class_lite v
+        FROM reclada.v_class v
             WHERE _class_guid = v.obj_id
         INTO    _class_name, 
                 _valid_schema;
