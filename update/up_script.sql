@@ -142,7 +142,7 @@ select reclada.update_unique_object(null, true);
                                                         'Trigger',
                                                         'Value',
                                                         'PipelineLite'
-                                                    );
+                                                    )
                     )
                     /*or o.guid in (  
                                     'cc7b41e6-4d57-4e6f-9d10-6da0d5a4c39e', --stage0
@@ -163,7 +163,7 @@ select reclada.update_unique_object(null, true);
                         select reclada_object.get_GUID_for_class('Task')
                         UNION 
                         select reclada_object.get_GUID_for_class('PipelineLite')
-                    )
+                    );
 
         PERFORM reclada_object.create_relationship
                             (

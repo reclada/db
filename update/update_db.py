@@ -117,8 +117,9 @@ def clone(component_name:str,repository:str,branch:str):
 def get_repo_hash(component_name:str,repository:str,branch:str):
     # folder: update
     rmdir(component_name)
-    clone(component_name,repository,branch)
-    #folder: repos/db/update/component_name
+    if component_name != 'db':
+        clone(component_name,repository,branch)
+        #folder: repos/db/update/component_name
     cmd = "git log --pretty=format:%H -n 1"
     repo_hash = os.popen(cmd).read()
     return repo_hash
@@ -127,7 +128,7 @@ def get_repo_hash(component_name:str,repository:str,branch:str):
 
 def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
     if Path('update').exists():
-        os.chdir('update') # for v_45 and lower don't need
+        os.chdir('update') # for lower 47 don't need
     file_name = 'object_create_patched.sql'
     with open('object_create.sql') as f:
         obj_cr = f.read()
@@ -229,8 +230,9 @@ def replace_component(name:str,repository:str,branch:str,component_installer)->s
     cmd = cmd.replace('"isInstalling":true','"isInstalling":false')
     cmd = cmd.replace('SELECT reclada_object.create','SELECT reclada_object.update')
     res = run_cmd_scalar(cmd)
-    os.chdir('..')
-    rmdir(name)
+    if name != 'db':
+        os.chdir('..')
+        rmdir(name)
 
 
 def rmdir(top:str): 
