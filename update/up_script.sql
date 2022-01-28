@@ -59,6 +59,7 @@ create table reclada.unique_object_reclada_object
 \i 'function/reclada_object.refresh_mv.sql'
 \i 'view/reclada.v_filter_mapping.sql'
 \i 'view/reclada.v_get_duplicates_query.sql'
+\i 'function/reclada.get_unifield_index_name.sql'
 
 
 select reclada.update_unique_object(null, true);
@@ -128,9 +129,6 @@ WHERE class IN (SELECT reclada_object.get_guid_for_class('jsonschema'))
 AND attributes->>'forClass' != 'ObjectDisplay'
 AND attributes->>'forClass' != 'jsonschema';
 
-
-\i 'function/reclada_object.get_query_condition_filter.sql'
-\i 'function/reclada_object.create_subclass.sql'
 \i 'view/reclada.v_filter_available_operator.sql'
 
 ALTER TABLE reclada.object ALTER COLUMN status DROP DEFAULT;

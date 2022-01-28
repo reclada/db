@@ -20,6 +20,7 @@ drop table reclada.field;
 --{function/reclada.get_duplicates}
 --{view/reclada.v_filter_mapping}
 --{view/reclada.v_get_duplicates_query}
+--{function/reclada.get_unifield_index_name}
 
 DROP INDEX relationship_type_subject_object_index;
 
@@ -215,7 +216,6 @@ ALTER TABLE reclada.object ALTER COLUMN status SET DEFAULT reclada_object.get_ac
 --{view/reclada.v_class}
 --{view/reclada.v_parent_field}
 --{view/reclada.v_filter_mapping}
---{function/reclada_object.get_query_condition_filter}
 
 
 CREATE MATERIALIZED VIEW reclada.v_object_unifields
