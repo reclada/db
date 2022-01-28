@@ -52,14 +52,6 @@ BEGIN
     /*TODO: check if some objects have revision AND others do not */
     branch:= data_jsonb->0->'branch';
 
-    CREATE TEMPORARY TABLE IF NOT EXISTS create_duplicate_tmp (
-        obj_guid        uuid,
-        dup_behavior    reclada.dp_bhvr,
-        is_cascade      boolean,
-        dup_field       text
-    )
-    ON COMMIT DROP;
-
     FOR _data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
         skip_insert := false;
@@ -121,7 +113,7 @@ BEGIN
             FROM reclada.v_active_object
             WHERE class_name = 'Relationship'
                 AND attrs->>'type'                      = _rel_type
-                AND NULLIF(attrs->>'subject','')::uuid  = _parent_guid
+                AND (attrs->>'subject')::uuid  = _parent_guid
                     INTO _new_parent_guid, _dup_behavior, _is_cascade;
 
             IF _new_parent_guid IS NOT NULL THEN
@@ -135,30 +127,25 @@ BEGIN
             WHERE class_uuid = _class_uuid
         )
         THEN
-            INSERT INTO create_duplicate_tmp
-            SELECT obj_guid,
-                dup_behavior,
-                is_cascade,
-                dup_field
-            FROM reclada.get_duplicates(_attrs, _class_uuid);
-
             IF (_parent_guid IS NOT NULL) THEN
                 IF (_dup_behavior = 'Update' AND _is_cascade) THEN
                     SELECT count(DISTINCT obj_guid), string_agg(DISTINCT obj_guid::text, ',')
-                    FROM create_duplicate_tmp
+                    FROM reclada.get_duplicates(_attrs, _class_uuid)
                         INTO _cnt, _guid_list;
                     IF (_cnt >1) THEN
                         RAISE EXCEPTION 'Found more than one duplicates (GUIDs: %). Resolve conflict manually.', _guid_list;
                     ELSIF (_cnt = 1) THEN
                         SELECT DISTINCT obj_guid, is_cascade
-                        FROM create_duplicate_tmp
+                        FROM reclada.get_duplicates(_attrs, _class_uuid)
                             INTO _obj_guid, _is_cascade;
                         new_data := _data;
-                        PERFORM reclada_object.create_relationship(
-                                _rel_type,
-                                _obj_guid,
-                                (new_data->>'GUID')::uuid,
-                                format('{"dupBehavior": "Update", "isCascade": %s}', _is_cascade::text)::jsonb);
+                        IF new_data->>'GUID' IS NOT NULL THEN
+                            PERFORM reclada_object.create_relationship(
+                                    _rel_type,
+                                    _obj_guid,
+                                    (new_data->>'GUID')::uuid,
+                                    format('{"dupBehavior": "Update", "isCascade": %s}', _is_cascade::text)::jsonb);
+                        END IF;
                         new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
                         new_data = reclada_object.update_json_by_guid(_obj_guid, new_data);
                         SELECT reclada_object.update(new_data)
@@ -185,7 +172,7 @@ BEGIN
 
             IF (NOT skip_insert) THEN
                 SELECT COUNT(DISTINCT obj_guid), dup_behavior, string_agg (DISTINCT obj_guid::text, ',')
-                FROM create_duplicate_tmp
+                FROM reclada.get_duplicates(_attrs, _class_uuid)
                 GROUP BY dup_behavior
                     INTO _cnt, _dup_behavior, _guid_list;
                 IF (_cnt>1 AND _dup_behavior IN ('Update','Merge')) THEN
@@ -193,7 +180,7 @@ BEGIN
                 END IF;
                 FOR _obj_guid, _dup_behavior, _is_cascade, _uni_field IN
                     SELECT obj_guid, dup_behavior, is_cascade, dup_field
-                    FROM create_duplicate_tmp
+                    FROM reclada.get_duplicates(_attrs, _class_uuid)
                 LOOP
                     new_data := _data;
                     CASE _dup_behavior
@@ -205,11 +192,13 @@ BEGIN
                                 PERFORM reclada_object.delete(format('{"GUID": "%s"}', _obj_guid)::jsonb);
                             END IF;
                         WHEN 'Update' THEN
-                            PERFORM reclada_object.create_relationship(
-                                _rel_type,
-                                _obj_guid,
-                                (new_data->>'GUID')::uuid,
-                                format('{"dupBehavior": "Update", "isCascade": %s}', _is_cascade::text)::jsonb);
+                            IF new_data->>'GUID' IS NOT NULL THEN
+                                PERFORM reclada_object.create_relationship(
+                                    _rel_type,
+                                    _obj_guid,
+                                    (new_data->>'GUID')::uuid,
+                                    format('{"dupBehavior": "Update", "isCascade": %s}', _is_cascade::text)::jsonb);
+                            END IF;
                             new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
                             new_data := reclada_object.update_json_by_guid(_obj_guid, new_data);
                             SELECT reclada_object.update(new_data)
@@ -237,7 +226,6 @@ BEGIN
                     END CASE;
                 END LOOP;
             END IF;
-            DELETE FROM create_duplicate_tmp;
         END IF;
         
         IF (NOT skip_insert) THEN
@@ -310,6 +298,8 @@ BEGIN
     DELETE FROM reclada.draft 
         WHERE guid = ANY (affected);
 
+    PERFORM reclada.update_unique_object(affected);
+        
     PERFORM reclada_notification.send_object_notification
         (
             'create',

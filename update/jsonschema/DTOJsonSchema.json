@@ -5,6 +5,10 @@
     ],
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "function": {
                 "type": "string"
             },

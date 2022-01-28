@@ -7,6 +7,10 @@
             "bbox": {
                 "type": "string"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "document": {
                 "type": "string"
             },

@@ -7,6 +7,6 @@ RETURNS text
 LANGUAGE sql
  STABLE
 AS $function$
-	SELECT array_to_string(fields,'_')||'_index_';
+	SELECT lower(array_to_string(fields,'_'))||'_index_';
 $function$
 ;

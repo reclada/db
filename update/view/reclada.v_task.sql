@@ -1,4 +1,4 @@
-drop VIEW if EXISTS reclada.v_task;
+--drop VIEW if EXISTS reclada.v_task;
 CREATE OR REPLACE VIEW reclada.v_task
 AS
     SELECT  obj.id            ,

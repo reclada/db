@@ -16,6 +16,10 @@
             "class": {
                 "type": "string"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "event": {
                 "enum": [
                     "create",

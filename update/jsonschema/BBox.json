@@ -3,6 +3,10 @@
     "parentList": [],
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "height": {
                 "type": "number"
             },
