@@ -221,8 +221,6 @@ select reclada.update_unique_object(null, true);
 \i 'function/reclada_object.get_schema.sql'
 \i 'function/reclada.get_validation_schema.sql'
 
-\i 'view/reclada.v_class.sql'
-
 \i 'function/reclada.validate_json_schema.sql'
 \i 'function/reclada_object.list.sql'
 \i 'function/reclada_object.create.sql'

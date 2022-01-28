@@ -7,6 +7,10 @@ RETURNS jsonb
 AS $$
 DECLARE
     _schema_obj     jsonb;
+    _properties     jsonb = '{}'::jsonb;
+    _required       jsonb = '[]'::jsonb;
+    _parent_schema  jsonb ;
+    _parent_list    jsonb ;
     _parent         uuid ;
     _res            jsonb = '{}'::jsonb;
     _f_name         text = 'reclada.get_validation_schema';
@@ -19,13 +23,22 @@ BEGIN
         perform reclada.raise_exception('No json schema available for ' || class_guid, _f_name);
     END IF;
 
-    FOR _parent IN SELECT jsonb_array_elements_text(_schema_obj#>'{attributes,parentList}') 
+    _parent_list = _schema_obj#>'{attributes,parentList}';
+
+    FOR _parent IN SELECT jsonb_array_elements_text(_parent_list ) 
     LOOP
-        _res := reclada_object.merge(_res, reclada.get_validation_schema(_parent));
+        _parent_schema := reclada.get_validation_schema(_parent);
+        _properties := _properties || coalesce((_parent_schema->'properties'),'{}'::jsonb);
+        _required   := _required   || coalesce((_parent_schema->'required'  ),'[]'::jsonb);
+        _res := _res || _parent_schema ;  
     END LOOP;
     
-    _res := reclada_object.merge(_res, _schema_obj#>'{attributes,schema}');
-
+    _parent_schema := _schema_obj#>'{attributes,schema}';
+    _properties := _properties || coalesce((_parent_schema->'properties'),'{}'::jsonb);
+    _required   := _required   || coalesce((_parent_schema->'required'  ),'[]'::jsonb);
+    _res := _res || _parent_schema ;  
+    _res := _res || jsonb_build_object( 'required'  , _required,
+                                        'properties', _properties);
     return _res;
 END;
 $$ LANGUAGE PLPGSQL STABLE;

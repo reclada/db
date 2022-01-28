@@ -9,7 +9,6 @@ AS
             obj.status_caption,
             obj.revision      ,
             obj.created_time  ,
-            reclada.get_validation_schema(obj.obj_id) as validation_schema,
             obj.attrs         ,
             obj.status        ,
             obj.data          ,
