@@ -4,4 +4,4 @@ RETURNS uuid AS $$
     select obj_id 
         from reclada.v_object_status 
             where caption = 'active'
-$$ LANGUAGE SQL STABLE;
+$$ LANGUAGE SQL IMMUTABLE;

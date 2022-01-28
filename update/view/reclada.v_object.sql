@@ -17,6 +17,7 @@ AS
             t.created_time       ,
             t.attributes as attrs,
             cl.for_class as class_name,
+            cl.default_value,
             (
                 select json_agg(tmp)->0
                     FROM 

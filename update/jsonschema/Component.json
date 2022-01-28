@@ -5,7 +5,11 @@
     ],
     "schema": {
         "properties": {
-            "commitHash": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
+            "file": {
                 "type": "string"
             },
             "isInstalling": {
