@@ -1,4 +1,4 @@
-DROP FUNCTION IF EXISTS reclada.get_validation_schema;
+--DROP FUNCTION IF EXISTS reclada.get_validation_schema;
 CREATE OR REPLACE FUNCTION reclada.get_validation_schema
 (
     class_guid uuid
