@@ -348,9 +348,9 @@ def install_components():
     if v < 47:
         install_objects()
     else:
+        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
         replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
         replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git',branch_runtime,runtime_install)
-        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
 
 def clear_db_from_components():
 

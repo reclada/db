@@ -129,7 +129,8 @@ select reclada.update_unique_object(null, true);
                                 'b17500cb-e998-4f55-979b-2ba1218a3b45'
                             )
             from reclada.object o
-                where o.class in (select reclada_object.get_GUID_for_class('jsonschema'))
+                where (
+                    o.class in (select reclada_object.get_GUID_for_class('jsonschema'))
                     and o.attributes->>'forClass' in (  'Connector',
                                                         'Environment',
                                                         'FileExtension',
@@ -139,8 +140,30 @@ select reclada.update_unique_object(null, true);
                                                         'Runner',
                                                         'Task',
                                                         'Trigger',
-                                                        'Value'
+                                                        'Value',
+                                                        'PipelineLite'
                                                     );
+                    )
+                    /*or o.guid in (  
+                                    'cc7b41e6-4d57-4e6f-9d10-6da0d5a4c39e', --stage0
+                                    '618b967b-f2ff-4f3b-8889-b63eb6b73b6e', --stage1
+                                    '678bbbcc-a6db-425b-b9cd-bdb302c8d290', --stage2
+                                    '638c7f45-ad21-4b59-a89d-5853aa9ad859', --stage3
+                                    '2d6b0afc-fdf0-4b54-8a67-704da585196e', --stage4
+                                    'ff3d88e2-1dd9-43b3-873f-75e4dc3c0629', --stage5
+                                    '83fbb176-adb7-4da0-bd1f-4ce4aba1b87a', --stage6
+                                    '27de6e85-1749-4946-8a53-4316321fc1e8', --stage7
+                                    '4478768c-0d01-4ad9-9a10-2bef4d4b8007', --stage8
+                                    '57ca1d46-146b-4bbb-8f4d-b620c4e62d93'  --pipelineLite
+                                ) */
+                    or o.class in 
+                    (
+                        select reclada_object.get_GUID_for_class('Runner')
+                        UNION 
+                        select reclada_object.get_GUID_for_class('Task')
+                        UNION 
+                        select reclada_object.get_GUID_for_class('PipelineLite')
+                    )
 
         PERFORM reclada_object.create_relationship
                             (
