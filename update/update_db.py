@@ -127,8 +127,8 @@ def get_repo_hash(component_name:str,repository:str,branch:str):
 #{ Components
 
 def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
-    if Path('update').exists():
-        os.chdir('update') # for lower 47 don't need
+    #if Path('update').exists():
+    #    os.chdir('update') # for lower 47 don't need
     file_name = 'object_create_patched.sql'
     with open('object_create.sql') as f:
         obj_cr = f.read()
@@ -142,7 +142,7 @@ def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONME
 
     run_file(file_name,DB_URI)
     os.remove(file_name)
-    os.chdir('..')
+    #os.chdir('..')
 
 
 def run_file(file_name,DB_URI=db_URI):
