@@ -165,8 +165,6 @@
 --{ REC-594
 \i 'view/reclada.v_filter_mapping.sql'
 \i 'view/reclada.v_object.sql' 
-\i 'function/reclada_object.get_query_condition_filter.sql'
-
 --} REC-594
 
 --{ REC-562

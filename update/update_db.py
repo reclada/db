@@ -128,7 +128,7 @@ def get_repo_hash(component_name:str,repository:str,branch:str):
 
 def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
     #if Path('update').exists():
-    #    os.chdir('update') # for lower 47 don't need
+    #    os.chdir('update') # for lower 48 don't need
     file_name = 'object_create_patched.sql'
     with open('object_create.sql') as f:
         obj_cr = f.read()
@@ -347,7 +347,7 @@ def run_test():
 
 def install_components():
     v = get_version_from_db()
-    if v < 47:
+    if v < 48:
         install_objects()
     else:
         replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)

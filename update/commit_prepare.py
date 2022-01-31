@@ -40,7 +40,7 @@ if __name__ == "__main__":
         os.system('python install_db.py')
         if down_test:
             if run_object_create:
-                print('run_object_create must be false for downgrade_test')
+                input('run_object_create must be false for downgrade_test')
                 downgrade_test = False
             else:
                 print('trying to find dump of current version...')
@@ -70,38 +70,69 @@ if __name__ == "__main__":
             lcd = cd.readlines()
 
         skip = 2
-        if len(ldd) == len(lcd):
-            d = []
-            copy = False
-            for i in range(len(ldd)):
+        d = []
+        copy = False
+        skipCopy = False
+        if len(ldd) < len(lcd):
+            input("!!! down.sql invalid !!! downgrade dump shorter then current . . .")
+        else:
+            j = -1
+            i = -1
+            while i + 1 < len(ldd):
+                i += 1
+                j += 1
                 if skip > 0:
                     skip-=1
                     continue
                 if not copy:
                     copy = ldd[i].startswith('COPY ')
-                    if copy:
-                        sc = set()
-                        sd = set()
-                    suffix = ", true);\n"
-                    for prefix in ["SELECT pg_catalog.setval('dev.ver_id_seq',","SELECT pg_catalog.setval('reclada."]:
-                        if (ldd[i].startswith(prefix)
-                            and lcd[i].startswith(prefix)
-                            and ldd[i].endswith(suffix)
-                            and lcd[i].endswith(suffix)):
-                            break
+                    if ldd[i].startswith('COPY reclada.unique_object') or ldd[i].startswith('COPY reclada.field'):
+                        skipCopy = True
                     else:
-                        if (ldd[i] != lcd[i]):
-                            d.append(lcd[i])
-                            d.append(ldd[i])
-                else:
-                    if ldd[i] == '\n':
+                        if copy:
+                            sc = set()
+                            sd = set()
+                        suffix = ", true);\n"
+                        for prefix in ["SELECT pg_catalog.setval('dev.ver_id_seq',","SELECT pg_catalog.setval('reclada."]:
+                            if (ldd[i].startswith(prefix)
+                                and lcd[j].startswith(prefix)
+                                and ldd[i].endswith(suffix)
+                                and lcd[j].endswith(suffix)):
+                                break
+                        else:
+                            if (ldd[i] != lcd[j]):
+                                good = False
+                                while (ldd[i] != lcd[j]):
+                                    if ldd[i].startswith('CREATE INDEX '):
+                                        good = True
+                                    i += 1
+                                    if i == len(ldd):
+                                        input("!!! down.sql invalid !!!")
+                                        break
+                                if not good:
+                                    d.append(ldd[i])
+                                    input("!!! down.sql invalid !!! found new unexpected db-object")
+                                    break
+
+                else: # COPY
+                    if ldd[i] == '\n' or lcd[j] == '\n':
                         copy = False
+                        if skipCopy:
+                            while (ldd[i] != '\n'):
+                                i += 1
+                                if i == len(ldd):
+                                    input("!!! down.sql invalid !!!")
+                                    break
+                            skipCopy = False
+                            continue
                         if sc != sd:
                             input("!!! down.sql invalid !!! table data has changed . . .")
                             break
                     else:
+                        if skipCopy:
+                            continue
                         sd.add(ldd[i])
-                        sc.add(lcd[i])
+                        sc.add(lcd[j])
             if len(d)>0:
                 print("down.sql invalid:")
                 for i in range(0,len(d),2):
@@ -109,8 +140,7 @@ if __name__ == "__main__":
                 input("!!! down.sql invalid !!! Enter to continue . . .")
             else:
                 print("\n\nOK: down.sql valid\n\n")
-        else:
-            input("!!! down.sql invalid !!! Dumps have different length! Press Enter to continue . . .")
+
             
         os.remove(downgrade_dump)
         os.remove(current_dump)

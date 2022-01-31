@@ -45,8 +45,6 @@ DROP VIEW reclada.v_active_object;
 --{view/reclada.v_import_info}
 --{view/reclada.v_revision}
 
---{function/reclada_object.get_query_condition_filter}
-
 --} REC-594
 
 
