@@ -50,6 +50,13 @@ BEGIN
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
         data_jsonb := '[]'::jsonb || data_jsonb;
     END IF;
+
+    _component_guid :=  (
+                SELECT guid 
+                    FROM reclada.v_component 
+                        WHERE is_installing
+            );
+            
     /*TODO: check if some objects have revision AND others do not */
     branch:= data_jsonb->0->'branch';
 
@@ -236,8 +243,6 @@ BEGIN
                             '{}'::jsonb,
                             _component_guid
                         );
-                else
-                    _parent_guid := coalesce(_parent_guid,_component_guid);
                 end if;
             end if;
 

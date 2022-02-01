@@ -37,10 +37,8 @@ BEGIN
 
     _class_guid := (_schema_obj->>'GUID')::uuid;
 
-    SELECT  v.for_class, 
+    SELECT  _schema_obj #>> '{attributes,forClass}', 
             reclada.get_validation_schema(_class_guid)
-        FROM reclada.v_class v
-            WHERE _class_guid = v.obj_id
         INTO    _class_name, 
                 _valid_schema;
 

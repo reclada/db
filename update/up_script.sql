@@ -202,6 +202,8 @@
             where o.class in 
             (
                 select reclada_object.get_GUID_for_class('Context')
+                UNION
+                select reclada_object.get_GUID_for_class('Index')
             );
 
 --} REC-564
