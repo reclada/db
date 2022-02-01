@@ -216,42 +216,80 @@ WHERE attributes ->> 'uri' IS NOT NULL;
 
 DO $$
 DECLARE
-_field_name text;
-_fields        TEXT[];
+_field_name             text;
+_btree_fields           text[];
+_gin_fields             text[];
+_hash_fields            text[];
 BEGIN
-    SELECT array_agg(req_field)
+    SELECT array_remove( array_agg(CASE WHEN c.type = 'number' THEN req_field END), NULL) AS btree_index,
+        array_remove( array_agg(CASE WHEN c.type = 'array' THEN req_field END), NULL) AS gin_index,
+        array_remove( array_agg(CASE WHEN c.type = 'string' AND (c.is_enum OR c.is_guid) THEN req_field END), NULL) AS hash_index
     FROM (
-        SELECT req_field
+        SELECT DISTINCT a.req_field,
+            b.TYPE,
+            c.KEY IS NOT NULL AS is_enum,
+            d.key IS NOT NULL AS is_guid
         FROM (
-            SELECT DISTINCT lower(jsonb_array_elements_text(attrs->'schema'->'required')) AS req_field
+            SELECT lower(jsonb_array_elements_text(attrs->'schema'->'required')) AS req_field, vc.obj_id 
             FROM reclada.v_class vc
         ) a
+        JOIN (
+            SELECT lower(a.KEY) AS key, a.value->>'type' AS type, vc.obj_id 
+            FROM reclada.v_class vc   
+            CROSS JOIN jsonb_each(attrs->'schema'->'properties') a
+            WHERE for_class NOT IN ('ObjectDisplay')
+        ) b ON a.req_field = b.KEY AND a.obj_id=b.obj_id
+        LEFT JOIN (
+            SELECT lower(a.KEY) AS key, vc.obj_id
+            FROM reclada.v_class vc   
+            CROSS JOIN jsonb_each(attrs->'schema'->'properties') a
+            WHERE for_class NOT IN ('ObjectDisplay')    AND a.value->>'enum' IS NOT null
+        ) c ON a.req_field = c.KEY AND a.obj_id = c.obj_id
+        LEFT JOIN (
+            SELECT lower(a.KEY) AS key, vc.obj_id, a.value
+            FROM reclada.v_class vc   
+            CROSS JOIN jsonb_each(attrs->'schema'->'properties') a
+            WHERE for_class NOT IN ('ObjectDisplay')    AND a.value->>'pattern' ='[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}'
+        ) d  ON a.req_field = d.KEY AND a.obj_id = d.obj_id
         WHERE req_field NOT IN ( '{}')
-            EXCEPT       
-        SELECT substring(ind_expr, cut_start+5, cut_end-cut_start-6)
-        FROM (
-            SELECT relname,
-                ind_expr,
-                strpos(ind_expr,'->>') AS cut_start,
-                strpos(ind_expr,'::text') AS cut_end
-            FROM (
-                SELECT i.relname,
-                    pg_catalog.pg_get_expr(ix.indexprs, ix.indrelid) AS ind_expr
-                FROM pg_catalog.pg_index ix
-                JOIN pg_catalog.pg_class i ON i.oid = ix.indexrelid 
-                JOIN pg_catalog.pg_class t ON t.oid = ix.indrelid 
-                WHERE t.relname = 'object'
-                    AND ix.indexprs IS NOT NULL
-            ) a
-        WHERE length(ind_expr) - length(REPLACE(ind_expr,'->>',''))= 3
-        ) b
+            AND req_field NOT IN (       
+                SELECT substring(ind_expr, cut_start+5, cut_end-cut_start-6)
+                FROM (
+                    SELECT relname,
+                        ind_expr,
+                        strpos(ind_expr,'->>') AS cut_start,
+                        strpos(ind_expr,'::text') AS cut_end
+                    FROM (
+                        SELECT i.relname,
+                            pg_catalog.pg_get_expr(ix.indexprs, ix.indrelid) AS ind_expr
+                        FROM pg_catalog.pg_index ix
+                        JOIN pg_catalog.pg_class i ON i.oid = ix.indexrelid 
+                        JOIN pg_catalog.pg_class t ON t.oid = ix.indrelid 
+                        JOIN pg_catalog.pg_namespace n ON t.relnamespace = n.oid
+                        WHERE t.relname = 'object'
+                            AND nspname = 'reclada'
+                            AND ix.indexprs IS NOT NULL
+                    ) a
+                WHERE length(ind_expr) - length(REPLACE(ind_expr,'->>',''))= 3
+                ) b
+            )
         ORDER BY 1
     ) c
-    INTO _fields;
+    INTO _btree_fields, _gin_fields, _hash_fields;
     
-    IF _fields IS NOT NULL THEN
-        FOREACH _field_name IN ARRAY _fields LOOP
-            EXECUTE 'CREATE INDEX '|| _field_name || '_index_v47 ON reclada.object USING BTREE ( (attributes->>'''||_field_name ||''')) WHERE attributes ->>'''||_field_name ||''' IS NOT NULL';
+    IF _btree_fields IS NOT NULL THEN
+        FOREACH _field_name IN ARRAY _btree_fields LOOP
+            EXECUTE 'CREATE INDEX '|| _field_name || '_index_v47 ON reclada.object USING BTREE ( (attributes->'''||_field_name ||''')) WHERE attributes ->'''||_field_name ||''' IS NOT NULL';
+        END LOOP;
+    END IF;
+    IF _gin_fields IS NOT NULL THEN
+        FOREACH _field_name IN ARRAY _gin_fields LOOP
+            EXECUTE 'CREATE INDEX '|| _field_name || '_index_v47 ON reclada.object USING GIN ( (attributes->'''||_field_name ||''')) WHERE attributes ->'''||_field_name ||''' IS NOT NULL';
+        END LOOP;
+    END IF;
+    IF _hash_fields IS NOT NULL THEN
+        FOREACH _field_name IN ARRAY _hash_fields LOOP
+            EXECUTE 'CREATE INDEX '|| _field_name || '_index_v47 ON reclada.object USING HASH ( (attributes->'''||_field_name ||''')) WHERE attributes ->'''||_field_name ||''' IS NOT NULL';
         END LOOP;
     END IF;
 END$$;

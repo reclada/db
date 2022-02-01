@@ -168,11 +168,18 @@ BEGIN
                 AND ix.indexprs IS NOT NULL
             ) a
             WHERE
-                length(ind_expr) - length(REPLACE(ind_expr,'->>',''))= 3
+                length(ind_expr) - length(REPLACE(ind_expr,'->',''))= 2
                 AND strpos(ind_expr,el) > 0
         )
     LOOP
-        EXECUTE E'CREATE INDEX ' || _field_name || '_index_ ON reclada.object USING BTREE (( attributes ->>''' || _field_name || ''')) WHERE attributes ->>''' || _field_name || ''' IS NOT NULL';
+        IF _properties->_field_name->>'type' = 'number' THEN
+            EXECUTE E'CREATE INDEX ' || _field_name || '_index_ ON reclada.object USING BTREE (( attributes ->''' || _field_name || ''')) WHERE attributes ->''' || _field_name || ''' IS NOT NULL';
+        ELSIF _properties->_field_name->>'type' = 'array' THEN
+            EXECUTE E'CREATE INDEX ' || _field_name || '_index_ ON reclada.object USING GIN (( attributes ->''' || _field_name || ''')) WHERE attributes ->''' || _field_name || ''' IS NOT NULL';
+        ELSIF _properties->_field_name->>'type' = 'string' AND 
+            (_properties->_field_name->>'enum' IS NOT NULL OR _properties->_field_name->>'pattern' = '[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}')THEN
+            EXECUTE E'CREATE INDEX ' || _field_name || '_index_ ON reclada.object USING HASH (( attributes ->''' || _field_name || ''')) WHERE attributes ->''' || _field_name || ''' IS NOT NULL';
+        END IF;
     END LOOP;
 
 END;
