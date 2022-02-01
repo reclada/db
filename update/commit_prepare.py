@@ -7,10 +7,6 @@ import datetime
 import json
 import filecmp
 
-'''
-    To use this script copy db_installer folder to reclada_db folder
-    and run this file
-'''
 
 def upgrade():
     res = os.popen('python create_up.sql.py').read()
@@ -107,7 +103,8 @@ if __name__ == "__main__":
                                         good = True
                                     i += 1
                                     if i == len(ldd):
-                                        input("!!! down.sql invalid !!!")
+                                        input("!!! down.sql invalid !!! (max i)")
+                                        good = False
                                         break
                                 if not good:
                                     d.append(ldd[i])
