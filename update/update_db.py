@@ -95,19 +95,19 @@ def clone(component_name:str,repository:str,branch:str):
         res = checkout(branch)
         os.chdir('..')
 
-    folder_sourse = component_name
+    folder_source = component_name
     if component_name == 'db':
-        folder_sourse = f'db_copy_{str(uuid.uuid4())}'
-        shutil.copytree('db',folder_sourse)
-        os.chdir(folder_sourse)
+        folder_source = f'db_copy_{str(uuid.uuid4())}'
+        shutil.copytree('db',folder_source)
+        os.chdir(folder_source)
         checkout('.')
         os.chdir('..')
     
     path_dest = os.path.join('db','update',component_name)
 
-    shutil.copytree(folder_sourse, path_dest)
+    shutil.copytree(folder_source, path_dest)
     if component_name == 'db':
-        rmdir(folder_sourse)
+        rmdir(folder_source)
 
     os.chdir(path_dest)
     res = checkout(branch)
@@ -115,7 +115,7 @@ def clone(component_name:str,repository:str,branch:str):
         
 
 def get_repo_hash(component_name:str,repository:str,branch:str):
-    # folder: update
+    # folder: db/update
     rmdir(component_name)
     if component_name != 'db':
         clone(component_name,repository,branch)
@@ -203,11 +203,13 @@ def replace_component(name:str,repository:str,branch:str,component_installer)->s
                         from reclada.object 
                             where guid in 
                             (
-                                SELECT component_guid FROM d
-                                union
                                 SELECT obj_id FROM d
                                 union
                                 SELECT relationship_guid FROM d
+                                union
+                                SELECT guid 
+                                    FROM reclada.v_component 
+                                        WHERE name = '"""+name+"""'
                             )
                                 and status != reclada_object.get_archive_status_obj_id()
                     """
@@ -248,7 +250,7 @@ def rmdir(top:str):
 
 
 def clone_db():
-    clone('db','db',branch_db)
+    clone('db', 'db', branch_db)
 
 
 def get_commit_history(branch:str = branch_db, need_comment:bool = False):
@@ -335,7 +337,7 @@ def recreate_db():
     execute(f'''CREATE DATABASE {db};''')
 
 def run_test():
-    clone('QAAutotests','https://github.com/reclada/QAAutotests.git',branch_QAAutotests)
+    clone('QAAutotests', 'https://github.com/reclada/QAAutotests.git', branch_QAAutotests)
     os.system(f'pip install -r requirements.txt')
     os.system(f'pytest '
         + 'tests/components/security/test_database_sql_injections.py '
@@ -347,8 +349,8 @@ def run_test():
 
 def install_components():
     v = get_version_from_db()
-    if v < 48:
-        install_objects()
+    if v < 48: # Components do not exist before 48
+        install_objects() 
     else:
         replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
         replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
@@ -356,17 +358,17 @@ def install_components():
 
 def clear_db_from_components():
 
-    cmd = f"""with d as (
+    cmd = f"""WITH d AS (
                     SELECT component_guid, obj_id, relationship_guid
                         FROM reclada.v_component_object
                 )
-                delete from reclada.object 
-                    where guid in 
+                DELETE FROM reclada.object 
+                    WHERE guid in 
                     (
                         SELECT obj_id FROM d
-                        union
+                        UNION
                         SELECT relationship_guid FROM d
-                        union 
+                        UNION 
                         SELECT guid FROM reclada.v_component
                     )"""
     res = run_cmd_scalar(cmd)

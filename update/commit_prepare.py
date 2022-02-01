@@ -37,7 +37,7 @@ if __name__ == "__main__":
         if down_test:
             if run_object_create:
                 input('run_object_create must be false for downgrade_test')
-                downgrade_test = False
+                down_test = False
             else:
                 print('trying to find dump of current version...')
                 clone_db()
@@ -62,18 +62,18 @@ if __name__ == "__main__":
         print('pg_dump after downgrade version...')
         pg_dump(downgrade_dump,t)
         with open(downgrade_dump, encoding='utf8') as dd, open(current_dump, encoding='utf8') as cd:
-            ldd = dd.readlines()
-            lcd = cd.readlines()
+            ldd = dd.readlines() #lines from downgrade_dump
+            lcd = cd.readlines() #lines from current_dump
 
-        skip = 2
+        skip = 2 # update_db.pg_dump
         d = []
         copy = False
         skipCopy = False
-        if len(ldd) < len(lcd):
+        if len(ldd) < len(lcd): 
             input("!!! down.sql invalid !!! downgrade dump shorter then current . . .")
         else:
-            j = -1
-            i = -1
+            j = -1 #lcd
+            i = -1 #ldd
             while i + 1 < len(ldd):
                 i += 1
                 j += 1
