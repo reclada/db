@@ -162,19 +162,20 @@ def checkout(to:str = branch_db):
     return r
 
 def runtime_install():
-    os.chdir(os.path.join('db','objects'))
-    run_file('install_objects.sql')
-    os.chdir('..')
-    os.chdir('..')
+    install_psql_script('db/objects',["install_objects.sql"])
 
 
 def scinlp_install():
-    os.chdir(os.path.join('src','db'))
-    run_file('bdobjects.sql')
-    run_file('nlpobjects.sql')
-    run_file('nlpatterns.sql')
-    os.chdir('..')
-    os.chdir('..')
+    install_psql_script('src/db',["bdobjects.sql","nlpobjects.sql","nlpatterns.sql"])
+
+
+def install_psql_script(directory:str,files:list):
+    path = directory.split('/')
+    os.chdir(os.path.join(*path))
+    for f in files:
+        run_file(f)
+    for _ in range(len(path)):
+        os.chdir('..')
 
 #} Components
 
