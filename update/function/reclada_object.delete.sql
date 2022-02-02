@@ -20,11 +20,12 @@ DECLARE
     v_obj_id            uuid;
     tran_id             bigint;
     _class_name         text;
-    _class_name_from_uuid   text;
-    _class_uuid          uuid;
+    _class_name_from_uuid text;
+    _uniFields_index_name text;
+    _class_uuid         uuid;
     list_id             bigint[];
-    _for_class           text;
-    _uniFields_index_name          text;
+    _for_class          text;
+    _exec_text          text;
 BEGIN
 
     v_obj_id := data->>'GUID';
@@ -85,6 +86,19 @@ BEGIN
     )::jsonb
     INTO data;
 
+
+    SELECT string_agg('DROP INDEX reclada.'||(attrs->>'name')||';',' ')
+        FROM reclada.v_object o
+        WHERE o.id IN (SELECT unnest(list_id))
+            AND o.class_name = 'Index'
+        into _exec_text;
+    
+    if _exec_text is not null then
+        raise notice '%',_exec_text;
+        EXECUTE _exec_text;
+    end if;
+
+
     IF (jsonb_array_length(data) <= 1) THEN
         data := data->0;
     END IF;
@@ -93,6 +107,7 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object, no such GUID';
     END IF;
 
+    -- tran_id ???
     PERFORM reclada_object.refresh_mv(COALESCE(_class_name_from_uuid, _class_name));
 
     PERFORM reclada_notification.send_object_notification('delete', data);

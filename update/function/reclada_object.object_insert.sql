@@ -1,5 +1,5 @@
 /*
- * Function reclada_object.datasource_insert updates defaultDataSet and creates Job object
+ * Function reclada_object.object_insert updates defaultDataSet and creates Job object
  * Added instead of reclada.datasource_insert_trigger_fnc function called by trigger.
  * class_name is the name of class inserted in reclada.object.
  * obj_id is GUID of added object.
@@ -9,8 +9,8 @@
  *  obj_id     - GUID of object
  *  attributes - attributes of added object
  */
- DROP FUNCTION IF EXISTS reclada_object.datasource_insert;
-CREATE OR REPLACE FUNCTION reclada_object.datasource_insert
+ DROP FUNCTION IF EXISTS reclada_object.object_insert;
+CREATE OR REPLACE FUNCTION reclada_object.object_insert
 (
     _class_name text,
     _obj_id     uuid,
@@ -18,16 +18,19 @@ CREATE OR REPLACE FUNCTION reclada_object.datasource_insert
 )
 RETURNS void AS $$
 DECLARE
+    _exec_text          text ;
+    _where              text ;
+    _fields             text ;
 
-    _pipeline_lite jsonb;
-    _task  jsonb;
-    _dataset_guid  uuid;
-    _new_guid  uuid;
-    _pipeline_job_guid  uuid;
-    _stage         text;
-    _uri           text;
-    _dataset2ds_type text = 'defaultDataSet to DataSource';
-    _f_name text = 'reclada_object.datasource_insert';
+    _pipeline_lite      jsonb;
+    _task               jsonb;
+    _dataset_guid       uuid ;
+    _new_guid           uuid ;
+    _pipeline_job_guid  uuid ;
+    _stage              text ;
+    _uri                text ;
+    _dataset2ds_type    text = 'defaultDataSet to DataSource';
+    _f_name             text = 'reclada_object.object_insert';
 BEGIN
     IF _class_name in ('DataSource','File') THEN
 
@@ -104,6 +107,31 @@ BEGIN
                 _pipeline_job_guid
             );
         END IF;
+    
+    ELSIF _class_name = 'Index' then
+        _exec_text := 'CREATE INDEX #@#@#name#@#@# ON reclada.object USING #@#@#method#@#@# (#@#@#fields#@#@#) #@#@#where#@#@#;';
+        _exec_text := REPLACE(_exec_text, '#@#@#name#@#@#'   , attributes->>'name'                      );
+        _exec_text := REPLACE(_exec_text, '#@#@#method#@#@#' , coalesce(attributes->>'method' ,'btree') );
+
+        _fields :=  (
+                        select string_agg(value,'#@#@#sep#@#@#')
+                            from jsonb_array_elements_text(attributes->'fields')
+                    );
+        _where := coalesce(attributes->>'wherePredicate','');
+
+        if _where != '' then
+            if _where = 'IS NOT NULL' then
+                _where := REPLACE(_fields,'#@#@#sep#@#@#', ' IS NOT NULL OR ') || ' IS NOT NULL';
+            end if;
+            _where := 'WHERE ' || _where;
+        end if;
+
+        _fields := REPLACE(_fields,'#@#@#sep#@#@#', ' , ');
+
+        _exec_text := REPLACE(_exec_text, '#@#@#fields#@#@#' , _fields);
+        _exec_text := REPLACE(_exec_text, '#@#@#where#@#@#'  , _where );
+        EXECUTE _exec_text;
+
     END IF;
 END;
 $$ LANGUAGE 'plpgsql' VOLATILE;

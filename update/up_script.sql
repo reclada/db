@@ -71,16 +71,17 @@
                 "newClass": "Index",
                 "properties": {
                     "name": {"type": "string"},
-                    "table": {"type": "string"},
-                    "schema": {"type": "string"},
                     "method": {
                         "type": "string",
                         "enum ": [
                             "btree", 
-                            "hash", 
-                            "gist", 
+                            "hash" , 
+                            "gist" , 
                             "gin"
                         ]
+                    },
+                    "wherePredicate": {
+                        "type": "string"
                     },
                     "fields": {
                         "items": {
@@ -90,18 +91,17 @@
                         "minContains": 1
                     }
                 },
-                "required": ["name","table","schema","fields"]
+                "required": ["name","fields"]
             }
         }'::jsonb);
 
     select reclada_object.create(
             jsonb_build_object( 'class'  ,   'Index',
                                 'attributes', jsonb_build_object(
-                                    'name'  ,   t.name,
-                                    'method',   t.method,
-                                    'schema',   t.schema,
-                                    'table' ,   t.table,
-                                    'fields',   t.fields
+                                    'name'  ,         t.name,
+                                    'method',         t.method,
+                                    'fields',         t.fields,
+                                    'wherePredicate', t.wherePredicate
                                 )
             )
         )
@@ -116,7 +116,8 @@
                             pg_catalog.pg_get_expr(ix.indexprs, ix.indrelid),
                             ','
                         )
-                    ) AS fields
+                    ) AS fields,
+                    split_part(dml.dml,'WHERE ',2) as wherePredicate
                 FROM pg_catalog.pg_index ix
                 JOIN pg_catalog.pg_class i 
                     ON i.oid = ix.indexrelid 
@@ -128,6 +129,9 @@
                     on cl.oid = any(ix.indclass)
                 join pg_catalog.pg_am am 
                     on am.oid = cl.opcmethod
+                cross join lateral pg_get_indexdef(
+                                        (ns.nspname||'.'||i.relname)::regclass
+                                    ) dml
                 WHERE t.relname = 'object'
                     AND ns.nspname = 'reclada'
                     AND ix.indexprs IS NOT NULL
@@ -222,5 +226,9 @@
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.update.sql'
 \i 'function/reclada_object.create_subclass.sql'
+drop function reclada_object.datasource_insert;
+\i 'function/reclada_object.object_insert.sql'
+\i 'function/reclada_object.delete.sql'
+
 
 --} REC-562

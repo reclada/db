@@ -56,7 +56,7 @@ BEGIN
                     FROM reclada.v_component 
                         WHERE is_installing
             );
-            
+
     /*TODO: check if some objects have revision AND others do not */
     branch:= data_jsonb->0->'branch';
 
@@ -255,7 +255,7 @@ BEGIN
 
             affected := array_append( affected, _obj_guid);
             inserted := array_append( inserted, _obj_guid);
-            PERFORM reclada_object.datasource_insert
+            PERFORM reclada_object.object_insert
                 (
                     _class_name,
                     _obj_guid,

@@ -160,7 +160,16 @@ BEGIN
                 AND strpos(ind_expr,el) > 0
         )
     LOOP
-        EXECUTE E'CREATE INDEX ' || _field_name || '_index_ ON reclada.object USING BTREE (( attributes ->>''' || _field_name || ''')) WHERE attributes ->>''' || _field_name || ''' IS NOT NULL';
+        perform reclada_object.create(
+                jsonb_build_object( 'class'  ,   'Index',
+                                    'attributes', jsonb_build_object(
+                                        'name'  ,         _field_name || '_index_'  ,
+                                        'method',         'btree'                   ,
+                                        'fields',         jsonb_build_array('( attributes ->>''' || _field_name || ''')'),
+                                        'wherePredicate', 'IS NOT NULL'
+                                    )
+                )
+            );
     END LOOP;
 
 END;

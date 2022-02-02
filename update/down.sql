@@ -57,5 +57,8 @@ DROP VIEW reclada.v_active_object;
 --{function/reclada.validate_json_schema}
 --{function/reclada.get_validation_schema}
 --{function/reclada_object.get_schema}
+--{function/reclada_object.datasource_insert}
+--{function/reclada_object.object_insert}
+--{function/reclada_object.delete}
 
 --} REC-562

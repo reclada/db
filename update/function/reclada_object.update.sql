@@ -180,7 +180,7 @@ BEGIN
 
     PERFORM reclada.update_unique_object(ARRAY[_obj_id]);
 
-    PERFORM reclada_object.datasource_insert
+    PERFORM reclada_object.object_insert
             (
                 _class_name,
                 _obj_id,

@@ -176,7 +176,7 @@ if __name__ == "__main__":
         print('skipped . . .')
         print('If evrything okay - run this script again before commit to update jsonschemas and install_db.sql')
     
-    print("Press Enter to install components . . .")
+    input("Press Enter to install components . . .")
     install_components()
 
     input("Press Enter to run testing . . .")    

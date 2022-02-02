@@ -1,24 +1,31 @@
 {
-    "forClass": "Component",
+    "forClass": "Index",
     "parentList": [
         "ab9ab26c-8902-43dd-9f1a-743b14a89825"
     ],
     "schema": {
         "properties": {
-            "commitHash": {
-                "type": "string"
-            },
             "disable": {
                 "default": false,
                 "type": "boolean"
             },
-            "isInstalling": {
-                "type": "boolean"
+            "fields": {
+                "items": {
+                    "type": "string"
+                },
+                "minContains": 1,
+                "type": "array"
             },
-            "name": {
+            "method": {
+                "enum ": [
+                    "btree",
+                    "hash",
+                    "gist",
+                    "gin"
+                ],
                 "type": "string"
             },
-            "repository": {
+            "name": {
                 "type": "string"
             },
             "tags": {
@@ -26,13 +33,14 @@
                     "type": "string"
                 },
                 "type": "array"
+            },
+            "wherePredicate": {
+                "type": "string"
             }
         },
         "required": [
-            "repository",
-            "isInstalling",
             "name",
-            "commitHash"
+            "fields"
         ],
         "type": "object"
     },
