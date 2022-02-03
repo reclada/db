@@ -61,7 +61,7 @@ DROP VIEW reclada.v_active_object;
 --} REC-562
 
 --{ REC-564
-drop table table dev.component;
+drop table dev.component;
 --{function/reclada_object.datasource_insert}
 --{function/reclada_object.object_insert}
 --{function/reclada_object.delete}

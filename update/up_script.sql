@@ -8,6 +8,21 @@
 
 
 --{ REC-564
+create table dev.component(
+    name        text not null,
+    repository  text not null,
+    commit_hash text not null,
+    guid        uuid not null
+);
+
+create table dev.component_object(
+    id     BIGINT   NOT NULL
+                    GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1)
+                    UNIQUE,
+    data   jsonb not null PRIMARY KEY,
+    status text  not null DEFAULT 'need to check'-- ok, update, create, delete 
+);
+
     \i 'view/reclada.v_component.sql'
     \i 'view/reclada.v_relationship.sql'
     \i 'view/reclada.v_component_object.sql'
@@ -24,7 +39,7 @@
                 "commitHash": {"type": "string"},
                 "repository": {"type": "string"}
             },
-            "required": ["name","commitHash","repository","isInstalling"]
+            "required": ["name","commitHash","repository"]
         }
     }'::jsonb);
 
@@ -230,24 +245,8 @@
 drop function reclada_object.datasource_insert;
 \i 'function/reclada_object.object_insert.sql'
 \i 'function/reclada_object.delete.sql'
-
-create table dev.component(
-    name        text not null,
-    repository  text not null,
-    commit_hash text not null,
-    guid        uuid not null
-);
-
-create table dev.component_object(
-    id     BIGINT   NOT NULL
-                    GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1)
-                    UNIQUE,
-    data   jsonb not null PRIMARY KEY,
-    status text  not null DEFAULT 'need to check'-- ok, update, create, delete 
-);
-
-\i 'dev.begin_install_component.sql'
-\i 'dev.finish_install_component.sql'
+\i 'function/dev.begin_install_component.sql'
+\i 'function/dev.finish_install_component.sql'
 
 
 -- научить базенку искать и разархивировать схемы в create

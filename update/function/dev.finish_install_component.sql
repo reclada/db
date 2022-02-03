@@ -15,11 +15,13 @@ BEGIN
                 "attributes": {
                     "name":"' || name || '",
                     "repository":"' || repository || '",
-                    "commitHash":"' || repo_hash  || '"
+                    "commitHash":"' || commit_hash  || '"
                 }
             }')::jsonb
         from dev.component
         into _obj;
+        
+    delete from dev.component;
 
     if exists
     (
@@ -33,7 +35,6 @@ BEGIN
         perform reclada_object.create(_obj);
     end if;
 
-    delete from dev.component;
 
     update dev.component_object
         set status = 'delete'

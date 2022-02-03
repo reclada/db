@@ -1,18 +1,3 @@
-/*
- * Function reclada_object.create creates one or bunch of objects with specified fields.
- * A jsonb with user_info AND a jsonb or an array of jsonb objects are required.
- * A jsonb object with the following parameters is required to create one object.
- * An array of jsonb objects with the following parameters is required to create a bunch of objects.
- * Required parameters:
- *  class - the class of objects
- *  attributes - the attributes of objects
- * Optional parameters:
- *  GUID - the identifier of the object
- *  transactionID - object's transaction number. One transactionID is used to create a bunch of objects.
- *  branch - object's branch
- */
-
-DROP FUNCTION IF EXISTS reclada_object.create;
 CREATE OR REPLACE FUNCTION reclada_object.create
 (
     data_jsonb jsonb, 
@@ -55,8 +40,7 @@ BEGIN
 
     SELECT guid 
         FROM dev.component 
-            WHERE is_installing
-        into _component_guid;
+        INTO _component_guid;
 
     /*TODO: check if some objects have revision AND others do not */
     branch:= data_jsonb->0->'branch';
@@ -257,7 +241,8 @@ BEGIN
                             ------
                         RETURNING 1 as v
                 ),
-                with i1 as (
+                i as 
+                (
                     insert into dev.component_object( data, status  )
                         select _data, 'create'
                             from u
@@ -329,7 +314,7 @@ BEGIN
                                 and _obj_guid is null
                                 ------
                 ),   
-                with u as (
+                u as (
                     update dev.component_object u
                         set status = 'ok'
                             from t

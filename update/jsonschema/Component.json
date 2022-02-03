@@ -12,9 +12,6 @@
                 "default": false,
                 "type": "boolean"
             },
-            "isInstalling": {
-                "type": "boolean"
-            },
             "name": {
                 "type": "string"
             },
@@ -30,7 +27,6 @@
         },
         "required": [
             "repository",
-            "isInstalling",
             "name",
             "commitHash"
         ],

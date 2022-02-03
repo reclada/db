@@ -1,11 +1,10 @@
 from json.decoder import JSONDecodeError
-from update_db import get_version_from_commit, get_version_from_db,clone_db,install_components,clear_db_from_components,branch_SciNLP,scinlp_install
-from update_db import run_file, db_URI, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,run_object_create,pg_dump,replace_component
+from update_db import get_version_from_commit, get_version_from_db,clone_db,install_components,clear_db_from_components
+from update_db import run_file, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,run_object_create,pg_dump
 
 import os
 import datetime
 import json
-import filecmp
 
 
 def upgrade():
@@ -18,6 +17,7 @@ def upgrade():
 
 if __name__ == "__main__":
 
+    install_components()
     t = str(datetime.datetime.now())
     
     down_test = downgrade_test
