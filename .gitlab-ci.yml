@@ -402,4 +402,4 @@ push-to-github:
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
-      when: never
+      when: never 
