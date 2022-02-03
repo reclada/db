@@ -6,7 +6,6 @@ AS
             obj.attrs->>'name'      as name,
             obj.attrs->>'repository'   as repository,
             obj.attrs->>'commitHash'   as commit_hash,
-            (obj.attrs->>'isInstalling')::boolean as is_installing,
             obj.revision_num  ,
             obj.status_caption,
             obj.revision      ,

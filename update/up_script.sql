@@ -22,8 +22,7 @@
             "properties": {
                 "name": {"type": "string"},
                 "commitHash": {"type": "string"},
-                "repository": {"type": "string"},
-                "isInstalling": {"type": "boolean"}
+                "repository": {"type": "string"}
             },
             "required": ["name","commitHash","repository","isInstalling"]
         }
@@ -36,8 +35,7 @@
             "attributes": {
                 "name":"reclada-runtime",
                 "repository":"https://gitlab.reclada.com/developers/reclada-runtime.git",
-                "commitHash":"00000",
-                "isInstalling":false
+                "commitHash":"00000"
             }
         }'::jsonb);
 
@@ -48,8 +46,7 @@
             "attributes": {
                 "name":"SciNLP",
                 "repository":"https://gitlab.reclada.com/developers/SciNLP.git",
-                "commitHash":"00000",
-                "isInstalling":false
+                "commitHash":"00000"
             }
         }'::jsonb);
     
@@ -60,8 +57,7 @@
             "attributes": {
                 "name":"db",
                 "repository":"https://gitlab.reclada.com/developers/db.git",
-                "commitHash":"00000",
-                "isInstalling":false
+                "commitHash":"00000"
             }
         }'::jsonb);
 
@@ -226,9 +222,33 @@
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.update.sql'
 \i 'function/reclada_object.create_subclass.sql'
+
+--} REC-562
+
+
+--{ REC-564
 drop function reclada_object.datasource_insert;
 \i 'function/reclada_object.object_insert.sql'
 \i 'function/reclada_object.delete.sql'
 
+create table dev.component(
+    name        text not null,
+    repository  text not null,
+    commit_hash text not null,
+    guid        uuid not null
+);
 
---} REC-562
+create table dev.component_object(
+    id     BIGINT   NOT NULL
+                    GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1)
+                    UNIQUE,
+    data   jsonb not null PRIMARY KEY,
+    status text  not null DEFAULT 'need to check'-- ok, update, create, delete 
+);
+
+\i 'dev.begin_install_component.sql'
+\i 'dev.finish_install_component.sql'
+
+
+-- научить базенку искать и разархивировать схемы в create
+--} REC-564

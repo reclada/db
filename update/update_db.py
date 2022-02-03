@@ -194,44 +194,11 @@ def replace_component(name:str,repository:str,branch:str,component_installer)->s
             rmdir(name)
             print(f'Component {name} has actual version')
             return
-        else:
-            cmd = """with d as (
-                        SELECT component_guid, obj_id, relationship_guid
-                            FROM reclada.v_component_object
-                                where component_name = '"""+name+"""'
-                    )
-                    SELECT reclada_object.delete(('{"GUID":"'||guid::text||'"}')::jsonb)
-                        from reclada.object 
-                            where guid in 
-                            (
-                                SELECT obj_id FROM d
-                                union
-                                SELECT relationship_guid FROM d
-                                union
-                                SELECT guid 
-                                    FROM reclada.v_component 
-                                        WHERE name = '"""+name+"""'
-                            )
-                                and status != reclada_object.get_archive_status_obj_id()
-                    """
-            res = run_cmd_scalar(cmd)
 
-    guid = str(uuid.uuid4())
-    cmd = '''SELECT reclada_object.create(
-            '{
-                "GUID": "''' + guid + '''",
-                "class":"Component",
-                "attributes": {
-                    "name":"''' + name + '''",
-                    "repository":"''' + repository + '''",
-                    "commitHash":"''' + repo_hash + '''",
-                    "isInstalling":true
-                }
-            }'::jsonb);'''
+    cmd = f"SELECT dev.begin_install_component('{name}','{repository}','{repo_hash}');"
     res = run_cmd_scalar(cmd)
     component_installer()
-    cmd = cmd.replace('"isInstalling":true','"isInstalling":false')
-    cmd = cmd.replace('SELECT reclada_object.create','SELECT reclada_object.update')
+    cmd = "SELECT dev.finish_install_component();"
     res = run_cmd_scalar(cmd)
     if name != 'db':
         os.chdir('..')

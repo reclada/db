@@ -57,8 +57,15 @@ DROP VIEW reclada.v_active_object;
 --{function/reclada.validate_json_schema}
 --{function/reclada.get_validation_schema}
 --{function/reclada_object.get_schema}
+
+--} REC-562
+
+--{ REC-564
+drop table table dev.component;
 --{function/reclada_object.datasource_insert}
 --{function/reclada_object.object_insert}
 --{function/reclada_object.delete}
+--{function/dev.begin_install_component}
+--{function/dev.finish_install_component}
 
---} REC-562
+--} REC-564
