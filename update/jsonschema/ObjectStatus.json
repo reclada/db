@@ -1,10 +1,15 @@
 {
     "forClass": "ObjectStatus",
+    "parentList": [],
     "revision": "0b3c19cb-85f6-4481-bd91-30d004197cac",
     "schema": {
         "properties": {
             "caption": {
                 "type": "string"
+            },
+            "disable": {
+                "default": false,
+                "type": "boolean"
             },
             "tags": {
                 "items": {

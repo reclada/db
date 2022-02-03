@@ -14,11 +14,11 @@ AS
             t.attrs             ,
             t.data              ,
             t.transaction_id    ,
-            t.parent_guid
+            t.parent_guid,
+            t.default_value
         FROM reclada.v_object as t
-            -- объект не удален
+            -- object wasn't deleted
             where t.status = reclada_object.get_active_status_obj_id()
-            ;
-
+;
 -- select * from reclada.v_active_object limit 300
 -- select * from reclada.object

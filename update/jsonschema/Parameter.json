@@ -1,7 +1,12 @@
 {
     "forClass": "Parameter",
+    "parentList": [],
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "file": {
                 "type": "string"
             },

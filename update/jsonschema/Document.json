@@ -1,7 +1,13 @@
 {
     "forClass": "Document",
+    "parentField": "fileGUID",
+    "parentList": [],
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "fileGUID": {
                 "type": "string"
             },

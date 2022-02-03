@@ -1,0 +1,32 @@
+{
+    "forClass": "DBAsset",
+    "parentList": [
+        "83cc2a18-ee18-44b8-ab73-689dadb7c0d0"
+    ],
+    "schema": {
+        "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "uri": {
+                "type": "string"
+            }
+        },
+        "required": [
+            {},
+            "name"
+        ],
+        "type": "object"
+    },
+    "version": "1"
+}

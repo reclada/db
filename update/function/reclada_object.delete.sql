@@ -19,21 +19,30 @@ AS $$
 DECLARE
     v_obj_id            uuid;
     tran_id             bigint;
-    class               text;
-    class_uuid          uuid;
+    _class_name         text;
+    _class_name_from_uuid   text;
+    _class_uuid          uuid;
     list_id             bigint[];
-
+    _for_class           text;
+    _uniFields_index_name          text;
+    _attrs              jsonb;
 BEGIN
 
     v_obj_id := data->>'GUID';
     tran_id := (data->>'transactionID')::bigint;
-    class := data->>'class';
+    _class_name := data->>'class';
 
-    IF (v_obj_id IS NULL AND class IS NULL AND tran_id IS NULl) THEN
+    IF (v_obj_id IS NULL AND _class_name IS NULL AND tran_id IS NULl) THEN
         RAISE EXCEPTION 'Could not delete object with no GUID, class and transactionID';
     END IF;
 
-    class_uuid := reclada.try_cast_uuid(class);
+    _class_uuid := reclada.try_cast_uuid(_class_name);
+    IF _class_uuid IS NOT NULL THEN
+        SELECT v.for_class 
+        FROM reclada.v_class_lite v
+        WHERE _class_uuid = v.obj_id
+            INTO _class_name_from_uuid;
+    END IF;
 
     WITH t AS
     (    
@@ -41,8 +50,8 @@ BEGIN
             SET status = reclada_object.get_archive_status_obj_id()
             FROM reclada.object o
                 LEFT JOIN
-                (   SELECT obj_id FROM reclada_object.get_GUID_for_class(class)
-                    UNION SELECT class_uuid WHERE class_uuid IS NOT NULL
+                (   SELECT obj_id FROM reclada_object.get_guid_for_class(_class_name)
+                    UNION SELECT _class_uuid WHERE _class_uuid IS NOT NULL
                 ) c ON o.class = c.obj_id
                 WHERE u.id = o.id AND
                 (
@@ -77,7 +86,7 @@ BEGIN
     )::jsonb
     INTO data;
 
-    IF (jsonb_array_length(data) = 1) THEN
+    IF (jsonb_array_length(data) <= 1) THEN
         data := data->0;
     END IF;
     
@@ -85,7 +94,10 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object, no such GUID';
     END IF;
 
-    PERFORM reclada_object.refresh_mv(class);
+    PERFORM reclada_object.refresh_mv(class_name)
+    FROM reclada.v_object vo
+    WHERE class_name IN ('jsonschema','User','ObjectStatus')
+        AND id = ANY(list_id);
 
     PERFORM reclada_notification.send_object_notification('delete', data);
 

@@ -1,0 +1,66 @@
+{
+    "forClass": "ObjectDisplay",
+    "parentList": [],
+    "schema": {
+        "$defs": {
+            "displayType": {
+                "properties": {
+                    "orderColumn": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "orderRow": {
+                        "items": {
+                            "patternProperties": {
+                                "^{.*}$": {
+                                    "enum": [
+                                        "ASC",
+                                        "DESC"
+                                    ],
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "orderColumn",
+                    "orderRow"
+                ],
+                "type": "object"
+            }
+        },
+        "properties": {
+            "caption": {
+                "type": "string"
+            },
+            "card": {
+                "$ref": "#/$defs/displayType"
+            },
+            "classGUID": {
+                "type": "string"
+            },
+            "flat": {
+                "type": "bool"
+            },
+            "list": {
+                "$ref": "#/$defs/displayType"
+            },
+            "preview": {
+                "$ref": "#/$defs/displayType"
+            },
+            "table": {
+                "$ref": "#/$defs/displayType"
+            }
+        },
+        "required": [
+            "classGUID",
+            "caption"
+        ]
+    },
+    "version": "1"
+}

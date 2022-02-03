@@ -4,6 +4,12 @@ stages:
   - build
   - test
   - deploy
+  - runtime
+  - scinlp
+  - webui
+  - clean
+  - clean_db
+  - clean_branches
   - autotest
   - clean
   - clean_db
@@ -21,17 +27,19 @@ prepare_db:
     # - echo LAST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) >> prepare.env
     - echo ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
     - export ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
+    - echo NAMESPACE = reclada-$ENV >> prepare.env
     - echo DBNAME = "${ENV}_reclada_k8s" >> prepare.env 
     - echo LAMBDA_NAME = "s3_get_presigned_url_${ENV}" >> prepare.env
+    - echo TEST_PARAMETERS_WEB_BASE_URL = "${ENV}.reclada.com" >> prepare.env
     #debug
     - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
   artifacts:
     reports:
       dotenv: prepare.env
   rules:
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: always
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main" && $CI_COMMIT_MESSAGE !~ /^delenv/
+    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master" && $CI_COMMIT_MESSAGE !~ /^delenv/
       when: always
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test" && $CI_COMMIT_MESSAGE !~ /^delenv/
       when: always
@@ -53,7 +61,7 @@ prepare_runtime:
     - echo $RUNTIME_REPO_TOKEN
     - echo $CI_COMMIT_REF_NAME
     #Create db with the same name prefix as current branch
-    - curl --request POST --header "PRIVATE-TOKEN:$RUNTIME_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/36/repository/branches?branch=$CI_COMMIT_REF_NAME&ref=main" | jq
+    - curl --request POST --header "PRIVATE-TOKEN:$RUNTIME_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/36/repository/branches?branch=$CI_COMMIT_REF_NAME&ref=master" | jq
     # Check pipeline sussess for current branch in runtime repository 
     - sleep 60
     - while [ $response != "success" ] && [ $response != "failed" ]; do sleep 5 ; echo "WATING FOR PIPELINE" ; response=$(curl --header "PRIVATE-TOKEN:$RUNTIME_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/36/pipelines?per_page=1&page=1" | jq -r '.[].status') ; echo $response ; done ;
@@ -64,7 +72,7 @@ prepare_runtime:
   rules:
     - if: $CI_COMMIT_MESSAGE =~ /^delenv/
       when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: never
@@ -72,7 +80,7 @@ prepare_runtime:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE !~ /^delenv/ && $CI_MERGE_REQUEST_ID !~ /^./ 
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -108,13 +116,15 @@ deploy-dynamic-env:
   tags:
     - k8s-devops
   rules:
+  - if: $CI_COMMIT_MESSAGE =~ /^delenv/
+    when: never
   - if: $CI_MERGE_REQUEST_ID =~ /^./ 
     when: never
   - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
     when: never
   - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
     when: always
-  - if: $CI_COMMIT_REF_NAME == "main"
+  - if: $CI_COMMIT_REF_NAME == "master"
     when: never
   - if: $CI_COMMIT_REF_NAME == "test"
     when: never
@@ -149,35 +159,68 @@ deploy-autotest-env:
   tags:
       - k8s-devops
   rules:
+    - if: $CI_COMMIT_MESSAGE =~ /^delenv/
+      when: never
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: always
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
 
 test-autotest-env:
   stage: autotest
-  # image: ???
+  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/pytest:04
   script:
     - echo "Run some tests for autotest env"
-    - echo $CI_COMMIT_REF_NAME
+
+    - export TEST_PARAMETERS_BUCKET="autotest-reclada-bucket"
+    - export TEST_PARAMETERS_DATABASE="${TEST_RDS}/autotest_reclada_k8s"
+    - export TEST_PARAMETERS_DATABASE_USER="reclada"
+    - export TEST_PARAMETERS_DATABASE_PASSWORD="${PG_PASSWORD}"
+    # - AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
+    # - AWS_SECRET_ACCESS_KEY = AWS_SECRET_KEY
+    # - TEST_PARAMETERS_WEB_BASE_URL = base_url_of_application
+    # - TEST_PARAMETERS_WEB_USER = user_for_web_and_rest
+    # - TEST_PARAMETERS_WEB_PASSWORD = password_for_web_and_rest
+
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/QAAutotests.git
+    - cd QAAutotests
+
+    - pytest --version
+    - allure --version
+
+    - pytest tests --alluredir allure-results > /dev/null 2>&1 || true
+    - allure generate -c ./allure-results -o ./allure-report
+    - ls -la ./allure-results
+    - ls -la ./allure-report
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - QAAutotests/allure-results/
+      - QAAutotests/allure-report/
+    expire_in: 7 day
   needs:
     - job: deploy-autotest-env
+    - job: prepare_db
+      artifacts: true
   tags:
       - k8s-devops
   rules:
+    - if: $CI_COMMIT_MESSAGE =~ /^delenv/
+      when: never
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: always
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -189,7 +232,7 @@ deploy-prod-env:
     - echo "Run update database in prod env"
 
     - cp $CI_PROJECT_DIR/update/update_config_template.json $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"main\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"master\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"server\" :.*|\"server\" :\ \"$PROD_RDS\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db\" :.*|\"db\" :\ \"prod_reclada_k8s\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
@@ -201,10 +244,10 @@ deploy-prod-env:
 
     - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_db.py
     - cat $CI_PROJECT_DIR/update/update_db.py
-    
+
     - python --version
     - psql -V
-    - python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
+    - cd $CI_PROJECT_DIR/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
   needs:
     - job: prepare_db
       artifacts: true
@@ -213,13 +256,13 @@ deploy-prod-env:
   rules:
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: never
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: always
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -244,7 +287,7 @@ delete-db-dynamic-env:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE =~ /^delenv/
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -285,7 +328,7 @@ delete-terraform-dynamic-env:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE =~ /^delenv/ && $CI_MERGE_REQUEST_ID !~ /^./ 
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -321,7 +364,7 @@ delete-branches-dynamic-env:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE =~ /^delenv/
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -348,11 +391,11 @@ push-to-github:
   tags:
       - k8s-devops
   rules:
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: always
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: never
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/
       when: never

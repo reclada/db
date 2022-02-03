@@ -1,7 +1,12 @@
 {
     "forClass": "FileExtension",
+    "parentList": [],
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "extension": {
                 "type": "string"
             },

@@ -1,5 +1,7 @@
 {
     "forClass": "Cell",
+    "parentField": "table",
+    "parentList": [],
     "schema": {
         "properties": {
             "bbox": {
@@ -13,6 +15,10 @@
             },
             "column": {
                 "type": "number"
+            },
+            "disable": {
+                "default": false,
+                "type": "boolean"
             },
             "row": {
                 "type": "number"

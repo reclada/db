@@ -1,9 +1,15 @@
 {
     "forClass": "Page",
+    "parentField": "document",
+    "parentList": [],
     "schema": {
         "properties": {
             "bbox": {
                 "type": "string"
+            },
+            "disable": {
+                "default": false,
+                "type": "boolean"
             },
             "document": {
                 "type": "string"

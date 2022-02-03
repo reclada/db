@@ -30,8 +30,12 @@ if __name__ == "__main__":
     current_dump = 'current_dump.sql'
 
     commit_ver = get_version_from_commit()
-    db_ver = get_version_from_db()
-    install_db = commit_ver != db_ver + 1
+    try:
+        db_ver = get_version_from_db()
+        install_db = commit_ver != db_ver + 1
+    except ValueError:
+        # if database does not exist
+        install_db = True
     if install_db:
         os.system('python install_db.py')
         if down_test:
@@ -88,7 +92,7 @@ if __name__ == "__main__":
                     print(d[i] + d[i+1])
                 input("!!! down.sql invalid !!! Enter to continue . . .")
             else:
-                print("OK: down.sql valid")
+                print("\n\nOK: down.sql valid\n\n")
         else:
             input("!!! down.sql invalid !!! Dumps have different length! Press Enter to continue . . .")
             
@@ -145,5 +149,3 @@ if __name__ == "__main__":
     input("Press Enter to run testing . . .")
     
     run_test()
-
-    input("Press Enter to finish . . .")

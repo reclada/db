@@ -1,9 +1,14 @@
 {
     "forClass": "Job",
+    "parentList": [],
     "schema": {
         "properties": {
             "command": {
                 "type": "string"
+            },
+            "disable": {
+                "default": false,
+                "type": "boolean"
             },
             "inputParameters": {
                 "items": {

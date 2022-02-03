@@ -1,5 +1,6 @@
 {
     "forClass": "Context",
+    "parentList": [],
     "schema": {
         "properties": {
             "Environment": {
@@ -7,6 +8,10 @@
             },
             "Lambda": {
                 "type": "string"
+            },
+            "disable": {
+                "default": false,
+                "type": "boolean"
             },
             "tags": {
                 "items": {

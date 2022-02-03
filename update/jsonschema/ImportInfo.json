@@ -1,7 +1,12 @@
 {
     "forClass": "ImportInfo",
+    "parentList": [],
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "name": {
                 "type": "string"
             },

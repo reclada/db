@@ -1,5 +1,6 @@
 {
     "forClass": "Message",
+    "parentList": [],
     "revision": "cc1ced42-1354-49ea-ba65-5a6562547618",
     "schema": {
         "properties": {
@@ -14,6 +15,10 @@
             },
             "class": {
                 "type": "string"
+            },
+            "disable": {
+                "default": false,
+                "type": "boolean"
             },
             "event": {
                 "enum": [

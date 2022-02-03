@@ -1,7 +1,13 @@
 {
     "forClass": "DataRow",
+    "parentField": "table",
+    "parentList": [],
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "row": {
                 "type": "number"
             },

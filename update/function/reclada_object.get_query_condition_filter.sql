@@ -72,56 +72,60 @@ result:
         or (status_caption in (1,2,5,4))
     )
 )
+
+Also there is support for default values.
+If object does not have a field, the default value will be used if it exists.
+
 */
 
 DROP FUNCTION IF EXISTS reclada_object.get_query_condition_filter;
-CREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter( data JSONB )
+CREATE OR REPLACE FUNCTION reclada_object.get_query_condition_filter(data JSONB)
 RETURNS TEXT AS $$
-DECLARE 
+DECLARE
     _count   INT;
     _res     TEXT;
     _f_name TEXT = 'reclada_object.get_query_condition_filter';
-BEGIN 
-    
+BEGIN
+
     perform reclada.validate_json(data, _f_name);
     -- TODO: to change VOLATILE -> IMMUTABLE, remove CREATE TEMP TABLE
     CREATE TEMP TABLE mytable AS
-        SELECT  res.lvl              AS lvl         , 
-                res.rn               AS rn          , 
+        SELECT  res.lvl              AS lvl         ,
+                res.rn               AS rn          ,
                 res.idx              AS idx         ,
-                res.prev             AS prev        , 
-                res.val              AS val         ,  
-                res.parsed           AS parsed      , 
+                res.prev             AS prev        ,
+                res.val              AS val         ,
+                res.parsed           AS parsed      ,
                 coalesce(
-                    po.inner_operator, 
+                    po.inner_operator,
                     op.operator
-                )                   AS op           , 
+                )                   AS op           ,
                 coalesce
                 (
                     iop.input_type,
                     op.input_type
                 )                   AS input_type   ,
-                case 
-                    when iop.input_type is not NULL 
-                        then NULL 
-                    else 
+                case
+                    when iop.input_type is not NULL
+                        then NULL
+                    else
                         op.output_type
                 end                 AS output_type  ,
                 po.operator         AS po           ,
                 po.input_type       AS po_input_type,
                 iop.brackets        AS po_inner_brackets
             FROM reclada_object.parse_filter(data) res
-            LEFT JOIN reclada.v_filter_avaliable_operator op
+            LEFT JOIN reclada.v_filter_available_operator op
                 ON res.op = op.operator
             LEFT JOIN reclada_object.parse_filter(data) p
                 on  p.lvl = res.lvl-1
                     and res.prev = p.rn
-            LEFT JOIN reclada.v_filter_avaliable_operator po
+            LEFT JOIN reclada.v_filter_available_operator po
                 on po.operator = p.op
             LEFT JOIN reclada.v_filter_inner_operator iop
                 on iop.operator = po.inner_operator;
 
-    PERFORM reclada.raise_exception('Operator does not allowed ' || t.op,'reclada_object.get_query_condition_filter')
+    PERFORM reclada.raise_exception('Operator is not allowed ', _f_name)
         FROM mytable t
             WHERE t.op IS NULL;
 
@@ -129,39 +133,52 @@ BEGIN
     UPDATE mytable u
         SET parsed = to_jsonb(p.v)
             FROM mytable t
-            JOIN LATERAL 
+            JOIN LATERAL
             (
                 SELECT  t.parsed #>> '{}' v
-            ) as pt
+            ) as pt1
                 ON TRUE
             LEFT JOIN reclada.v_filter_mapping fm
-                ON pt.v = fm.pattern
+                ON pt1.v = fm.pattern
             JOIN LATERAL 
             (
-                SELECT CASE 
-                        WHEN fm.repl is not NULL 
-                            then '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)
-                        -- WHEN pt.v LIKE '{attributes,%}'
-                        --     THEN format('attrs #> ''%s''', REPLACE(pt.v,'{attributes,','{'))
+                SELECT replace(pt1.v,'{attributes,','{') as v
+            ) as pt
+                ON TRUE
+            JOIN LATERAL 
+            (
+                SELECT CASE
+                        WHEN t.op LIKE '%<@%' AND t.idx=1 AND jsonb_typeof(t.parsed)='string'
+                            THEN format('(COALESCE(attrs #> ''%s'', default_value -> (''%s'')::text)) != ''[]''::jsonb
+                            AND (COALESCE(attrs #> ''%s'', default_value -> (''%s'')::text)) != ''{}''::jsonb
+                            AND (COALESCE(attrs #> ''%s'', default_value -> (''%s'')::text))',
+                            pt.v, pt.v, pt.v, pt.v, pt.v, pt.v)
+                        WHEN fm.repl is not NULL
+                            then
+                                case
+                                    when t.input_type in ('TEXT')
+                                        then fm.repl || '::TEXT'
+                                    else '(''"''||' ||fm.repl ||'||''"'')::jsonb' -- don't use FORMAT (concat null)
+                                end
                         WHEN jsonb_typeof(t.parsed) in ('number', 'boolean')
-                            then 
-                                case 
+                            then
+                                case
                                     when t.input_type in ('NUMERIC','INT')
                                         then pt.v
                                     else '''' || pt.v || '''::jsonb'
                                 end
-                        WHEN jsonb_typeof(t.parsed) = 'string' 
-                            then    
+                        WHEN jsonb_typeof(t.parsed) = 'string'
+                            then
                                 case
                                     WHEN pt.v LIKE '{%}'
                                         THEN
                                             case
                                                 when t.input_type = 'TEXT'
-                                                    then format('(data #>> ''%s'')', pt.v)
+                                                    then format('(COALESCE(attrs #>> ''%s'', default_value ->> (''%s'')::text))', pt.v, pt.v)
                                                 when t.input_type = 'JSONB' or t.input_type is null
-                                                    then format('data #> ''%s''', pt.v)
+                                                    then format('(COALESCE(attrs #> ''%s'', default_value -> (''%s'')::text))', pt.v, pt.v)
                                                 else
-                                                    format('(data #>> ''%s'')::', pt.v) || t.input_type
+                                                    format('(COALESCE(attrs #>> ''%s'', default_value ->> (''%s'')::text))::', pt.v, pt.v) || t.input_type
                                             end
                                     when t.input_type = 'TEXT'
                                         then ''''||REPLACE(pt.v,'''','''''')||''''
@@ -201,6 +218,7 @@ BEGIN
             WHERE t.lvl = u.lvl
                 AND t.rn = u.rn
                 AND (f.btwn or f.inop);
+
 
     INSERT INTO mytable (lvl,rn)
         VALUES (0,0);
@@ -262,7 +280,7 @@ BEGIN
         FROM mytable
             WHERE lvl = 0 AND rn = 0
         INTO _res;
-    perform reclada.raise_notice( _res);
+    -- perform reclada.raise_notice( _res);
     DROP TABLE mytable;
     RETURN _res;
 END 

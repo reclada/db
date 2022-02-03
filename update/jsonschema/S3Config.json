@@ -1,5 +1,6 @@
 {
     "forClass": "S3Config",
+    "parentList": [],
     "revision": "fcb96cad-9879-4668-8da0-cd705175dc90",
     "schema": {
         "properties": {
@@ -8,6 +9,10 @@
             },
             "bucketName": {
                 "type": "string"
+            },
+            "disable": {
+                "default": false,
+                "type": "boolean"
             },
             "endpointURL": {
                 "type": "string"

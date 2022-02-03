@@ -1,9 +1,14 @@
 {
     "forClass": "TextBlock",
+    "parentList": [],
     "schema": {
         "properties": {
             "bbox": {
                 "type": "string"
+            },
+            "disable": {
+                "default": false,
+                "type": "boolean"
             },
             "page": {
                 "type": "string"

@@ -1,0 +1,32 @@
+{
+    "forClass": "Asset",
+    "parentList": [
+        "92a95f66-e28e-4ebc-9f33-3568fc5a281e"
+    ],
+    "schema": {
+        "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
+            "name": {
+                "type": "string"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "uri": {
+                "type": "string"
+            }
+        },
+        "required": [
+            {},
+            "name"
+        ],
+        "type": "object"
+    },
+    "version": "1"
+}

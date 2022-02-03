@@ -57,52 +57,115 @@
 */
 
 DROP FUNCTION IF EXISTS api.reclada_object_list;
-CREATE OR REPLACE FUNCTION api.reclada_object_list(data jsonb)
+CREATE OR REPLACE FUNCTION api.reclada_object_list(
+    data jsonb default null, 
+    ver text default '1', 
+    draft text default 'false'
+    )
 RETURNS jsonb AS $$
 DECLARE
-    class               text;
+    _class              text;
     user_info           jsonb;
     result              jsonb;
     _filter             jsonb;
+    _guid               uuid;
 BEGIN
 
-    class := data->>'class';
-    IF(class IS NULL) THEN
+    if draft != 'false' then
+        return array_to_json
+            (
+                array
+                (
+                    SELECT o.data 
+                        FROM reclada.draft o
+                            where id = 
+                                (
+                                    select max(id) 
+                                        FROM reclada.draft d
+                                            where o.guid = d.guid
+                                )
+                            -- and o.user = user_info->>'guid'
+                )
+            )::jsonb;
+    end if;
+
+    _class := CASE ver
+                when '1'
+                    then data->>'class'
+                when '2'
+                    then data->>'{class}'
+            end;
+    IF(_class IS NULL) THEN
         RAISE EXCEPTION 'reclada object class not specified';
     END IF;
 
+    _guid := CASE ver
+        when '1'
+            then data->>'GUID'
+        when '2'
+            then data->>'{GUID}'
+    end;
+
     _filter = data->'filter';
-    if _filter is not null then
-        select format(  '{
-                            "filter":
-                            {
-                                "operator":"AND",
-                                "value":[
-                                    {
-                                        "operator":"=",
-                                        "value":["{class}","%s"]
-                                    },
-                                    %s
-                                ]
-                            }
+
+    if _guid is not null then
+        SELECT format(  '{
+                            "operator":"AND",
+                            "value":[
+                                {
+                                    "operator":"=",
+                                    "value":["{class}","%s"]
+                                },
+                                {
+                                    "operator":"=",
+                                    "value":["{GUID}","%s"]
+                                }
+                            ]
                         }',
-                class,
+                    _class,
+                    _guid
+                )::jsonb 
+            INTO _filter;
+
+    ELSEIF _filter IS NOT NULL THEN
+        SELECT format(  '{
+                            "operator":"AND",
+                            "value":[
+                                {
+                                    "operator":"=",
+                                    "value":["{class}","%s"]
+                                },
+                                %s
+                            ]
+                        }',
+                _class,
                 _filter
             )::jsonb 
-            into _filter;
-        data := data || _filter;
-    end if;
+            INTO _filter;
+    ELSEIF ver = '2' then
+        SELECT format( '{
+                            "operator":"=",
+                            "value":["{class}","%s"]
+                        }',
+                _class
+            )::jsonb 
+            INTO _filter;
+    END IF;
+    
+    IF _filter IS NOT NULL THEN
+        data := Jsonb_set(data,'{filter}', _filter);
+    END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
 
-    IF (NOT(reclada_user.is_allowed(user_info, 'list', class))) THEN
-        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', class;
+    IF (NOT(reclada_user.is_allowed(user_info, 'list', _class))) THEN
+        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'list', _class;
     END IF;
 
-    SELECT reclada_object.list(data, true) INTO result;
-
+    SELECT reclada_object.list(data, true, ver) 
+        INTO result;
     RETURN result;
 
 END;
-$$ LANGUAGE PLPGSQL STABLE;
+$$ LANGUAGE PLPGSQL VOLATILE;
