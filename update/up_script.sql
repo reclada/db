@@ -131,7 +131,6 @@ AND attributes->>'forClass' != 'jsonschema';
 
 \i 'view/reclada.v_filter_available_operator.sql'
 
-ALTER TABLE reclada.object ALTER COLUMN status DROP DEFAULT;
 DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 DROP VIEW IF EXISTS reclada.v_parent_field;
@@ -152,8 +151,6 @@ DROP VIEW IF EXISTS reclada.v_object_display;
 \i 'view/reclada.v_class_lite.sql'
 \i 'function/reclada_object.get_guid_for_class.sql'
 \i 'view/reclada.v_object_status.sql'
-\i 'function/reclada_object.get_active_status_obj_id.sql'
-\i 'function/reclada_object.get_archive_status_obj_id.sql'
 
 
 \i 'function/reclada_object.delete.sql'
@@ -175,11 +172,8 @@ DROP VIEW IF EXISTS reclada.v_object_display;
 
 \i 'view/reclada.v_filter_mapping.sql'
 
-ALTER TABLE reclada.object ALTER COLUMN status SET DEFAULT reclada_object.get_active_status_obj_id();
-
-
 CREATE INDEX relationship_type_subject_object_index ON reclada.object USING btree ((attributes->>'type'), ((attributes->>'subject')::uuid), status, ((attributes->>'object')::uuid))
-WHERE attributes->>'subject' IS NOT NULL AND attributes->>'object' IS NOT NULL  AND status=reclada_object.get_active_status_obj_id();
+WHERE attributes->>'subject' IS NOT NULL AND attributes->>'object' IS NOT NULL;
 
 DROP INDEX parent_guid_index;
 CREATE INDEX parent_guid_index ON reclada.object USING hash (parent_guid)

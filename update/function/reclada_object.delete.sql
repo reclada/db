@@ -25,6 +25,7 @@ DECLARE
     list_id             bigint[];
     _for_class           text;
     _uniFields_index_name          text;
+    _attrs              jsonb;
 BEGIN
 
     v_obj_id := data->>'GUID';
@@ -93,7 +94,10 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object, no such GUID';
     END IF;
 
-    PERFORM reclada_object.refresh_mv(COALESCE(_class_name_from_uuid, _class_name));
+    PERFORM reclada_object.refresh_mv(class_name)
+    FROM reclada.v_object vo
+    WHERE class_name IN ('jsonschema','User','ObjectStatus')
+        AND id = ANY(list_id);
 
     PERFORM reclada_notification.send_object_notification('delete', data);
 

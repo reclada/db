@@ -137,7 +137,7 @@ AND attributes->>'forClass' != 'jsonschema';
 
 
 
-ALTER TABLE reclada.object ALTER COLUMN status DROP DEFAULT;
+
 DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 DROP VIEW IF EXISTS reclada.v_parent_field;
@@ -181,9 +181,6 @@ AS
 	FROM reclada.object obj
    	WHERE class in (select reclada_object.get_guid_for_class('ObjectStatus'));
      
---{function/reclada_object.get_active_status_obj_id}
---{function/reclada_object.get_archive_status_obj_id}
-
 CREATE MATERIALIZED VIEW reclada.v_user
 AS
     SELECT  obj.id            ,
@@ -195,10 +192,6 @@ AS
    	WHERE class in (select reclada_object.get_guid_for_class('User'))
         and status = reclada_object.get_active_status_obj_id();
 ANALYZE reclada.v_user;
-
-
-
-ALTER TABLE reclada.object ALTER COLUMN status SET DEFAULT reclada_object.get_active_status_obj_id();
 
 
 --{function/reclada_object.delete}
