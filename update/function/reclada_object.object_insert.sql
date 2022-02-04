@@ -109,7 +109,8 @@ BEGIN
         END IF;
     
     ELSIF _class_name = 'Index' then
-        _exec_text := 'CREATE INDEX #@#@#name#@#@# ON reclada.object USING #@#@#method#@#@# (#@#@#fields#@#@#) #@#@#where#@#@#;';
+        _exec_text := 'DROP INDEX IF EXISTS reclada.#@#@#name#@#@#;
+            CREATE INDEX #@#@#name#@#@# ON reclada.object USING #@#@#method#@#@# (#@#@#fields#@#@#) #@#@#where#@#@#;';
         _exec_text := REPLACE(_exec_text, '#@#@#name#@#@#'   , attributes->>'name'                      );
         _exec_text := REPLACE(_exec_text, '#@#@#method#@#@#' , coalesce(attributes->>'method' ,'btree') );
 

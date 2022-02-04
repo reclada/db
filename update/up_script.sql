@@ -18,9 +18,9 @@ create table dev.component(
 create table dev.component_object(
     id     BIGINT   NOT NULL
                     GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1)
-                    UNIQUE,
+                    PRIMARY KEY,
     status text  not null DEFAULT 'need to check',-- ok, update, create, delete 
-    data   jsonb not null PRIMARY KEY
+    data   jsonb not null 
 );
 
     \i 'view/reclada.v_component.sql'
@@ -147,7 +147,7 @@ create table dev.component_object(
                     AND ns.nspname = 'reclada'
                     AND ix.indexprs IS NOT NULL
         ) t;
-
+    -- reclada-runtime
     select reclada_object.create_relationship
                         (
                             'data of reclada-component',
@@ -180,7 +180,7 @@ create table dev.component_object(
                     UNION 
                     select reclada_object.get_GUID_for_class('PipelineLite')
                 );
-
+    -- SciNLP
     select reclada_object.create_relationship
                         (
                             'data of reclada-component',
