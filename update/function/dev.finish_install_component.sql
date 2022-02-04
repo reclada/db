@@ -20,15 +20,14 @@ BEGIN
             }')::jsonb
         from dev.component
         into _obj;
-        
+
     delete from dev.component;
 
     if exists
     (
         select 
             from reclada.object o
-            join dev.component c
-                on c.guid = o.guid
+                where o.guid = (_obj->>'GUID')::uuid
     ) then
         perform reclada_object.update(_obj);
     else
@@ -44,10 +43,6 @@ BEGIN
         from dev.component_object
             where status = 'delete';
 
-    perform reclada_object.update(data)
-        from dev.component_object
-            where status = 'update';
-
     perform reclada_object.create_relationship(
                 'data of reclada-component',
                 (_obj     ->>'GUID')::uuid ,
@@ -61,6 +56,10 @@ BEGIN
         ) cr
         cross join lateral jsonb_array_elements(cr.v) el
             where c.status = 'create';
-    
+
+    perform reclada_object.update(data)
+        from dev.component_object
+            where status = 'update';
+
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

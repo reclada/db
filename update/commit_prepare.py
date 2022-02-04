@@ -17,7 +17,7 @@ def upgrade():
 
 if __name__ == "__main__":
 
-    install_components()
+    #install_components()
     t = str(datetime.datetime.now())
     
     down_test = downgrade_test

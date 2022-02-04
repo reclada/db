@@ -19,8 +19,8 @@ create table dev.component_object(
     id     BIGINT   NOT NULL
                     GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1)
                     UNIQUE,
-    data   jsonb not null PRIMARY KEY,
-    status text  not null DEFAULT 'need to check'-- ok, update, create, delete 
+    status text  not null DEFAULT 'need to check',-- ok, update, create, delete 
+    data   jsonb not null PRIMARY KEY
 );
 
     \i 'view/reclada.v_component.sql'

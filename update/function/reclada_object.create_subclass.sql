@@ -140,38 +140,6 @@ BEGIN
         PERFORM reclada_object.refresh_mv('uniFields');
     END IF;
 
-    FOR _field_name IN 
-        SELECT DISTINCT el
-        FROM pg_catalog.jsonb_array_elements_text(
-                (class_schema -> 'required') || coalesce((attrs -> 'required'),'[]'::jsonb)
-            ) el
-        WHERE NOT EXISTS (
-            SELECT relname, ind_expr
-            FROM (
-                SELECT i.relname, pg_get_expr(ix.indexprs, ix.indrelid) AS ind_expr
-                FROM pg_index ix
-                JOIN pg_class i ON i.oid = ix.indexrelid 
-                JOIN pg_class t ON t.oid = ix.indrelid 
-                WHERE t.relname = 'object'
-                AND ix.indexprs IS NOT NULL
-            ) a
-            WHERE
-                length(ind_expr) - length(REPLACE(ind_expr,'->>',''))= 3
-                AND strpos(ind_expr,el) > 0
-        )
-    LOOP
-        perform reclada_object.create(
-                jsonb_build_object( 'class'  ,   'Index',
-                                    'attributes', jsonb_build_object(
-                                        'name'  ,         _field_name || '_index_'  ,
-                                        'method',         'btree'                   ,
-                                        'fields',         jsonb_build_array('( attributes ->>''' || _field_name || ''')'),
-                                        'wherePredicate', 'IS NOT NULL'
-                                    )
-                )
-            );
-    END LOOP;
-
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 

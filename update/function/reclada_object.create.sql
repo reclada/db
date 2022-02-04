@@ -48,6 +48,115 @@ BEGIN
     FOR _data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
 
+        if _component_guid is not null then
+            _attrs      := _data-> 'attributes';
+            _class_name := _data->>'class'     ;
+            _obj_guid   := _data->>'GUID'      ;
+            update dev.component_object
+                set status = 'ok'
+                where status = 'need to check'
+                    and _attrs = data->'attributes'
+                    ------
+                    and _class_name = 'jsonschema';
+                    ------
+            GET DIAGNOSTICS _c := ROW_COUNT;
+            if _c > 1 then
+                perform reclada.raise_exception('can''t mach component objects',_f_name);
+            elsif _c = 1 then
+                continue;
+            end if;
+
+            -- upgrade jsonschema
+            with u as (
+                update dev.component_object
+                    set status = 'delete'
+                    where status = 'need to check'
+                        and _attrs#>'{attributes,forClass}'  = data #>'{attributes,forClass}'
+                        and _attrs                          != data->'attributes'
+                        ------
+                        and _class_name = 'jsonschema'
+                        ------
+                    RETURNING 1 as v
+            )
+            insert into dev.component_object( data, status  )
+                select _data, 'create'
+                    from u;
+
+            GET DIAGNOSTICS _c := ROW_COUNT;
+            if _c > 1 then
+                perform reclada.raise_exception('can''t mach component objects',_f_name);
+            elsif _c = 1 then
+                continue;
+            end if;
+            
+
+            update dev.component_object
+                set status = 'ok'
+                    where status = 'need to check'
+                        and _obj_guid::text      = data->>'GUID'
+                        and _attrs               = data-> 'attributes'
+                        and _class_uuid::text    = data->>'class'
+                        and _data->>'parentGUID' = data->>'parentGUID' 
+                        ------
+                        and _class_name != 'jsonschema'
+                        and _obj_guid is not null;
+                        ------
+
+            GET DIAGNOSTICS _c := ROW_COUNT;
+            if _c > 1 then
+                perform reclada.raise_exception('can''t mach component objects',_f_name);
+            elsif _c = 1 then
+                continue;
+            end if;
+
+            update dev.component_object
+                set status = 'update',
+                    data   = _data
+                    where status = 'need to check' 
+                        and _obj_guid::text = data->>'GUID'
+                        ------
+                        and _class_name != 'jsonschema'
+                        and _obj_guid is not null;
+                        ------
+
+            GET DIAGNOSTICS _c := ROW_COUNT;
+            if _c > 1 then
+                perform reclada.raise_exception('can''t mach component objects',_f_name);
+            elsif _c = 1 then
+                continue;
+            end if;
+            
+            with t as
+            (
+                select min(id) as id
+                    from dev.component_object
+                        where status = 'need to check'
+                            and _attrs               = data-> 'attributes'
+                            --and _class_uuid::text    = data->>'class'
+                            and coalesce(_data->>'parentGUID','') = coalesce(data->>'parentGUID','')
+                            ------
+                            and _class_name != 'jsonschema'
+                            and _obj_guid is null
+                            ------
+            )
+                update dev.component_object u
+                    set status = 'ok'
+                        from t
+                            where u.id = t.id;
+                    
+            GET DIAGNOSTICS _c := ROW_COUNT;
+            if _c > 1 then
+                perform reclada.raise_exception('can''t mach component objects',_f_name);
+            elsif _c = 1 then
+                continue;
+            end if;
+            
+            insert into dev.component_object( data, status  )
+                select _data, 'create';
+            continue;
+            
+        end if;
+
         SELECT  schema_obj, 
                 attributes,
                 class_name,
@@ -208,140 +317,13 @@ BEGIN
         END IF;
         
         IF (NOT skip_insert) THEN           
-            if _component_guid is not null then
 
-                with u as (
-                    update dev.component_object
-                        set status = 'ok'
-                        where data->'attributes' = _attrs
-                            and status = 'need to check'
-                            ------
-                            and _class_name = 'jsonschema'
-                            ------
-                        RETURNING 1 as v
-                )
-                    select count(v)
-                        from u
-                        into _c;
-                if _c > 1 then
-                    perform reclada.raise_exception('can''t mach component objects',_f_name);
-                elsif _c = 1 then
-                    continue;
-                end if;
-
-                -- upgrade jsonschema
-                with u as (
-                    update dev.component_object
-                        set status = 'delete'
-                        where data->'attributes' != _attrs
-                            and data #>'{attributes,forClass}' = _attrs #> '{attributes,forClass}'
-                            and status = 'need to check'
-                            ------
-                            and _class_name = 'jsonschema'
-                            ------
-                        RETURNING 1 as v
-                ),
-                i as 
-                (
-                    insert into dev.component_object( data, status  )
-                        select _data, 'create'
-                            from u
-                        RETURNING 2 as v
-                )
-                    select count(v)
-                        from u
-                        into _c;
-                if _c > 1 then
-                    perform reclada.raise_exception('can''t mach component objects',_f_name);
-                elsif _c = 1 then
-                    continue;
-                end if;
-                
-                with u as (
-                    update dev.component_object
-                        set status = 'ok'
-                            where status = 'need to check'
-                                and _obj_guid::text      = data->>'GUID'
-                                and _attrs               = data-> 'attributes'
-                                and _class_uuid::text    = data->>'class'
-                                and _data->>'parentGUID' = data->>'parentGUID' 
-                                ------
-                                and _class_name != 'jsonschema'
-                                and _obj_guid is not null
-                                ------
-                        RETURNING 1 as v
-                )
-                    select count(v)
-                        from u
-                        into _c;
-                if _c > 1 then
-                    perform reclada.raise_exception('can''t mach component objects',_f_name);
-                elsif _c = 1 then
-                    continue;
-                end if;
-
-                with u as (
-                    update dev.component_object
-                        set status = 'update',
-                            data   = _data
-                            where status = 'need to check' 
-                                and _obj_guid::text = data->>'GUID'
-                                ------
-                                and _class_name != 'jsonschema'
-                                and _obj_guid is not null
-                                ------
-                        RETURNING 1 as v
-                )
-                select count(v)
-                        from u
-                        into _c;
-                if _c > 1 then
-                    perform reclada.raise_exception('can''t mach component objects',_f_name);
-                elsif _c = 1 then
-                    continue;
-                end if;
-                
-                with t as
-                (
-                    select min(id) as id
-                        from dev.component_object
-                            where status = 'need to check'
-                                and _attrs               = data-> 'attributes'
-                                and _class_uuid::text    = data->>'class'
-                                and _data->>'parentGUID' = data->>'parentGUID' 
-                                ------
-                                and _class_name != 'jsonschema'
-                                and _obj_guid is null
-                                ------
-                ),   
-                u as (
-                    update dev.component_object u
-                        set status = 'ok'
-                            from t
-                                where u.id = t.id
-                        RETURNING 1 as v
-                )
-                    select count(v)
-                        from u
-                        into _c;
-                if _c > 1 then
-                    perform reclada.raise_exception('can''t mach component objects',_f_name);
-                elsif _c = 1 then
-                    continue;
-                end if;
-                
-                insert into dev.component_object( data, status  )
-                    select _data, 'create';
-                continue;
-            else
-                IF EXISTS (
-                    SELECT FROM reclada.object 
-                        WHERE guid = _obj_guid
-                ) THEN
-                    perform reclada.raise_exception ('GUID: '||_obj_guid::text||' is duplicate',_f_name);
-                END IF;
-
-            end if;
+            IF EXISTS (
+                SELECT FROM reclada.object 
+                    WHERE guid = _obj_guid
+            ) THEN
+                perform reclada.raise_exception ('GUID: '||_obj_guid::text||' is duplicate',_f_name);
+            END IF;
 
             _obj_guid := coalesce(_obj_guid, public.uuid_generate_v4());
 
