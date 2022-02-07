@@ -19,7 +19,7 @@ create table dev.component_object(
     id     BIGINT   NOT NULL
                     GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1)
                     PRIMARY KEY,
-    status text  not null DEFAULT 'need to check',-- ok, update, create, delete 
+    status text  not null DEFAULT 'need to check',-- ok, update, create, delete, create_subclass 
     data   jsonb not null 
 );
 

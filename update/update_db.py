@@ -190,16 +190,18 @@ def replace_component(name:str,repository:str,branch:str,component_installer)->s
     if guid != '':
         db_hash = run_cmd_scalar(f"SELECT commit_hash FROM reclada.v_component WHERE guid = '{guid}'")
         if db_hash == repo_hash:
-            os.chdir('..')
-            rmdir(name)
+            if name != 'db':
+                os.chdir('..')
+                rmdir(name)
             print(f'Component {name} has actual version')
             return
 
     cmd = f"SELECT dev.begin_install_component('{name}','{repository}','{repo_hash}');"
     res = run_cmd_scalar(cmd)
-    component_installer()
-    cmd = "SELECT dev.finish_install_component();"
-    res = run_cmd_scalar(cmd)
+    if res == 'OK':
+        component_installer()
+        cmd = "SELECT dev.finish_install_component();"
+        res = run_cmd_scalar(cmd)
     if name != 'db':
         os.chdir('..')
         rmdir(name)

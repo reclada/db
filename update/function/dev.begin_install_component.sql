@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION dev.begin_install_component
     _repository  text,
     _commit_hash text
 )
-RETURNS void AS $$
+RETURNS text AS $$
 DECLARE
     _guid        uuid;
     _f_name      text = 'dev.begin_install_component';
@@ -29,6 +29,6 @@ BEGIN
         select obj_data 
             from reclada.v_component_object
                 where component_name = _name;
-
+    return 'OK';
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

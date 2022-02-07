@@ -5,6 +5,7 @@ RETURNS void AS $$
 DECLARE
     _f_name   text := 'dev.finish_install_component';
     _obj      jsonb;
+    _data     jsonb;
 BEGIN
     perform reclada.raise_exception('Component does not found.',_f_name)
         where not exists(select 1 from dev.component);
@@ -42,6 +43,21 @@ BEGIN
     perform reclada_object.delete(data)
         from dev.component_object
             where status = 'delete';
+
+    FOR _data IN (SELECT data 
+                    from dev.component_object 
+                        where status = 'create_subclass'
+                        ORDER BY id)
+    LOOP
+        perform reclada_object.create_relationship(
+                'data of reclada-component',
+                (_obj ->>'GUID')::uuid ,
+                (cr.v ->>'GUID')::uuid ,
+                '{}'::jsonb            ,
+                (_obj  ->>'GUID')::uuid
+            )
+            from (select reclada_object.create_subclass(_data)#>'{0}' v) cr;
+    END LOOP;
 
     perform reclada_object.create_relationship(
                 'data of reclada-component',

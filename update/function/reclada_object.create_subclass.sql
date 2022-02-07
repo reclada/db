@@ -9,10 +9,11 @@
  */
 
 DROP FUNCTION IF EXISTS reclada_object.create_subclass;
-CREATE OR REPLACE FUNCTION reclada_object.create_subclass(data jsonb)
-RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION reclada_object.create_subclass(_data jsonb)
+RETURNS jsonb AS $$
 DECLARE
     _class_list     jsonb;
+    _res            jsonb = '{}'::jsonb;
     _class          text;
     _properties     jsonb;
     _p_properties   jsonb;
@@ -32,23 +33,74 @@ DECLARE
     _partial_clause text;
     _field_name     text;
     _create_obj     jsonb;
+    _component_guid uuid;
+    _obj_guid       uuid;
+    _c              int;
 BEGIN
 
-    _class_list := data->'class';
+    _class_list := _data->'class';
     IF (_class_list IS NULL) THEN
         perform reclada.raise_exception('The reclada object class is not specified',_f_name);
     END IF;
+
+    _obj_guid := coalesce((_data->>'GUID')::uuid,public.uuid_generate_v4());
 
     IF (jsonb_typeof(_class_list) != 'array') THEN
         _class_list := '[]'::jsonb || _class_list;
     END IF;
 
-    attrs := data->'attributes';
+    attrs := _data->'attributes';
     IF (attrs IS NULL) THEN
         perform reclada.raise_exception('The reclada object must have attributes',_f_name);
     END IF;
 
-    
+    _new_class = attrs->>'newClass';
+    _properties := coalesce(attrs -> 'properties','{}'::jsonb);
+    _required   := coalesce(attrs -> 'required'  ,'[]'::jsonb);
+
+    SELECT guid 
+        FROM dev.component 
+        INTO _component_guid;
+
+    if _component_guid is not null then
+        update dev.component_object
+            set status = 'ok'
+            where status = 'need to check'
+                and _new_class  = data #>> '{attributes,forClass}'
+                and _properties = data #>  '{attributes,schema,properties}'
+                and _required   = data #>  '{attributes,schema,required}'
+                and jsonb_array_length(_class_list) = jsonb_array_length(data #> '{attributes,parentList}');
+
+        GET DIAGNOSTICS _c := ROW_COUNT;
+        if _c > 1 then
+            perform reclada.raise_exception('can''t mach component objects',_f_name);
+        elsif _c = 1 then
+            return _res;
+        end if;
+
+        -- upgrade jsonschema
+        with u as (
+            update dev.component_object
+                set status = 'delete'
+                where status = 'need to check'
+                    and _new_class  = data #>> '{attributes,forClass}'
+                RETURNING 1 as v
+        )
+        insert into dev.component_object( data, status  )
+            select _data, 'create_subclass'
+                from u;
+
+        GET DIAGNOSTICS _c := ROW_COUNT;
+        if _c > 1 then
+            perform reclada.raise_exception('can''t mach component objects',_f_name);
+        elsif _c = 1 then
+            return _res;
+        end if;
+
+        insert into dev.component_object( data, status  )
+                select _data, 'create_subclass';
+            return _res;
+    end if;
 
     FOR _class IN SELECT jsonb_array_elements_text(_class_list)
     LOOP
@@ -66,8 +118,6 @@ BEGIN
         _parent_list := _parent_list || to_jsonb(class_guid);
 
     END LOOP;
-
-    _new_class = attrs->>'newClass';
    
     SELECT max(version) + 1
     FROM reclada.v_class_lite v
@@ -75,12 +125,10 @@ BEGIN
         INTO _version;
 
     _version := coalesce(_version,1);
-    _properties := coalesce(attrs -> 'properties','{}'::jsonb);
-    _required   := coalesce(attrs -> 'required'  ,'[]'::jsonb);
-    class_schema := class_schema->'attributes'->'schema';
 
     _create_obj := format('{
         "class": "jsonschema",
+        "GUID": "%s",
         "attributes": {
             "forClass": "%s",
             "version": "%s",
@@ -92,6 +140,7 @@ BEGIN
             "parentList":%s
         }
     }',
+    _obj_guid::text,
     _new_class,
     _version,
     _properties,
@@ -113,7 +162,8 @@ BEGIN
     IF ( jsonb_typeof(attrs->'parentField') = 'string' ) THEN
         _create_obj := jsonb_set(_create_obj, '{attributes,parentField}',attrs->'parentField');
     END IF;
-    PERFORM reclada_object.create(_create_obj);
+    select reclada_object.create(_create_obj)
+        into _res;
 
     IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
         FOR _uniFields IN (
@@ -139,7 +189,7 @@ BEGIN
         END LOOP;
         PERFORM reclada_object.refresh_mv('uniFields');
     END IF;
-
+    return _res;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 

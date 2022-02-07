@@ -50,45 +50,16 @@ BEGIN
 
         if _component_guid is not null then
             _attrs      := _data-> 'attributes';
-            _class_name := _data->>'class'     ;
-            _obj_guid   := _data->>'GUID'      ;
-            update dev.component_object
-                set status = 'ok'
-                where status = 'need to check'
-                    and _attrs = data->'attributes'
-                    ------
-                    and _class_name = 'jsonschema';
-                    ------
-            GET DIAGNOSTICS _c := ROW_COUNT;
-            if _c > 1 then
-                perform reclada.raise_exception('can''t mach component objects',_f_name);
-            elsif _c = 1 then
-                continue;
-            end if;
+            _obj_guid   := _data->>'GUID'      ;    
+            select obj_id, for_class 
+                from reclada.v_class 
+                    where _data->>'class' in (obj_id::text, for_class)
+                    ORDER BY version DESC 
+                    LIMIT 1
+                into _class_uuid, _class_name;
 
-            -- upgrade jsonschema
-            with u as (
-                update dev.component_object
-                    set status = 'delete'
-                    where status = 'need to check'
-                        and _attrs#>'{attributes,forClass}'  = data #>'{attributes,forClass}'
-                        and _attrs                          != data->'attributes'
-                        ------
-                        and _class_name = 'jsonschema'
-                        ------
-                    RETURNING 1 as v
-            )
-            insert into dev.component_object( data, status  )
-                select _data, 'create'
-                    from u;
-
-            GET DIAGNOSTICS _c := ROW_COUNT;
-            if _c > 1 then
-                perform reclada.raise_exception('can''t mach component objects',_f_name);
-            elsif _c = 1 then
-                continue;
-            end if;
-            
+            perform reclada.raise_exception('You should use reclada_object.create_subclass for new jsonschema.',_f_name)
+                where _class_name = 'jsonschema';
 
             update dev.component_object
                 set status = 'ok'
@@ -96,9 +67,8 @@ BEGIN
                         and _obj_guid::text      = data->>'GUID'
                         and _attrs               = data-> 'attributes'
                         and _class_uuid::text    = data->>'class'
-                        and _data->>'parentGUID' = data->>'parentGUID' 
+                        and coalesce(_data->>'parentGUID','null') = coalesce(data->>'parentGUID','null') 
                         ------
-                        and _class_name != 'jsonschema'
                         and _obj_guid is not null;
                         ------
 
@@ -115,7 +85,6 @@ BEGIN
                     where status = 'need to check' 
                         and _obj_guid::text = data->>'GUID'
                         ------
-                        and _class_name != 'jsonschema'
                         and _obj_guid is not null;
                         ------
 
@@ -132,10 +101,9 @@ BEGIN
                     from dev.component_object
                         where status = 'need to check'
                             and _attrs               = data-> 'attributes'
-                            --and _class_uuid::text    = data->>'class'
-                            and coalesce(_data->>'parentGUID','') = coalesce(data->>'parentGUID','')
+                            and _class_uuid::text    = data->>'class'
+                            and coalesce(_data->>'parentGUID','null') = coalesce(data->>'parentGUID','null')
                             ------
-                            and _class_name != 'jsonschema'
                             and _obj_guid is null
                             ------
             )
