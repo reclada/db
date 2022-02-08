@@ -1,13 +1,13 @@
 {
-    "branch_db" : "main",
-    "branch_runtime" : "main",
-    "branch_SciNLP" : "main",
-    "branch_QAAutotests" : "main",
+    "branch_db" : "master",
+    "branch_runtime" : "master",
+    "branch_SciNLP" : "master",
+    "branch_QAAutotests" : "master",
     "db_URI" : "postgresql://[user_name]:[password]@[host(server_name)]:[port(default: 5432)]/[db_name]",
     "quick_install" : true,
     "LAMBDA_NAME" : "LAMBDA_NAME",
     "ENVIRONMENT_NAME" : "ENVIRONMENT_NAME",
-    "LAMBDA_REGION": "eu-west-1",
+    "LAMBDA_REGION": "LAMBDA_REGION",
     "run_object_create" : true,
     "version": "latest",
     "downgrade_test":true
