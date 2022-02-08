@@ -22,6 +22,10 @@
             "checksum": {
                 "type": "string"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "mimeType": {
                 "type": "string"
             },

@@ -17,6 +17,7 @@ AS
             t.created_time       ,
             t.attributes as attrs,
             cl.for_class as class_name,
+            cl.default_value,
             (
                 select json_agg(tmp)->0
                     FROM 
@@ -27,6 +28,7 @@ AS
                                 t.attributes as "attributes"        ,
                                 t.transaction_id as "transactionID" ,
                                 t.parent_guid as "parentGUID"       ,
+                                t.created_by  as "createdBy"        ,
                                 t.created_time as "createdTime"
                     ) as tmp
             )::jsonb as data,

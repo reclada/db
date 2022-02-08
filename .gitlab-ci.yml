@@ -30,16 +30,16 @@ prepare_db:
     - echo NAMESPACE = reclada-$ENV >> prepare.env
     - echo DBNAME = "${ENV}_reclada_k8s" >> prepare.env 
     - echo LAMBDA_NAME = "s3_get_presigned_url_${ENV}" >> prepare.env
-    - echo TEST_PARAMETERS_WEB_BASE_URL = "${ENV}.reclada.com" >> prepare.env
+    - echo LAMBDA_REGION = "eu-west-1" >> prepare.env
     #debug
     - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
   artifacts:
     reports:
       dotenv: prepare.env
   rules:
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: always
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main" && $CI_COMMIT_MESSAGE !~ /^delenv/
+    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master" && $CI_COMMIT_MESSAGE !~ /^delenv/
       when: always
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test" && $CI_COMMIT_MESSAGE !~ /^delenv/
       when: always
@@ -61,7 +61,7 @@ prepare_runtime:
     - echo $RUNTIME_REPO_TOKEN
     - echo $CI_COMMIT_REF_NAME
     #Create db with the same name prefix as current branch
-    - curl --request POST --header "PRIVATE-TOKEN:$RUNTIME_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/36/repository/branches?branch=$CI_COMMIT_REF_NAME&ref=main" | jq
+    - curl --request POST --header "PRIVATE-TOKEN:$RUNTIME_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/36/repository/branches?branch=$CI_COMMIT_REF_NAME&ref=master" | jq
     # Check pipeline sussess for current branch in runtime repository 
     - sleep 60
     - while [ $response != "success" ] && [ $response != "failed" ]; do sleep 5 ; echo "WATING FOR PIPELINE" ; response=$(curl --header "PRIVATE-TOKEN:$RUNTIME_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/36/pipelines?per_page=1&page=1" | jq -r '.[].status') ; echo $response ; done ;
@@ -72,7 +72,7 @@ prepare_runtime:
   rules:
     - if: $CI_COMMIT_MESSAGE =~ /^delenv/
       when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: never
@@ -80,7 +80,7 @@ prepare_runtime:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE !~ /^delenv/ && $CI_MERGE_REQUEST_ID !~ /^./ 
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -100,6 +100,7 @@ deploy-dynamic-env:
     - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
 
     - cat $CI_PROJECT_DIR/update/update_config.json
@@ -124,7 +125,7 @@ deploy-dynamic-env:
     when: never
   - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
     when: always
-  - if: $CI_COMMIT_REF_NAME == "main"
+  - if: $CI_COMMIT_REF_NAME == "master"
     when: never
   - if: $CI_COMMIT_REF_NAME == "test"
     when: never
@@ -143,6 +144,7 @@ deploy-autotest-env:
     - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${TEST_RDS}:5432/autotest_reclada_k8s\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"s3_get_presigned_url_autotest\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
 
     - cat $CI_PROJECT_DIR/update/update_config.json
@@ -167,7 +169,7 @@ deploy-autotest-env:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -220,7 +222,7 @@ test-autotest-env:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -232,12 +234,13 @@ deploy-prod-env:
     - echo "Run update database in prod env"
 
     - cp $CI_PROJECT_DIR/update/update_config_template.json $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"main\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"master\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"server\" :.*|\"server\" :\ \"$PROD_RDS\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db\" :.*|\"db\" :\ \"prod_reclada_k8s\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${PROD_RDS}:5432/prod_reclada_k8s\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"s3_get_presigned_url_prod\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
 
     - cat $CI_PROJECT_DIR/update/update_config.json
@@ -256,13 +259,13 @@ deploy-prod-env:
   rules:
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: never
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: always
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -287,7 +290,7 @@ delete-db-dynamic-env:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE =~ /^delenv/
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -328,7 +331,7 @@ delete-terraform-dynamic-env:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE =~ /^delenv/ && $CI_MERGE_REQUEST_ID !~ /^./ 
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -364,7 +367,7 @@ delete-branches-dynamic-env:
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE =~ /^delenv/
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
@@ -391,15 +394,15 @@ push-to-github:
   tags:
       - k8s-devops
   rules:
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: always
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: never
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME !~ /^dynamic/
       when: never
     - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
-      when: never
+      when: never 
