@@ -247,7 +247,6 @@ drop function reclada_object.datasource_insert;
 \i 'function/reclada_object.delete.sql'
 \i 'function/dev.begin_install_component.sql'
 \i 'function/dev.finish_install_component.sql'
+\i 'view/reclada.v_ui_active_object.sql' 
 
-
--- научить базенку искать и разархивировать схемы в create
 --} REC-564
