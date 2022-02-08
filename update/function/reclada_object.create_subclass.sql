@@ -43,7 +43,7 @@ BEGIN
         perform reclada.raise_exception('The reclada object class is not specified',_f_name);
     END IF;
 
-    _obj_guid := coalesce((_data->>'GUID')::uuid,public.uuid_generate_v4());
+    _obj_guid := COALESCE((_data->>'GUID')::uuid,public.uuid_generate_v4());
 
     IF (jsonb_typeof(_class_list) != 'array') THEN
         _class_list := '[]'::jsonb || _class_list;
@@ -51,12 +51,12 @@ BEGIN
 
     attrs := _data->'attributes';
     IF (attrs IS NULL) THEN
-        perform reclada.raise_exception('The reclada object must have attributes',_f_name);
+        PERFORM reclada.raise_exception('The reclada object must have attributes',_f_name);
     END IF;
 
-    _new_class = attrs->>'newClass';
-    _properties := coalesce(attrs -> 'properties','{}'::jsonb);
-    _required   := coalesce(attrs -> 'required'  ,'[]'::jsonb);
+    _new_class  := attrs->>'newClass';
+    _properties := COALESCE(attrs -> 'properties','{}'::jsonb);
+    _required   := COALESCE(attrs -> 'required'  ,'[]'::jsonb);
 
     SELECT guid 
         FROM dev.component 
@@ -73,7 +73,7 @@ BEGIN
 
         GET DIAGNOSTICS _c := ROW_COUNT;
         if _c > 1 then
-            perform reclada.raise_exception('can''t mach component objects',_f_name);
+            perform reclada.raise_exception('Can not match component objects',_f_name);
         elsif _c = 1 then
             return _res;
         end if;
@@ -92,7 +92,7 @@ BEGIN
 
         GET DIAGNOSTICS _c := ROW_COUNT;
         if _c > 1 then
-            perform reclada.raise_exception('can''t mach component objects',_f_name);
+            perform reclada.raise_exception('Can not match component objects',_f_name);
         elsif _c = 1 then
             return _res;
         end if;

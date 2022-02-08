@@ -463,10 +463,18 @@ BEGIN
                             on d.id_unique_object = uo.id
                         JOIN reclada.field f
                             on f.id = ANY (uo.id_field)
-                        UNION
-                    SELECT pattern||'':''||CASE WHEN pattern=''transactionID'' THEN ''number'' ELSE ''string'' END,
-                        CASE WHEN pattern=''transactionID'' THEN ''number'' ELSE ''string'' END 
+                    UNION
+                    SELECT  pattern||'':''|| t.v,
+                            t.v
                     FROM reclada.v_filter_mapping vfm
+                    CROSS JOIN LATERAL 
+                    (
+                        SELECT  CASE 
+                                    WHEN vfm.pattern=''{transactionID}'' 
+                                        THEN ''number'' 
+                                    ELSE ''string'' 
+                                END as v
+                    ) t
                 ),
                 on_data as 
                 (

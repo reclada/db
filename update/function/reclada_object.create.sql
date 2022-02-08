@@ -74,7 +74,7 @@ BEGIN
 
             GET DIAGNOSTICS _c := ROW_COUNT;
             if _c > 1 then
-                perform reclada.raise_exception('can''t mach component objects',_f_name);
+                perform reclada.raise_exception('Can not match component objects',_f_name);
             elsif _c = 1 then
                 continue;
             end if;
@@ -90,7 +90,7 @@ BEGIN
 
             GET DIAGNOSTICS _c := ROW_COUNT;
             if _c > 1 then
-                perform reclada.raise_exception('can''t mach component objects',_f_name);
+                perform reclada.raise_exception('Can not match component objects',_f_name);
             elsif _c = 1 then
                 continue;
             end if;
@@ -114,7 +114,7 @@ BEGIN
                     
             GET DIAGNOSTICS _c := ROW_COUNT;
             if _c > 1 then
-                perform reclada.raise_exception('can''t mach component objects',_f_name);
+                perform reclada.raise_exception('Can not match component objects',_f_name);
             elsif _c = 1 then
                 continue;
             end if;
@@ -285,7 +285,7 @@ BEGIN
         END IF;
         
         IF (NOT skip_insert) THEN           
-
+            _obj_guid := _data->>'GUID';
             IF EXISTS (
                 SELECT FROM reclada.object 
                     WHERE guid = _obj_guid
