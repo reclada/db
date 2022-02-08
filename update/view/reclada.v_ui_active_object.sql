@@ -23,7 +23,7 @@ t as
         from d 
         JOIN LATERAL jsonb_each(d.data) je
             on true
-        --where jsonb_typeof(je.value) != ''null''
+        -- where jsonb_typeof(je.value) != ''null''
     union
     SELECT 
             d.key ||'',''|| je.key as key ,
@@ -42,7 +42,7 @@ t as
         ) d
         JOIN LATERAL jsonb_each(d.data) je
             on true
-        --where jsonb_typeof(je.value) != ''null''
+        -- where jsonb_typeof(je.value) != ''null''
 ),
 res as
 (

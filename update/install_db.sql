@@ -2533,7 +2533,7 @@ $$;
 --
 
 CREATE FUNCTION reclada_object.get_active_status_obj_id() RETURNS uuid
-    LANGUAGE sql IMMUTABLE
+    LANGUAGE sql STABLE
     AS $$
     select obj_id 
         from reclada.v_object_status 
@@ -2546,7 +2546,7 @@ $$;
 --
 
 CREATE FUNCTION reclada_object.get_archive_status_obj_id() RETURNS uuid
-    LANGUAGE sql IMMUTABLE
+    LANGUAGE sql STABLE
     AS $$
     select obj_id 
         from reclada.v_object_status 
@@ -5955,48 +5955,6 @@ ALTER TABLE ONLY reclada.unique_object_reclada_object
 
 
 --
--- Name: accesskeyid_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX accesskeyid_index_v47 ON reclada.object USING btree (((attributes ->> 'accesskeyid'::text))) WHERE ((attributes ->> 'accesskeyid'::text) IS NOT NULL);
-
-
---
--- Name: bbox_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX bbox_index_v47 ON reclada.object USING btree (((attributes ->> 'bbox'::text))) WHERE ((attributes ->> 'bbox'::text) IS NOT NULL);
-
-
---
--- Name: bucketname_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX bucketname_index_v47 ON reclada.object USING btree (((attributes ->> 'bucketname'::text))) WHERE ((attributes ->> 'bucketname'::text) IS NOT NULL);
-
-
---
--- Name: caption_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX caption_index_v47 ON reclada.object USING btree (((attributes ->> 'caption'::text))) WHERE ((attributes ->> 'caption'::text) IS NOT NULL);
-
-
---
--- Name: celltype_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX celltype_index_v47 ON reclada.object USING btree (((attributes ->> 'celltype'::text))) WHERE ((attributes ->> 'celltype'::text) IS NOT NULL);
-
-
---
--- Name: channelname_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX channelname_index_v47 ON reclada.object USING btree (((attributes ->> 'channelname'::text))) WHERE ((attributes ->> 'channelname'::text) IS NOT NULL);
-
-
---
 -- Name: checksum_index_; Type: INDEX; Schema: reclada; Owner: -
 --
 
@@ -6011,24 +5969,10 @@ CREATE INDEX class_index ON reclada.object USING btree (class);
 
 
 --
--- Name: class_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX class_index_v47 ON reclada.object USING btree (((attributes ->> 'class'::text))) WHERE ((attributes ->> 'class'::text) IS NOT NULL);
-
-
---
--- Name: classguid_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX classguid_index_v47 ON reclada.object USING btree (((attributes ->> 'classguid'::text))) WHERE ((attributes ->> 'classguid'::text) IS NOT NULL);
-
-
---
 -- Name: colspan_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX colspan_index_v47 ON reclada.object USING btree (((attributes ->> 'colspan'::text))) WHERE ((attributes ->> 'colspan'::text) IS NOT NULL);
+CREATE INDEX colspan_index_v47 ON reclada.object USING btree (((attributes -> 'colspan'::text))) WHERE ((attributes -> 'colspan'::text) IS NOT NULL);
 
 
 --
@@ -6067,17 +6011,10 @@ CREATE INDEX document_fileguid_index ON reclada.object USING btree (((attributes
 
 
 --
--- Name: document_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX document_index_v47 ON reclada.object USING btree (((attributes ->> 'document'::text))) WHERE ((attributes ->> 'document'::text) IS NOT NULL);
-
-
---
 -- Name: environment_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX environment_index_v47 ON reclada.object USING btree (((attributes ->> 'environment'::text))) WHERE ((attributes ->> 'environment'::text) IS NOT NULL);
+CREATE INDEX environment_index_v47 ON reclada.object USING hash (((attributes -> 'environment'::text))) WHERE ((attributes -> 'environment'::text) IS NOT NULL);
 
 
 --
@@ -6126,7 +6063,7 @@ CREATE INDEX guid_index ON reclada.object USING hash (guid);
 -- Name: height_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX height_index_v47 ON reclada.object USING btree (((attributes ->> 'height'::text))) WHERE ((attributes ->> 'height'::text) IS NOT NULL);
+CREATE INDEX height_index_v47 ON reclada.object USING btree (((attributes -> 'height'::text))) WHERE ((attributes -> 'height'::text) IS NOT NULL);
 
 
 --
@@ -6140,56 +6077,28 @@ CREATE INDEX job_status_index ON reclada.object USING btree (((attributes ->> 's
 -- Name: left_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX left_index_v47 ON reclada.object USING btree (((attributes ->> 'left'::text))) WHERE ((attributes ->> 'left'::text) IS NOT NULL);
-
-
---
--- Name: login_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX login_index_v47 ON reclada.object USING btree (((attributes ->> 'login'::text))) WHERE ((attributes ->> 'login'::text) IS NOT NULL);
-
-
---
--- Name: mimetype_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX mimetype_index_v47 ON reclada.object USING btree (((attributes ->> 'mimetype'::text))) WHERE ((attributes ->> 'mimetype'::text) IS NOT NULL);
-
-
---
--- Name: name_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX name_index_v47 ON reclada.object USING btree (((attributes ->> 'name'::text))) WHERE ((attributes ->> 'name'::text) IS NOT NULL);
+CREATE INDEX left_index_v47 ON reclada.object USING btree (((attributes -> 'left'::text))) WHERE ((attributes -> 'left'::text) IS NOT NULL);
 
 
 --
 -- Name: nexttask_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX nexttask_index_v47 ON reclada.object USING btree (((attributes ->> 'nexttask'::text))) WHERE ((attributes ->> 'nexttask'::text) IS NOT NULL);
+CREATE INDEX nexttask_index_v47 ON reclada.object USING hash (((attributes -> 'nexttask'::text))) WHERE ((attributes -> 'nexttask'::text) IS NOT NULL);
 
 
 --
 -- Name: number_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX number_index_v47 ON reclada.object USING btree (((attributes ->> 'number'::text))) WHERE ((attributes ->> 'number'::text) IS NOT NULL);
+CREATE INDEX number_index_v47 ON reclada.object USING btree (((attributes -> 'number'::text))) WHERE ((attributes -> 'number'::text) IS NOT NULL);
 
 
 --
 -- Name: object_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX object_index_v47 ON reclada.object USING btree (((attributes ->> 'object'::text))) WHERE ((attributes ->> 'object'::text) IS NOT NULL);
-
-
---
--- Name: page_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX page_index_v47 ON reclada.object USING btree (((attributes ->> 'page'::text))) WHERE ((attributes ->> 'page'::text) IS NOT NULL);
+CREATE INDEX object_index_v47 ON reclada.object USING hash (((attributes -> 'object'::text))) WHERE ((attributes -> 'object'::text) IS NOT NULL);
 
 
 --
@@ -6224,14 +6133,14 @@ CREATE INDEX revision_index ON reclada.object USING btree (((attributes ->> 'rev
 -- Name: row_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX row_index_v47 ON reclada.object USING btree (((attributes ->> 'row'::text))) WHERE ((attributes ->> 'row'::text) IS NOT NULL);
+CREATE INDEX row_index_v47 ON reclada.object USING btree (((attributes -> 'row'::text))) WHERE ((attributes -> 'row'::text) IS NOT NULL);
 
 
 --
 -- Name: rowspan_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX rowspan_index_v47 ON reclada.object USING btree (((attributes ->> 'rowspan'::text))) WHERE ((attributes ->> 'rowspan'::text) IS NOT NULL);
+CREATE INDEX rowspan_index_v47 ON reclada.object USING btree (((attributes -> 'rowspan'::text))) WHERE ((attributes -> 'rowspan'::text) IS NOT NULL);
 
 
 --
@@ -6242,66 +6151,38 @@ CREATE INDEX runner_type_index ON reclada.object USING btree (((attributes ->> '
 
 
 --
--- Name: schema_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX schema_index_v47 ON reclada.object USING btree (((attributes ->> 'schema'::text))) WHERE ((attributes ->> 'schema'::text) IS NOT NULL);
-
-
---
--- Name: secretaccesskey_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX secretaccesskey_index_v47 ON reclada.object USING btree (((attributes ->> 'secretaccesskey'::text))) WHERE ((attributes ->> 'secretaccesskey'::text) IS NOT NULL);
-
-
---
 -- Name: subject_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX subject_index_v47 ON reclada.object USING btree (((attributes ->> 'subject'::text))) WHERE ((attributes ->> 'subject'::text) IS NOT NULL);
-
-
---
--- Name: table_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX table_index_v47 ON reclada.object USING btree (((attributes ->> 'table'::text))) WHERE ((attributes ->> 'table'::text) IS NOT NULL);
+CREATE INDEX subject_index_v47 ON reclada.object USING hash (((attributes -> 'subject'::text))) WHERE ((attributes -> 'subject'::text) IS NOT NULL);
 
 
 --
 -- Name: task_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX task_index_v47 ON reclada.object USING btree (((attributes ->> 'task'::text))) WHERE ((attributes ->> 'task'::text) IS NOT NULL);
+CREATE INDEX task_index_v47 ON reclada.object USING hash (((attributes -> 'task'::text))) WHERE ((attributes -> 'task'::text) IS NOT NULL);
 
 
 --
 -- Name: tasks_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX tasks_index_v47 ON reclada.object USING btree (((attributes ->> 'tasks'::text))) WHERE ((attributes ->> 'tasks'::text) IS NOT NULL);
-
-
---
--- Name: text_index_v47; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX text_index_v47 ON reclada.object USING btree (((attributes ->> 'text'::text))) WHERE ((attributes ->> 'text'::text) IS NOT NULL);
+CREATE INDEX tasks_index_v47 ON reclada.object USING gin (((attributes -> 'tasks'::text))) WHERE ((attributes -> 'tasks'::text) IS NOT NULL);
 
 
 --
 -- Name: top_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX top_index_v47 ON reclada.object USING btree (((attributes ->> 'top'::text))) WHERE ((attributes ->> 'top'::text) IS NOT NULL);
+CREATE INDEX top_index_v47 ON reclada.object USING btree (((attributes -> 'top'::text))) WHERE ((attributes -> 'top'::text) IS NOT NULL);
 
 
 --
 -- Name: tranid_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX tranid_index_v47 ON reclada.object USING btree (((attributes ->> 'tranid'::text))) WHERE ((attributes ->> 'tranid'::text) IS NOT NULL);
+CREATE INDEX tranid_index_v47 ON reclada.object USING btree (((attributes -> 'tranid'::text))) WHERE ((attributes -> 'tranid'::text) IS NOT NULL);
 
 
 --
@@ -6315,7 +6196,7 @@ CREATE INDEX transaction_id_index ON reclada.object USING btree (transaction_id)
 -- Name: triggers_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX triggers_index_v47 ON reclada.object USING btree (((attributes ->> 'triggers'::text))) WHERE ((attributes ->> 'triggers'::text) IS NOT NULL);
+CREATE INDEX triggers_index_v47 ON reclada.object USING gin (((attributes -> 'triggers'::text))) WHERE ((attributes -> 'triggers'::text) IS NOT NULL);
 
 
 --
@@ -6329,7 +6210,7 @@ CREATE INDEX uri_index_ ON reclada.object USING hash (((attributes ->> 'uri'::te
 -- Name: width_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
-CREATE INDEX width_index_v47 ON reclada.object USING btree (((attributes ->> 'width'::text))) WHERE ((attributes ->> 'width'::text) IS NOT NULL);
+CREATE INDEX width_index_v47 ON reclada.object USING btree (((attributes -> 'width'::text))) WHERE ((attributes -> 'width'::text) IS NOT NULL);
 
 
 --

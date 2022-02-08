@@ -17,15 +17,17 @@ RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $$
 DECLARE
-    v_obj_id            uuid;
-    tran_id             bigint;
-    _class_name         text;
+    v_obj_id              uuid;
+    tran_id               bigint;
+    _class_name           text;
     _class_name_from_uuid text;
     _uniFields_index_name text;
-    _class_uuid         uuid;
-    list_id             bigint[];
-    _for_class          text;
-    _exec_text          text;
+    _class_uuid           uuid;
+    list_id               bigint[];
+    _for_class            text;
+    _exec_text            text;
+    _uniFields_index_name text;
+    _attrs                jsonb;
 BEGIN
 
     v_obj_id := data->>'GUID';
@@ -107,8 +109,10 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object, no such GUID';
     END IF;
 
-    -- tran_id ???
-    PERFORM reclada_object.refresh_mv(COALESCE(_class_name_from_uuid, _class_name));
+    PERFORM reclada_object.refresh_mv(class_name)
+    FROM reclada.v_object vo
+    WHERE class_name IN ('jsonschema','User','ObjectStatus')
+        AND id = ANY(list_id);
 
     PERFORM reclada_notification.send_object_notification('delete', data);
 
