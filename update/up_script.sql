@@ -214,7 +214,24 @@ create table dev.component_object(
                             '7534ae14-df31-47aa-9b46-2ad3e60b4b6e'
                         )
         from reclada.object o
-            where o.class in 
+            where (
+                o.class in (select reclada_object.get_GUID_for_class('jsonschema'))
+                and o.attributes->>'forClass' in (  'RecladaObject',
+                                                    'tag',
+                                                    'DataSource',
+                                                    'S3Config',
+                                                    'DataSet',
+                                                    'Message'
+
+                                                    --'NLPattern',
+                                                    --'NLPatternAttribute',
+                                                    --'HeaderTerm',
+                                                    --'DataRow',
+                                                    --'Attribute',
+                                                    --'Data'
+                                                )
+            )
+            or o.class in 
             (
                 select reclada_object.get_GUID_for_class('Context')
                 UNION
