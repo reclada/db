@@ -216,9 +216,9 @@ create table dev.component_object(
         from reclada.object o
             where (
                 o.class in (select reclada_object.get_GUID_for_class('jsonschema'))
-                and o.attributes->>'forClass' in (  'RecladaObject',
-                                                    'tag',
+                and o.attributes->>'forClass' in (  'tag',
                                                     'DataSource',
+                                                    'File',
                                                     'S3Config',
                                                     'DataSet',
                                                     'Message'
