@@ -26,7 +26,6 @@ DECLARE
     list_id               bigint[];
     _for_class            text;
     _exec_text            text;
-    _uniFields_index_name text;
     _attrs                jsonb;
 BEGIN
 

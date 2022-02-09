@@ -22,6 +22,12 @@
 
     delete from reclada.object 
         where guid in (select reclada_object.get_GUID_for_class('Component'));
+    
+    delete from reclada.object 
+        where class in (select reclada_object.get_GUID_for_class('Index'));
+    
+    delete from reclada.object 
+        where guid in (select reclada_object.get_GUID_for_class('Index'));
 --} REC-564
 
 
@@ -62,10 +68,10 @@ DROP VIEW reclada.v_active_object;
 
 --{ REC-564
 drop table dev.component;
+drop table dev.component_object;
 --{function/reclada_object.datasource_insert}
 --{function/reclada_object.object_insert}
 --{function/reclada_object.delete}
 --{function/dev.begin_install_component}
 --{function/dev.finish_install_component}
-
 --} REC-564

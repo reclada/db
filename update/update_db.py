@@ -250,7 +250,8 @@ def get_commit_history(branch:str = branch_db, need_comment:bool = False):
             pre_valid_commit +=1
         else:
             remove_index.append(i)
-            print(f'\tcommit: {commit} is invalid')
+            if '4e175924faa761be367b19f62034057c1498fcb7' != commit:
+                print(f'\tcommit: {commit} is invalid')
         i+=1
         os.chdir('..')
         
