@@ -125,7 +125,7 @@ BEGIN
             
         end if;
 
-        SELECT  schema_obj, 
+        SELECT  valid_schema, 
                 attributes,
                 class_name,
                 class_guid 
@@ -269,7 +269,7 @@ BEGIN
                                     reclada_object.merge(
                                             new_data - 'class', 
                                             data,
-                                            schema#>'{attributes,schema}'
+                                            schema
                                         ) 
                                         || format('{"GUID": "%s"}', _obj_guid)::jsonb 
                                         || format('{"transactionID": %s}', tran_id)::jsonb

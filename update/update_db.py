@@ -24,7 +24,7 @@ parsed = urllib.parse.urlparse(db_URI)
 db_URI = db_URI.replace(parsed.password, urllib.parse.quote(parsed.password))
 
 db_user = parsed.username
-db = db_URI.split('/')[-1]
+db_name = db_URI.split('/')[-1]
 ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
 LAMBDA_NAME = j["LAMBDA_NAME"]
 LAMBDA_REGION = j["LAMBDA_REGION"]
@@ -202,6 +202,8 @@ def replace_component(name:str,repository:str,branch:str,component_installer)->s
         component_installer()
         cmd = "SELECT dev.finish_install_component();"
         res = run_cmd_scalar(cmd)
+        if res != 'OK':
+            raise Exception('Component does not installed')
     if name != 'db':
         os.chdir('..')
         rmdir(name)
@@ -299,13 +301,13 @@ def recreate_db():
     def execute(cmd:str):
         os.system(psql_str(f'-c "{cmd}"', db_URI_postgres))
     
-    execute(f'''REVOKE CONNECT ON DATABASE {db} FROM PUBLIC, {db_user};''')
+    execute(f'''REVOKE CONNECT ON DATABASE {db_name} FROM PUBLIC, {db_user};''')
     execute(f'''SELECT pg_terminate_backend(pid)        '''
         +   f'''    FROM pg_stat_activity               '''
         +   f'''        WHERE pid <> pg_backend_pid()   '''
-        +   f'''           AND datname = '{db}';        ''')
-    execute(f'''DROP DATABASE {db};''')
-    execute(f'''CREATE DATABASE {db};''')
+        +   f'''           AND datname = '{db_name}';        ''')
+    execute(f'''DROP DATABASE {db_name};''')
+    execute(f'''CREATE DATABASE {db_name};''')
 
 def run_test():
     clone('QAAutotests', 'https://github.com/reclada/QAAutotests.git', branch_QAAutotests)

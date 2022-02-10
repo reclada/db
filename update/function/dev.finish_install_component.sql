@@ -1,7 +1,7 @@
 
 DROP FUNCTION IF EXISTS dev.finish_install_component;
 CREATE OR REPLACE FUNCTION dev.finish_install_component()
-RETURNS void AS $$
+RETURNS text AS $$
 DECLARE
     _f_name   text := 'dev.finish_install_component';
     _obj      jsonb;
@@ -76,6 +76,7 @@ BEGIN
     perform reclada_object.update(data)
         from dev.component_object
             where status = 'update';
+    return 'OK';
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

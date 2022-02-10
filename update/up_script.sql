@@ -226,6 +226,7 @@ create table dev.component_object(
 --{ REC-594
 \i 'view/reclada.v_filter_mapping.sql'
 \i 'view/reclada.v_object.sql' 
+\i 'view/reclada.v_class.sql'
 --} REC-594
 
 --{ REC-562

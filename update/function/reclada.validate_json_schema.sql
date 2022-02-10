@@ -5,10 +5,10 @@ CREATE OR REPLACE FUNCTION reclada.validate_json_schema
 )
 RETURNS TABLE
 (
-    schema_obj  jsonb , 
-    attributes  jsonb ,
-    class_name  text  ,
-    class_guid  uuid
+    valid_schema  jsonb , 
+    attributes    jsonb ,
+    class_name    text  ,
+    class_guid    uuid
 )
 AS $$
 DECLARE
@@ -56,9 +56,9 @@ BEGIN
     END IF;
 
     RETURN QUERY
-        SELECT  _schema_obj , 
-                _attrs      , 
-                _class_name , 
+        SELECT  _valid_schema, 
+                _attrs       , 
+                _class_name  , 
                 _class_guid  ;
 END;
 $$ LANGUAGE PLPGSQL STABLE;
