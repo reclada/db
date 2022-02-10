@@ -95,7 +95,6 @@ BEGIN
         into _exec_text;
     
     if _exec_text is not null then
-        raise notice '%',_exec_text;
         EXECUTE _exec_text;
     end if;
 

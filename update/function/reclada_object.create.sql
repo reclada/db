@@ -30,7 +30,7 @@ DECLARE
     _rel_type       text := 'GUID changed for dupBehavior';
     _guid_list      text;
     _component_guid uuid;
-    _c              int;
+    _row_count              int;
     _f_name         text = 'reclada_object.create';
 BEGIN
 
@@ -72,10 +72,10 @@ BEGIN
                         and _obj_guid is not null;
                         ------
 
-            GET DIAGNOSTICS _c := ROW_COUNT;
-            if _c > 1 then
+            GET DIAGNOSTICS _row_count := ROW_COUNT;
+            if _row_count > 1 then
                 perform reclada.raise_exception('Can not match component objects',_f_name);
-            elsif _c = 1 then
+            elsif _row_count = 1 then
                 continue;
             end if;
 
@@ -88,10 +88,10 @@ BEGIN
                         and _obj_guid is not null;
                         ------
 
-            GET DIAGNOSTICS _c := ROW_COUNT;
-            if _c > 1 then
+            GET DIAGNOSTICS _row_count := ROW_COUNT;
+            if _row_count > 1 then
                 perform reclada.raise_exception('Can not match component objects',_f_name);
-            elsif _c = 1 then
+            elsif _row_count = 1 then
                 continue;
             end if;
             
@@ -112,10 +112,10 @@ BEGIN
                         from t
                             where u.id = t.id;
                     
-            GET DIAGNOSTICS _c := ROW_COUNT;
-            if _c > 1 then
+            GET DIAGNOSTICS _row_count := ROW_COUNT;
+            if _row_count > 1 then
                 perform reclada.raise_exception('Can not match component objects',_f_name);
-            elsif _c = 1 then
+            elsif _row_count = 1 then
                 continue;
             end if;
             
