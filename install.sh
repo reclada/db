@@ -1,4 +1,4 @@
-database=$1
+ database=$1
 user=$2
 if [ -z $database ]; then
     database="reclada";
