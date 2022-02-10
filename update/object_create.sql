@@ -1,3 +1,190 @@
+------------- jsonschema
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "tag",
+        "properties": {
+            "name": {"type": "string"}
+        },
+        "required": ["name"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "DataSource",
+        "properties": {
+            "name": {"type": "string"},
+            "uri": {"type": "string"}
+        },
+        "required": ["name"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "S3Config",
+        "properties": {
+            "endpointURL": {"type": "string"},
+            "regionName": {"type": "string"},
+            "accessKeyId": {"type": "string"},
+            "secretAccessKey": {"type": "string"},
+            "bucketName": {"type": "string"}
+            },
+        "required": ["accessKeyId", "secretAccessKey", "bucketName"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "DataSet",
+        "properties": {
+            "name": {"type": "string"},
+            "dataSources": {
+                "type": "array",
+                "items": {"type": "string"}
+            }
+        },
+        "required": ["name"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "Message",
+        "properties": {
+            "channelName": {"type": "string"},
+            "class": {"type": "string"},
+            "event": {
+                "type": "string",
+                "enum": [
+                    "create",
+                    "update",
+                    "list",
+                    "delete"
+                ]
+            },
+            "attributes": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["class", "channelName", "event"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+            "class": "RecladaObject",
+            "attributes": {
+                "newClass": "Index",
+                "properties": {
+                    "name": {"type": "string"},
+                    "method": {
+                        "type": "string",
+                        "enum ": [
+                            "btree", 
+                            "hash" , 
+                            "gist" , 
+                            "gin"
+                        ]
+                    },
+                    "wherePredicate": {
+                        "type": "string"
+                    },
+                    "fields": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "minContains": 1
+                    }
+                },
+                "required": ["name","fields"]
+            }
+        }'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "Component",
+        "properties": {
+            "name": {"type": "string"},
+            "commitHash": {"type": "string"},
+            "repository": {"type": "string"}
+        },
+        "required": ["name","commitHash","repository"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "Context",
+        "properties": {
+            "Lambda": {"type": "string"},
+            "Region": {"type": "string"},
+            "Environment": {"type": "string"}
+        },
+        "required": ["Lambda","Region","Environment"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "DTOJsonSchema",
+        "properties": {
+            "schema": {"type": "object"},
+            "function": {"type": "string"}
+        },
+        "required": ["schema","function"]
+    }
+}'::jsonb);
+
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+
+        "dupBehavior": "Replace",
+        "dupChecking": [
+            {
+                "isMandatory": true,
+                "uniFields": [
+                    "uri"
+                ]
+            },
+            {
+                "isMandatory": true,
+                "uniFields": [
+                    "checksum"
+                ]
+            }
+        ],
+        "isCascade": true,
+
+        "newClass": "File",
+        "properties": {
+            "uri": {"type": "string"},
+            "name": {"type": "string"},
+            "mimeType": {"type": "string"},
+            "checksum": {"type": "string"}
+        },
+        "required": ["uri","mimeType","name"]
+    }
+}'::jsonb);
+
+------------- defaultDataSet
+SELECT reclada_object.create('{
+    "class": "DataSet",
+    "attributes": {
+        "name": "defaultDataSet",
+        "dataSources": []
+    }
+}'::jsonb);
+
+
 ------------- Context
 SELECT reclada_object.create('{
         "GUID": "db0bb665-6aa4-45d5-876c-173a7e921f94",
@@ -8,6 +195,7 @@ SELECT reclada_object.create('{
             "Environment": "#@#ename#@#"
         }    
     }'::jsonb);
+
 ------------- Index
 select reclada_object.create('{
     "GUID": "db0873d1-786f-4d5d-b790-5c3b3cd29baf",
@@ -169,101 +357,3 @@ select reclada_object.create('{
             "wherePredicate": "((attributes ->> ''object''::text) IS NOT NULL)"
         }    
     }'::jsonb);
-
-------------- jsonschema
-
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attributes": {
-        "newClass": "tag",
-        "properties": {
-            "name": {"type": "string"}
-        },
-        "required": ["name"]
-    }
-}'::jsonb);
-
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attributes": {
-        "newClass": "DataSource",
-        "properties": {
-            "name": {"type": "string"},
-            "uri": {"type": "string"}
-        },
-        "required": ["name"]
-    }
-}'::jsonb);
-
-SELECT reclada_object.create_subclass('{
-    "class": "DataSource",
-    "attributes": {
-        "newClass": "File",
-        "properties": {
-            "checksum": {"type": "string"},
-            "mimeType": {"type": "string"},
-            "uri": {"type": "string"}
-        },
-        "required": ["checksum", "mimeType"]
-    }
-}'::jsonb);
-
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attributes": {
-        "newClass": "S3Config",
-        "properties": {
-            "endpointURL": {"type": "string"},
-            "regionName": {"type": "string"},
-            "accessKeyId": {"type": "string"},
-            "secretAccessKey": {"type": "string"},
-            "bucketName": {"type": "string"}
-            },
-        "required": ["accessKeyId", "secretAccessKey", "bucketName"]
-    }
-}'::jsonb);
-
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attributes": {
-        "newClass": "DataSet",
-        "properties": {
-            "name": {"type": "string"},
-            "dataSources": {
-                "type": "array",
-                "items": {"type": "string"}
-            }
-        },
-        "required": ["name"]
-    }
-}'::jsonb);
-
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attributes": {
-        "newClass": "Message",
-        "properties": {
-            "channelName": {"type": "string"},
-            "class": {"type": "string"},
-            "event": {
-                "type": "string",
-                "enum": [
-                    "create",
-                    "update",
-                    "list",
-                    "delete"
-                ]
-            },
-            "attributes": {"type": "array", "items": {"type": "string"}}
-        },
-        "required": ["class", "channelName", "event"]
-    }
-}'::jsonb);
-
-SELECT reclada_object.create('{
-    "class": "DataSet",
-    "attributes": {
-        "name": "defaultDataSet",
-        "dataSources": []
-    }
-}'::jsonb);

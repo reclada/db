@@ -221,7 +221,9 @@ create table dev.component_object(
                                                     'File',
                                                     'S3Config',
                                                     'DataSet',
-                                                    'Message'
+                                                    'Message',
+                                                    'Component',
+                                                    'Index',
 
                                                     --'NLPattern',
                                                     --'NLPatternAttribute',
