@@ -118,10 +118,11 @@ create table dev.component_object(
         )
         FROM
         (
-            SELECT  ns.nspname as schema, 
+            SELECT  distinct 
+                    ns.nspname as schema, 
                     i.relname  as name  , 
                     am.amname  as method,
-                    ns.nspname as table ,
+                    t.relname  as table ,
                     to_jsonb(
                         regexp_split_to_array(
                             pg_catalog.pg_get_expr(ix.indexprs, ix.indrelid),
