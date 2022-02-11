@@ -75,3 +75,4 @@ drop table dev.component_object;
 --{function/dev.begin_install_component}
 --{function/dev.finish_install_component}
 --} REC-564
+drop index if exists reclada.fields_index_;
