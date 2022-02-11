@@ -251,4 +251,4 @@ drop function reclada_object.datasource_insert;
 \i 'function/dev.finish_install_component.sql'
 \i 'view/reclada.v_ui_active_object.sql' 
 
---} REC-564
+--} REC-564 
