@@ -12,7 +12,8 @@ AS
             obj.attrs         ,
             obj.status        ,
             obj.data          ,
-            obj.parent_guid
+            obj.parent_guid,
+            default_value
 	FROM reclada.v_active_object obj
    	WHERE class_name = 'jsonschema';
 --select * from reclada.v_class

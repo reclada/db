@@ -13,7 +13,7 @@ AS
             obj.attributes    ,
             obj.status        
         FROM reclada.object obj
-        WHERE class = (select reclada_object.get_GUID_for_class('ObjectDisplay'))
+        WHERE class = (select reclada_object.get_guid_for_class('ObjectDisplay'))
             AND status = reclada_object.get_active_status_obj_id()
 ;
 --select * from reclada.v_object_display
