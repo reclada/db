@@ -10,6 +10,7 @@ AS
         FROM reclada.v_component c
         JOIN reclada.v_relationship r
             ON r.parent_guid = c.guid
+                AND 'data of reclada-component' = r.type
         JOIN reclada.v_active_object o
             ON o.obj_id = r.subject;
 --select * from reclada.v_component_object

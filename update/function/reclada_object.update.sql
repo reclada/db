@@ -38,7 +38,7 @@ DECLARE
     _guid_list      text;
 BEGIN
 
-    SELECT  schema_obj, 
+    SELECT  valid_schema, 
             attributes,
             class_name,
             class_guid 

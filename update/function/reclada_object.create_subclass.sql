@@ -35,7 +35,7 @@ DECLARE
     _create_obj     jsonb;
     _component_guid uuid;
     _obj_guid       uuid;
-    _c              int;
+    _row_count              int;
 BEGIN
 
     _class_list := _data->'class';
@@ -71,10 +71,10 @@ BEGIN
                 and _required   = data #>  '{attributes,schema,required}'
                 and jsonb_array_length(_class_list) = jsonb_array_length(data #> '{attributes,parentList}');
 
-        GET DIAGNOSTICS _c := ROW_COUNT;
-        if _c > 1 then
+        GET DIAGNOSTICS _row_count := ROW_COUNT;
+        if _row_count > 1 then
             perform reclada.raise_exception('Can not match component objects',_f_name);
-        elsif _c = 1 then
+        elsif _row_count = 1 then
             return _res;
         end if;
 
@@ -90,10 +90,10 @@ BEGIN
             select _data, 'create_subclass'
                 from u;
 
-        GET DIAGNOSTICS _c := ROW_COUNT;
-        if _c > 1 then
+        GET DIAGNOSTICS _row_count := ROW_COUNT;
+        if _row_count > 1 then
             perform reclada.raise_exception('Can not match component objects',_f_name);
-        elsif _c = 1 then
+        elsif _row_count = 1 then
             return _res;
         end if;
 
@@ -164,31 +164,7 @@ BEGIN
     END IF;
     select reclada_object.create(_create_obj)
         into _res;
-
-    IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
-        FOR _uniFields IN (
-            SELECT jsonb_array_elements(attrs->'dupChecking')->'uniFields'
-        ) LOOP
-            IF ( jsonb_typeof(_uniFields) = 'array' ) THEN
-                SELECT
-                    reclada.get_unifield_index_name( array_agg(f ORDER BY f)) AS idx_name, 
-                    string_agg('(attributes ->> ''' || f || ''')','||' ORDER BY f) AS fields_list,
-                    string_agg('attributes ->> ''' || f || ''' IS NOT NULL',' AND ' ORDER BY f) AS partial_clause
-                FROM (
-                    SELECT jsonb_array_elements_text (_uniFields) f
-                ) a
-                    INTO _idx_name, _f_list, _partial_clause;
-                IF NOT EXISTS (
-                    SELECT 1
-                    FROM pg_catalog.pg_indexes pi2 
-                    WHERE schemaname ='reclada' AND tablename ='object' AND indexname =_idx_name
-                ) THEN
-                    EXECUTE E'CREATE INDEX ' || _idx_name || ' ON reclada.object USING HASH ((' || _f_list || ')) WHERE ' || _partial_clause;
-                END IF;
-            END IF;
-        END LOOP;
-        PERFORM reclada_object.refresh_mv('uniFields');
-    END IF;
+    PERFORM reclada_object.refresh_mv('uniFields');
     return _res;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

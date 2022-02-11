@@ -1,7 +1,8 @@
 from json.decoder import JSONDecodeError
 from update_db import get_version_from_commit, get_version_from_db,clone_db,install_components,clear_db_from_components
-from update_db import run_file, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,run_object_create,pg_dump
+from update_db import run_file, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,run_object_create,pg_dump,db_name
 
+import time
 import os
 import datetime
 import json
@@ -16,7 +17,8 @@ def upgrade():
     run_file('up.sql')
 
 if __name__ == "__main__":
-
+    print(f'Current database: {db_name}')
+    time.sleep(2)
     #install_components()
     t = str(datetime.datetime.now())
     
@@ -98,18 +100,9 @@ if __name__ == "__main__":
                         else:
                             if (ldd[i] != lcd[j]):
                                 good = False
-                                while (ldd[i] != lcd[j]):
-                                    if ldd[i].startswith('CREATE INDEX '):
-                                        good = True
-                                    i += 1
-                                    if i == len(ldd):
-                                        input("!!! down.sql invalid !!! (max i)")
-                                        good = False
-                                        break
-                                if not good:
-                                    d.append(ldd[i])
-                                    input("!!! down.sql invalid !!! found new unexpected db-object")
-                                    break
+                                d.append(ldd[i])
+                                input("!!! down.sql invalid !!! found new unexpected db-object")
+                                break
 
                 else: # COPY
                     if ldd[i] == '\n' or lcd[j] == '\n':

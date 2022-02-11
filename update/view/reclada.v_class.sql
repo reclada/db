@@ -12,7 +12,8 @@ AS
             obj.attrs         ,
             obj.status        ,
             obj.data          ,
-            obj.parent_guid
+            obj.parent_guid   ,
+            obj.default_value
 	FROM reclada.v_class_lite cl
     JOIN reclada.v_active_object obj
         on cl.id = obj.id;
