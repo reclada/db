@@ -1,4 +1,5 @@
-from update_db import clone_db, get_commit_history,run_object_create,install_objects, get_version_from_commit, rmdir, run_file,run_cmd_scalar, recreate_db, branch_runtime, branch_SciNLP,quick_install,version,config_version,db_user, json_schema_install
+from update_db import clone_db, get_commit_history,run_object_create,install_components, get_version_from_commit, rmdir, run_file, recreate_db 
+from update_db import quick_install,version,config_version, json_schema_install
 
 
 import os
@@ -10,7 +11,6 @@ reclada_user_name = 'reclada'
 def db_install():
 
     json_schema_install()
-    rmdir('db')
     clone_db()
     
     short_install = os.path.isfile(os.path.join('update','install_db.sql')) and quick_install
@@ -50,40 +50,13 @@ def db_install():
     return need_update, use_dump
 
 
-def runtime_install():
-    rmdir('reclada.runtime')
-    os.system(f'git clone https://gitlab.reclada.com/developers/reclada-runtime')
-    os.chdir('reclada-runtime/db/objects')
-    os.system(f'git checkout {branch_runtime}')
-    run_file('install_objects.sql')
-    os.chdir('..')
-    os.chdir('..')
-    os.chdir('..')
-    rmdir('reclada.runtime')
-
-
-def scinlp_install():
-    rmdir('SciNLP')
-    os.system(f'git clone https://gitlab.reclada.com/developers/SciNLP')
-    os.chdir('SciNLP/src/db')
-    os.system(f'git checkout {branch_SciNLP}')
-    run_file('bdobjects.sql')
-    run_file('nlpobjects.sql')
-    run_file('nlpatterns.sql')
-    os.chdir('..')
-    os.chdir('..')
-    os.chdir('..')
-    rmdir('SciNLP')
-
-
 if __name__ == "__main__":
     
     recreate_db()
     need_update, use_dump = db_install()
+
     if need_update:
         os.system('python update_db.py')
-        if not use_dump:
-            scinlp_install()
-            runtime_install()
+
     if run_object_create:
-        install_objects()
+        install_components()

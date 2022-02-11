@@ -4,7 +4,8 @@ CREATE OR REPLACE FUNCTION reclada_object.create_relationship
     _rel_type   text,
     _obj_GUID   uuid,
     _subj_GUID  uuid,
-    _extra_attrs    jsonb DEFAULT '{}'::jsonb
+    _extra_attrs    jsonb DEFAULT '{}'::jsonb,
+    _parent_guid    uuid  default null
 )
 RETURNS jsonb AS $$
 DECLARE
@@ -27,15 +28,18 @@ BEGIN
         _obj := format('{
             "class": "Relationship",
             "attributes": {
-                "type": "%s",
-                "object": "%s",
-                "subject": "%s"
+                    "type": "%s",
+                    "object": "%s",
+                    "subject": "%s"
                 }
             }',
             _rel_type,
             _obj_GUID,
             _subj_GUID)::jsonb;
         _obj := jsonb_set (_obj, '{attributes}', _obj->'attributes' || _extra_attrs);   
+        if _parent_guid is not null then
+            _obj := jsonb_set (_obj, '{parentGUID}', to_jsonb(_parent_guid) );   
+        end if;
 
         RETURN  reclada_object.create( _obj);
     ELSE
