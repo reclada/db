@@ -164,7 +164,7 @@ BEGIN
     END IF;
     select reclada_object.create(_create_obj)
         into _res;
-
+    PERFORM reclada_object.refresh_mv('uniFields');
     return _res;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
