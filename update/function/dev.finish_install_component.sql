@@ -24,18 +24,6 @@ BEGIN
 
     delete from dev.component;
 
-    if exists
-    (
-        select 
-            from reclada.object o
-                where o.guid = (_obj->>'GUID')::uuid
-    ) then
-        perform reclada_object.update(_obj);
-    else
-        perform reclada_object.create(_obj);
-    end if;
-
-
     update dev.component_object
         set status = 'delete'
             where status = 'need to check';
@@ -76,6 +64,18 @@ BEGIN
     perform reclada_object.update(data)
         from dev.component_object
             where status = 'update';
+
+    if exists
+    (
+        select 
+            from reclada.object o
+                where o.guid = (_obj->>'GUID')::uuid
+    ) then
+        perform reclada_object.update(_obj);
+    else
+        perform reclada_object.create(_obj);
+    end if;
+
     return 'OK';
 
 END;

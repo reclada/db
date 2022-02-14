@@ -1,5 +1,5 @@
 from update_db import clone_db, get_commit_history,run_object_create,install_components, get_version_from_commit, rmdir, run_file, recreate_db 
-from update_db import quick_install,version,config_version, json_schema_install
+from update_db import quick_install,version,config_version, json_schema_install,branch_db,install_objects,replace_component,get_version_from_db
 
 
 import os
@@ -58,5 +58,8 @@ if __name__ == "__main__":
     if need_update:
         os.system('python update_db.py')
 
+    if get_version_from_db() >= 48: # Components do not exist before 48
+        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
+    
     if run_object_create:
         install_components()

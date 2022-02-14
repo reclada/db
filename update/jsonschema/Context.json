@@ -1,0 +1,29 @@
+{
+    "forClass": "Context",
+    "parentList": [],
+    "schema": {
+        "properties": {
+            "Environment": {
+                "type": "string"
+            },
+            "Lambda": {
+                "type": "string"
+            },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
+            "tags": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            }
+        },
+        "required": [
+            "Environment"
+        ],
+        "type": "object"
+    },
+    "version": "1"
+}
