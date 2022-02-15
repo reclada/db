@@ -180,6 +180,8 @@ create table dev.component_object(
                     select reclada_object.get_GUID_for_class('Task')
                     UNION 
                     select reclada_object.get_GUID_for_class('PipelineLite')
+                    UNION 
+                    select reclada_object.get_GUID_for_class('FileExtension')
                 );
     -- SciNLP
     select reclada_object.create_relationship
