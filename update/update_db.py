@@ -145,11 +145,9 @@ def run_file(file_name,DB_URI=db_URI):
 
 
 def run_cmd_scalar(command,DB_URI=db_URI)->str:
-    #print(f'psql {command}')
     command = command.replace('"','""').replace('\n',' ')
     cmd = psql_str(f'-c "{command}"',DB_URI)
     res = os.popen(cmd).read().strip()
-    #print(res)
     return res
 
 

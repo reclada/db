@@ -1,5 +1,5 @@
 ------------- jsonschema
-
+-- 1
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -10,7 +10,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-
+-- 2
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -22,7 +22,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-
+-- 3
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -37,7 +37,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["accessKeyId", "secretAccessKey", "bucketName"]
     }
 }'::jsonb);
-
+-- 4
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -52,7 +52,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["name"]
     }
 }'::jsonb);
-
+-- 5
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -69,12 +69,15 @@ SELECT reclada_object.create_subclass('{
                     "delete"
                 ]
             },
-            "attributes": {"type": "array", "items": {"type": "string"}}
+            "attributes": {
+                "type": "array", 
+                "items": {"type": "string"}
+            }
         },
         "required": ["class", "channelName", "event"]
     }
 }'::jsonb);
-
+-- 6
 SELECT reclada_object.create_subclass('{
             "class": "RecladaObject",
             "attributes": {
@@ -104,7 +107,7 @@ SELECT reclada_object.create_subclass('{
                 "required": ["name","fields"]
             }
         }'::jsonb);
-
+-- 7
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -117,7 +120,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["name","commitHash","repository"]
     }
 }'::jsonb);
-
+-- 8
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -130,7 +133,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["Lambda","Region","Environment"]
     }
 }'::jsonb);
-
+-- 9
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -142,7 +145,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["schema","function"]
     }
 }'::jsonb);
-
+-- 10
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -174,6 +177,62 @@ SELECT reclada_object.create_subclass('{
         "required": ["uri","mimeType","name"]
     }
 }'::jsonb);
+-- 11
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "User",
+        "properties": {
+            "login": {"type": "string"}
+        },
+        "required": ["login"]
+    }
+}'::jsonb);
+-- 12
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "ImportInfo",
+        "properties": {
+            "tranID": {"type": "number"},
+            "name": {"type": "string"}
+        },
+        "required": ["tranID","name"]
+    }
+}'::jsonb);
+-- 13
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "Asset",
+        "properties": {
+            "name": {"type": "string"},
+            "uri": {"type": "string"}
+        },
+        "required": ["name"]
+    }
+}'::jsonb);
+-- 14
+SELECT reclada_object.create_subclass('{
+    "class": "Asset",
+    "attributes": {
+        "newClass": "DBAsset"
+    }
+}'::jsonb);
+-- 15
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "revision",
+        "properties": {
+            "branch": {"type": "string"},
+            "user": {"type": "string"},
+            "num": {"type": "number"},
+            "dateTime": {"type": "string"}
+        },
+        "required": ["dateTime"]
+    }
+}'::jsonb);
 
 ------------- defaultDataSet
 SELECT reclada_object.create('{
@@ -198,14 +257,14 @@ SELECT reclada_object.create('{
 
 ------------- Index
 select reclada_object.create('{
-    "GUID": "db0873d1-786f-4d5d-b790-5c3b3cd29baf",
-    "class": "Index",
-    "attributes": {
-        "name": "checksum_index_",
-        "fields": ["(attributes ->> ''checksum''::text)"],
-        "method": "hash",
-        "wherePredicate": "((attributes ->> ''checksum''::text) IS NOT NULL)"
-    }    
+        "GUID": "db0873d1-786f-4d5d-b790-5c3b3cd29baf",
+        "class": "Index",
+        "attributes": {
+            "name": "checksum_index_",
+            "fields": ["(attributes ->> ''checksum''::text)"],
+            "method": "hash",
+            "wherePredicate": "((attributes ->> ''checksum''::text) IS NOT NULL)"
+        }
     }'::jsonb);
 select reclada_object.create('{
         "GUID": "db08d53b-c423-4e94-8b14-e73ebe98e991",

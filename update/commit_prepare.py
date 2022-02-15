@@ -1,7 +1,19 @@
-from json.decoder import JSONDecodeError
-from update_db import get_version_from_commit, get_version_from_db,clone_db,install_components,clear_db_from_components
-from update_db import run_file, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,replace_component,branch_db,install_objects,run_object_create,pg_dump,db_name
+from update_db import get_version_from_commit
+from update_db import get_version_from_db
+from update_db import clone_db
+from update_db import install_components
+from update_db import clear_db_from_components
+from update_db import run_file
+from update_db import psql_str
+from update_db import rmdir
+from update_db import run_test
+from update_db import run_cmd_scalar
+from update_db import downgrade_test
+from update_db import run_object_create
+from update_db import pg_dump
+from update_db import db_name
 
+from json.decoder import JSONDecodeError
 import time
 import os
 import datetime
