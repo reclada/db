@@ -236,6 +236,7 @@ SELECT reclada_object.create_subclass('{
 
 ------------- defaultDataSet
 SELECT reclada_object.create('{
+    "GUID":"10c400ff-a328-450d-ae07-ce7d427d961c",
     "class": "DataSet",
     "attributes": {
         "name": "defaultDataSet",

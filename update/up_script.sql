@@ -22,6 +22,7 @@ select reclada_object.create_relationship
                 limit 1
     ) db
         where 
+        (
             o.class in (select reclada_object.get_GUID_for_class('jsonschema'))
             and o.attributes->>'forClass' in (  'tag', -- 1
                                                 'DataSource', -- 2
@@ -38,7 +39,13 @@ select reclada_object.create_relationship
                                                 'Asset', -- 13
                                                 'DBAsset', -- 14
                                                 'revision' -- 15
-                                            );
+                                            )
+                                            
+        )
+        or (
+            o.class in (select reclada_object.get_GUID_for_class('DataSet'))
+            and o.attributes->>'name' = 'defaultDataSet'
+        );
 
 
 
