@@ -222,6 +222,7 @@ SELECT reclada_object.create_subclass('{
 -- 15
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
+    "GUID": "1b76f675-7f15-4749-97a2-81450feedb1c",
     "attributes": {
         "newClass": "revision",
         "properties": {

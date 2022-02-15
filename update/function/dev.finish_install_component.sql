@@ -75,6 +75,8 @@ BEGIN
     else
         perform reclada_object.create(_obj);
     end if;
+    
+    perform reclada_object.refresh_mv('All');
 
     return 'OK';
 
