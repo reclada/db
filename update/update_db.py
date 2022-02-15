@@ -332,21 +332,34 @@ def install_components(debug_db=False):
 
 def clear_db_from_components():
     print('clear db from components...')
-    cmd = f"""WITH d AS (
-                    SELECT component_guid, obj_id, relationship_guid
+    cmd = """DELETE FROM reclada.object 
+                WHERE guid in 
+                (
+                    SELECT obj_id 
                         FROM reclada.v_component_object
-                )
-                DELETE FROM reclada.object 
-                    WHERE guid in 
-                    (
-                        SELECT obj_id FROM d
-                        UNION
-                        SELECT relationship_guid FROM d
-                        UNION 
-                        SELECT guid FROM reclada.v_component
-                    )"""
+                    UNION
+                    select guid 
+                        from reclada.v_relationship 
+                            WHERE type = 'data of reclada-component'
+                    UNION 
+                    SELECT guid 
+                        FROM reclada.v_component
+                )"""
     res = run_cmd_scalar(cmd)
-
+    cmd = '''DELETE FROM reclada.object 
+                WHERE guid in 
+                (
+                    SELECT r.obj_id
+                        FROM reclada.v_revision r
+                        WHERE NOT EXISTS(
+                            SELECT 
+                                FROM reclada.object o 
+                                    WHERE r.obj_id::text = o.attributes->>'revision'
+                        )
+                )'''
+    res = run_cmd_scalar(cmd)
+    cmd = '''DELETE FROM dev.component_object'''
+    res = run_cmd_scalar(cmd)
 
 
 if __name__ == "__main__":
