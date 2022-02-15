@@ -1,9 +1,11 @@
 {
-    "forClass": "Environment",
-    "parentList": [],
+    "forClass": "Component",
+    "parentList": [
+        "ab9ab26c-8902-43dd-9f1a-743b14a89825"
+    ],
     "schema": {
         "properties": {
-            "description": {
+            "commitHash": {
                 "type": "string"
             },
             "disable": {
@@ -11,6 +13,9 @@
                 "type": "boolean"
             },
             "name": {
+                "type": "string"
+            },
+            "repository": {
                 "type": "string"
             },
             "tags": {
@@ -21,7 +26,9 @@
             }
         },
         "required": [
-            "name"
+            "repository",
+            "name",
+            "commitHash"
         ],
         "type": "object"
     },

@@ -24,7 +24,7 @@ parsed = urllib.parse.urlparse(db_URI)
 db_URI = db_URI.replace(parsed.password, urllib.parse.quote(parsed.password))
 
 db_user = parsed.username
-db = db_URI.split('/')[-1]
+db_name = db_URI.split('/')[-1]
 ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
 LAMBDA_NAME = j["LAMBDA_NAME"]
 LAMBDA_REGION = j["LAMBDA_REGION"]
@@ -42,6 +42,23 @@ def psql_str(cmd:str,DB_URI:str = db_URI)->str:
     return f'psql -t -P pager=off {cmd} {DB_URI}'
 
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
+
+def pg_dump(file_name:str,t:str):
+    os.system(f'pg_dump -N public -f {file_name} -O {db_URI}')
+
+    with open('up_script.sql') as f:
+        ver_str = f.readline()
+        ver = int(ver_str.replace('-- version =',''))
+            
+    with open(file_name,encoding='utf8') as f:
+        scr_str = f.readlines()
+
+    with open(file_name,'w',encoding='utf8') as f:
+        f.write(ver_str)
+        f.write(f'-- {t}')
+        for line in scr_str:
+            if line.find('GRANT') != 0 and line.find('REVOKE') != 0:
+                f.write(line)
 
 
 def json_schema_install(DB_URI=db_URI):
@@ -66,7 +83,52 @@ def json_schema_install(DB_URI=db_URI):
     rmdir('postgres-json-schema')
 
 
+def clone(component_name:str,repository:str,branch:str):
+    # folder: update
+    rmdir(component_name)
+    os.chdir('..') #folder: db
+    os.chdir('..') #folder: repos
+
+    if not (os.path.exists(component_name) and os.path.isdir(component_name)):
+        os.system(f'git clone {repository}')
+        os.chdir(component_name)
+        res = checkout(branch)
+        os.chdir('..')
+
+    folder_source = component_name
+    if component_name == 'db':
+        folder_source = f'db_copy_{str(uuid.uuid4())}'
+        shutil.copytree('db',folder_source)
+        os.chdir(folder_source)
+        checkout('.')
+        os.chdir('..')
+    
+    path_dest = os.path.join('db','update',component_name)
+
+    shutil.copytree(folder_source, path_dest)
+    if component_name == 'db':
+        rmdir(folder_source)
+
+    os.chdir(path_dest)
+    res = checkout(branch)
+    #folder: repos/db/update/component_name
+        
+
+def get_repo_hash(component_name:str,repository:str,branch:str):
+    # folder: db/update
+    rmdir(component_name)
+    if component_name != 'db':
+        clone(component_name,repository,branch)
+        #folder: repos/db/update/component_name
+    cmd = "git log --pretty=format:%H -n 1"
+    repo_hash = os.popen(cmd).read()
+    return repo_hash
+
+#{ Components
+
 def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
+    #if Path('update').exists():
+    #    os.chdir('update') # for lower 48 don't need
     file_name = 'object_create_patched.sql'
     with open('object_create.sql') as f:
         obj_cr = f.read()
@@ -80,6 +142,7 @@ def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONME
 
     run_file(file_name,DB_URI)
     os.remove(file_name)
+    #os.chdir('..')
 
 
 def run_file(file_name,DB_URI=db_URI):
@@ -88,15 +151,62 @@ def run_file(file_name,DB_URI=db_URI):
 
 
 def run_cmd_scalar(command,DB_URI=db_URI)->str:
+    command = command.replace('"','""').replace('\n',' ')
     cmd = psql_str(f'-c "{command}"',DB_URI)
     return os.popen(cmd).read().strip()
 
 
 def checkout(to:str = branch_db):
     cmd = f'git checkout {to} -q'
-    #print(cmd)
     r = os.popen(cmd).read()
     return r
+
+def runtime_install():
+    install_psql_script('db/objects',["install_objects.sql"])
+
+
+def scinlp_install():
+    install_psql_script('src/db',["bdobjects.sql","nlpobjects.sql","nlpatterns.sql"])
+
+
+def install_psql_script(directory:str,files:list):
+    path = directory.split('/')
+    os.chdir(os.path.join(*path))
+    for f in files:
+        run_file(f)
+    for _ in range(len(path)):
+        os.chdir('..')
+
+#} Components
+
+def replace_component(name:str,repository:str,branch:str,component_installer)->str:
+    '''
+        replace or install reclada-component
+    '''
+    print(f'installing {name}...')
+    guid = run_cmd_scalar(f"SELECT guid FROM reclada.v_component WHERE name = '{name}'")
+
+    repo_hash = get_repo_hash(name,repository,branch)
+    if guid != '':
+        db_hash = run_cmd_scalar(f"SELECT commit_hash FROM reclada.v_component WHERE guid = '{guid}'")
+        if db_hash == repo_hash:
+            if name != 'db':
+                os.chdir('..')
+                rmdir(name)
+            print(f'Component {name} has actual version')
+            return
+
+    cmd = f"SELECT dev.begin_install_component('{name}','{repository}','{repo_hash}');"
+    res = run_cmd_scalar(cmd)
+    if res == 'OK':
+        component_installer()
+        cmd = "SELECT dev.finish_install_component();"
+        res = run_cmd_scalar(cmd)
+        if res != 'OK':
+            raise Exception('Component does not installed')
+    if name != 'db':
+        os.chdir('..')
+        rmdir(name)
 
 
 def rmdir(top:str): 
@@ -110,19 +220,10 @@ def rmdir(top:str):
                 os.rmdir(os.path.join(root, name))
         os.rmdir(top)
 
+
 def clone_db():
-    rmdir('db')
-    os.chdir('..')
-    os.chdir('..')
-    folder_name = f'db_copy_{str(uuid.uuid4())}'
-    shutil.copytree('db',folder_name)
-    os.chdir(folder_name)
-    checkout('.')
-    os.chdir('..')
-    path = os.path.join('db','update','db')
-    shutil.move(folder_name, path)
-    os.chdir(path)
-    checkout(branch_db)
+    clone('db', 'db', branch_db)
+
 
 def get_commit_history(branch:str = branch_db, need_comment:bool = False):
     checkout(branch)
@@ -151,7 +252,8 @@ def get_commit_history(branch:str = branch_db, need_comment:bool = False):
             pre_valid_commit +=1
         else:
             remove_index.append(i)
-            print(f'\tcommit: {commit} is invalid')
+            if '4e175924faa761be367b19f62034057c1498fcb7' != commit:
+                print(f'\tcommit: {commit} is invalid')
         i+=1
         os.chdir('..')
         
@@ -199,19 +301,16 @@ def recreate_db():
     def execute(cmd:str):
         os.system(psql_str(f'-c "{cmd}"', db_URI_postgres))
     
-    execute(f'''REVOKE CONNECT ON DATABASE {db} FROM PUBLIC, {db_user};''')
+    execute(f'''REVOKE CONNECT ON DATABASE {db_name} FROM PUBLIC, {db_user};''')
     execute(f'''SELECT pg_terminate_backend(pid)        '''
         +   f'''    FROM pg_stat_activity               '''
         +   f'''        WHERE pid <> pg_backend_pid()   '''
-        +   f'''           AND datname = '{db}';        ''')
-    execute(f'''DROP DATABASE {db};''')
-    execute(f'''CREATE DATABASE {db};''')
+        +   f'''           AND datname = '{db_name}';        ''')
+    execute(f'''DROP DATABASE {db_name};''')
+    execute(f'''CREATE DATABASE {db_name};''')
 
 def run_test():
-    rmdir('QAAutotests')
-    os.system(f'git clone https://github.com/reclada/QAAutotests')
-    os.chdir('QAAutotests')
-    os.system(f'git checkout {branch_QAAutotests}')
+    clone('QAAutotests', 'https://github.com/reclada/QAAutotests.git', branch_QAAutotests)
     os.system(f'pip install -r requirements.txt')
     os.system(f'pytest '
         + 'tests/components/security/test_database_sql_injections.py '
@@ -220,6 +319,33 @@ def run_test():
         + '--alluredir results --log-file=test_output.log')
     os.chdir('..')
     rmdir('QAAutotests')
+
+def install_components():
+    v = get_version_from_db()
+    if v < 48: # Components do not exist before 48
+        install_objects() 
+    else:
+        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
+        replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
+        replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git',branch_runtime,runtime_install)
+
+def clear_db_from_components():
+
+    cmd = f"""WITH d AS (
+                    SELECT component_guid, obj_id, relationship_guid
+                        FROM reclada.v_component_object
+                )
+                DELETE FROM reclada.object 
+                    WHERE guid in 
+                    (
+                        SELECT obj_id FROM d
+                        UNION
+                        SELECT relationship_guid FROM d
+                        UNION 
+                        SELECT guid FROM reclada.v_component
+                    )"""
+    res = run_cmd_scalar(cmd)
+
 
 
 if __name__ == "__main__":

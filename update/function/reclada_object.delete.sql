@@ -17,15 +17,17 @@ RETURNS jsonb
 LANGUAGE PLPGSQL VOLATILE
 AS $$
 DECLARE
-    v_obj_id            uuid;
-    tran_id             bigint;
-    _class_name         text;
-    _class_name_from_uuid   text;
-    _class_uuid          uuid;
-    list_id             bigint[];
-    _for_class           text;
-    _uniFields_index_name          text;
-    _attrs              jsonb;
+    v_obj_id              uuid;
+    tran_id               bigint;
+    _class_name           text;
+    _class_name_from_uuid text;
+    _uniFields_index_name text;
+    _class_uuid           uuid;
+    list_id               bigint[];
+    _list_class_name      text[];
+    _for_class            text;
+    _exec_text            text;
+    _attrs                jsonb;
 BEGIN
 
     v_obj_id := data->>'GUID';
@@ -86,6 +88,18 @@ BEGIN
     )::jsonb
     INTO data;
 
+
+    SELECT string_agg('DROP INDEX reclada.'||(attrs->>'name')||';',' ')
+        FROM reclada.v_object o
+        WHERE o.id IN (SELECT unnest(list_id))
+            AND o.class_name = 'Index'
+        into _exec_text;
+    
+    if _exec_text is not null then
+        EXECUTE _exec_text;
+    end if;
+
+
     IF (jsonb_array_length(data) <= 1) THEN
         data := data->0;
     END IF;
@@ -94,10 +108,14 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object, no such GUID';
     END IF;
 
-    PERFORM reclada_object.refresh_mv(class_name)
+    SELECT array_agg(distinct class_name)
     FROM reclada.v_object vo
     WHERE class_name IN ('jsonschema','User','ObjectStatus')
-        AND id = ANY(list_id);
+        AND id = ANY(list_id)
+        INTO _list_class_name;
+    
+    PERFORM reclada_object.refresh_mv(cn)
+        FROM unnest( _list_class_name ) AS cn;
 
     PERFORM reclada_notification.send_object_notification('delete', data);
 
