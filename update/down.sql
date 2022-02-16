@@ -5,3 +5,5 @@
 --{function/reclada_object.create}
 --{function/reclada_object.update}
 --{function/reclada_object.merge}
+--{function/reclada_object.list}
+
