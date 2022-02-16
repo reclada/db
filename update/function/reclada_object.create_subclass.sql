@@ -35,7 +35,8 @@ DECLARE
     _create_obj     jsonb;
     _component_guid uuid;
     _obj_guid       uuid;
-    _row_count              int;
+    _row_count      int;
+    _defs           jsonb = '{}'::jsonb;
 BEGIN
 
     _class_list := _data->'class';
@@ -57,7 +58,7 @@ BEGIN
     _new_class  := attrs->>'newClass';
     _properties := COALESCE(attrs -> 'properties','{}'::jsonb);
     _required   := COALESCE(attrs -> 'required'  ,'[]'::jsonb);
-
+    _defs       := COALESCE(attrs -> '$defs'     ,'{}'::jsonb);
     SELECT guid 
         FROM dev.component 
         INTO _component_guid;
@@ -66,9 +67,10 @@ BEGIN
         update dev.component_object
             set status = 'ok'
             where status = 'need to check'
-                and _new_class  = data #>> '{attributes,forClass}'
-                and _properties = data #>  '{attributes,schema,properties}'
-                and _required   = data #>  '{attributes,schema,required}'
+                and _new_class  =          data #>> '{attributes,forClass}'
+                and _properties = COALESCE(data #>  '{attributes,schema,properties}','{}'::jsonb)
+                and _required   = COALESCE(data #>  '{attributes,schema,required}'  ,'[]'::jsonb)
+                and _defs       = COALESCE(data #>  '{attributes,schema,$defs}'     ,'{}'::jsonb)
                 and jsonb_array_length(_class_list) = jsonb_array_length(data #> '{attributes,parentList}');
 
         GET DIAGNOSTICS _row_count := ROW_COUNT;
@@ -134,6 +136,7 @@ BEGIN
             "version": "%s",
             "schema": {
                 "type": "object",
+                "$defs": %s,
                 "properties": %s,
                 "required": %s
             },
@@ -143,6 +146,7 @@ BEGIN
     _obj_guid::text,
     _new_class,
     _version,
+    _defs,
     _properties,
     _required,
     _parent_list

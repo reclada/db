@@ -37,21 +37,32 @@ SELECT reclada_object.create_subclass('{
         "required": ["accessKeyId", "secretAccessKey", "bucketName"]
     }
 }'::jsonb);
--- 4
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attributes": {
-        "newClass": "DataSet",
-        "properties": {
-            "name": {"type": "string"},
-            "dataSources": {
-                "type": "array",
-                "items": {"type": "string"}
+--{ 4 DataSet
+    SELECT reclada_object.create_subclass('{
+        "class": "RecladaObject",
+        "attributes": {
+            "newClass": "DataSet",
+            "properties": {
+                "name": {"type": "string"},
+                "dataSources": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                }
+            },
+            "required": ["name"]
+        }
+    }'::jsonb);
+
+        SELECT reclada_object.create('{
+            "GUID":"10c400ff-a328-450d-ae07-ce7d427d961c",
+            "class": "DataSet",
+            "attributes": {
+                "name": "defaultDataSet",
+                "dataSources": []
             }
-        },
-        "required": ["name"]
-    }
-}'::jsonb);
+        }'::jsonb);
+--} 4 DataSet
+
 -- 5
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
@@ -133,7 +144,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["Lambda","Region","Environment"]
     }
 }'::jsonb);
--- 9
+--{ 9 DTOJsonSchema
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
     "attributes": {
@@ -145,6 +156,144 @@ SELECT reclada_object.create_subclass('{
         "required": ["schema","function"]
     }
 }'::jsonb);
+
+    SELECT reclada_object.create('{
+            "GUID":"db0bf6f5-7eea-4dbd-9f46-e0535f7fb299",
+            "class": "DTOJsonSchema",
+            "attributes": {
+                "function": "reclada_object.get_query_condition_filter",
+                "schema": {
+                    "id": "expr",
+                    "type": "object",
+                    "required": [
+                        "value",
+                        "operator"
+                    ],
+                    "properties": {
+                        "value": {
+                            "type": "array",
+                            "items": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "number"
+                                    },
+                                    {
+                                        "$ref": "expr"
+                                    },
+                                    {
+                                        "type": "boolean"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            },
+                            "minItems": 1
+                        },
+                        "operator": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }'::jsonb);
+
+     SELECT reclada_object.create('{
+            "GUID":"db0ad26e-a522-4907-a41a-a82a916fdcf9",
+            "class": "DTOJsonSchema",
+            "attributes": {
+                "function": "reclada_object.list",
+                "schema": {
+                    "type": "object",
+                    "anyOf": [
+                        {
+                            "required": [
+                                "transactionID",
+                                "class"
+                            ]
+                        },
+                        {
+                            "required": [
+                                "class"
+                            ]
+                        },
+                        {
+                            "required": [
+                                "filter",
+                                "class"
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "class": {
+                            "type": "string"
+                        },
+                        "limit": {
+                            "anyOf": [
+                                {
+                                    "enum": [
+                                        "ALL"
+                                    ],
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "filter": {
+                            "type": "object"
+                        },
+                        "offset": {
+                            "type": "integer"
+                        },
+                        "orderBy": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "field"
+                                ],
+                                "properties": {
+                                    "field": {
+                                        "type": "string"
+                                    },
+                                    "order": {
+                                        "enum": [
+                                            "ASC",
+                                            "DESC"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
+                        "transactionID": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+            
+        }'::jsonb);
+--} 9 DTOJsonSchema
+
 -- 10
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
@@ -177,8 +326,10 @@ SELECT reclada_object.create_subclass('{
         "required": ["uri","mimeType","name"]
     }
 }'::jsonb);
--- 11
+
+--{ 11 User
 SELECT reclada_object.create_subclass('{
+    "GUID":"db0db7c0-9b25-4af0-8013-d2d98460cfff",
     "class": "RecladaObject",
     "attributes": {
         "newClass": "User",
@@ -188,6 +339,16 @@ SELECT reclada_object.create_subclass('{
         "required": ["login"]
     }
 }'::jsonb);
+
+    select reclada_object.create('{
+            "GUID": "db0789c1-1b4e-4815-b70c-4ef060e90884",
+            "class": "User",
+            "attributes": {
+                "login": "dev"
+            }
+        }'::jsonb);
+--} 11 User
+
 -- 12
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
@@ -235,17 +396,206 @@ SELECT reclada_object.create_subclass('{
     }
 }'::jsonb);
 
-------------- defaultDataSet
-SELECT reclada_object.create('{
-    "GUID":"10c400ff-a328-450d-ae07-ce7d427d961c",
-    "class": "DataSet",
+--{ 16 ObjectDisplay
+SELECT reclada_object.create_subclass('{
+    "class": "RecladaObject",
     "attributes": {
-        "name": "defaultDataSet",
-        "dataSources": []
+        "newClass": "ObjectDisplay",
+        "$defs": {
+            "displayType": {
+                "properties": {
+                    "orderColumn": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "orderRow": {
+                        "items": {
+                            "patternProperties": {
+                                "^{.*}$": {
+                                    "enum": [
+                                        "ASC",
+                                        "DESC"
+                                    ],
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "orderColumn",
+                    "orderRow"
+                ],
+                "type": "object"
+            }
+        },
+        "properties": {
+            "caption": {
+                "type": "string"
+            },
+            "card": {
+                "$ref": "#/$defs/displayType"
+            },
+            "classGUID": {
+                "type": "string",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"
+            },
+            "flat": {
+                "type": "bool"
+            },
+            "list": {
+                "$ref": "#/$defs/displayType"
+            },
+            "preview": {
+                "$ref": "#/$defs/displayType"
+            },
+            "table": {
+                "$ref": "#/$defs/displayType"
+            }
+        },
+        "required": [
+            "classGUID",
+            "caption"
+        ]
     }
 }'::jsonb);
 
+    SELECT reclada_object.create(('{
+        "GUID": "db09dd42-f2a2-4e34-90ea-a6e5f5ea6dff",
+        "class": "ObjectDisplay",
+        "attributes": {
+            "card": {
+                "orderRow": [
+                    {
+                        "{attributes,name}:string": "ASC"
+                    },
+                    {
+                        "{attributes,mimeType}:string": "DESC"
+                    }
+                ],
+                "orderColumn": [
+                    "{attributes,name}:string",
+                    "{attributes,mimeType}:string",
+                    "{attributes,tags}:array",
+                    "{status}:string",
+                    "{createdTime}:string",
+                    "{transactionID}:number"
+                ]
+            },
+            "list": {
+                "orderRow": [
+                    {
+                        "{attributes,name}:string": "ASC"
+                    },
+                    {
+                        "{attributes,mimeType}:string": "DESC"
+                    }
+                ],
+                "orderColumn": [
+                    "{attributes,name}:string",
+                    "{attributes,mimeType}:string",
+                    "{attributes,tags}:array",
+                    "{status}:string",
+                    "{createdTime}:string",
+                    "{transactionID}:number"
+                ]
+            },
+            "table": {
+                "orderRow": [
+                    {
+                        "{attributes,name}:string": "ASC"
+                    },
+                    {
+                        "{attributes,mimeType}:string": "DESC"
+                    }
+                ],
+                "orderColumn": [
+                    "{attributes,name}:string",
+                    "{attributes,mimeType}:string",
+                    "{attributes,tags}:array",
+                    "{status}:string",
+                    "{createdTime}:string",
+                    "{transactionID}:number"
+                ],
+                "{GUID}:string": {
+                    "width": 250,
+                    "caption": "GUID",
+                    "displayCSS": "GUID"
+                },
+                "{status}:string": {
+                    "width": 250,
+                    "caption": "Status",
+                    "displayCSS": "status"
+                },
+                "{createdTime}:string": {
+                    "width": 250,
+                    "caption": "Created time",
+                    "displayCSS": "createdTime"
+                },
+                "{transactionID}:number": {
+                    "width": 250,
+                    "caption": "Transaction",
+                    "displayCSS": "transactionID"
+                },
+                "{attributes,tags}:array": {
+                    "items": {
+                        "class": "e12e729b-ac44-45bc-8271-9f0c6d4fa27b",
+                        "behavior": "preview",
+                        "displayCSS": "link"
+                    },
+                    "width": 250,
+                    "caption": "Tags",
+                    "displayCSS": "arrayLink"
+                },
+                "{attributes,name}:string": {
+                    "width": 250,
+                    "caption": "File name",
+                    "behavior": "preview",
+                    "displayCSS": "name"
+                },
+                "{attributes,checksum}:string": {
+                    "width": 250,
+                    "caption": "Checksum",
+                    "displayCSS": "checksum"
+                },
+                "{attributes,mimeType}:string": {
+                    "width": 250,
+                    "caption": "Mime type",
+                    "displayCSS": "mimeType"
+                }
+            },
+            "caption": "Files",
+            "preview": {
+                "orderRow": [
+                    {
+                        "{attributes,name}:string": "ASC"
+                    },
+                    {
+                        "{attributes,mimeType}:string": "DESC"
+                    }
+                ],
+                "orderColumn": [
+                    "{attributes,name}:string",
+                    "{attributes,mimeType}:string",
+                    "{attributes,tags}:array",
+                    "{status}:string",
+                    "{createdTime}:string",
+                    "{transactionID}:number"
+                ]
+            },
+            "classGUID": "'|| (SELECT obj_id
+                                FROM reclada.v_class
+                                    WHERE for_class = 'File'
+                                    ORDER BY ID DESC
+                                    LIMIT 1 ) ||'"
+        }
+    }')::jsonb);
 
+--} 16 ObjectDisplay
 ------------- Context
 SELECT reclada_object.create('{
         "GUID": "db0bb665-6aa4-45d5-876c-173a7e921f94",

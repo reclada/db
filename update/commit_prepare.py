@@ -12,6 +12,9 @@ from update_db import downgrade_test
 from update_db import run_object_create
 from update_db import pg_dump
 from update_db import db_name
+from update_db import branch_db
+from update_db import install_objects
+from update_db import replace_component
 
 from json.decoder import JSONDecodeError
 import time
@@ -27,6 +30,9 @@ def upgrade(commit_ver):
         raise Exception(f'create_up.sql.py error: {res}')
 
     run_file('up.sql')
+
+    if get_version_from_db() >= 48: # Components do not exist before 48
+        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects,True)
 
     if commit_ver >= 48 and run_object_create: # Components do not exist before 48
         install_components(True)

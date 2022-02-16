@@ -5,6 +5,7 @@
 */
 
 \i 'function/dev.finish_install_component.sql'
+\i 'view/reclada.v_object_display.sql'
 
 select reclada_object.create_relationship
                     (
@@ -38,13 +39,21 @@ select reclada_object.create_relationship
                                                 'ImportInfo', -- 12
                                                 'Asset', -- 13
                                                 'DBAsset', -- 14
-                                                'revision' -- 15
+                                                'revision', -- 15
+                                                'ObjectDisplay' -- 16
                                             )
                                             
-        )
-        or (
+        ) or (
             o.class in (select reclada_object.get_GUID_for_class('DataSet'))
             and o.attributes->>'name' = 'defaultDataSet'
+        ) or (
+            o.class in (select reclada_object.get_GUID_for_class('User'))
+            and o.attributes->>'login' = 'dev'
+        ) or (
+            o.class in (select reclada_object.get_GUID_for_class('DTOJsonSchema'))
+            and o.attributes->>'function' in ('reclada_object.list','reclada_object.get_query_condition_filter')
+        ) or (
+            o.class in (select reclada_object.get_GUID_for_class('ObjectDisplay'))
         );
 
 

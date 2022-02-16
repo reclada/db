@@ -332,34 +332,42 @@ def install_components(debug_db=False):
 
 def clear_db_from_components():
     print('clear db from components...')
-    cmd = """DELETE FROM reclada.object 
-                WHERE guid in 
-                (
-                    SELECT obj_id 
-                        FROM reclada.v_component_object
-                    UNION
-                    select guid 
-                        from reclada.v_relationship 
-                            WHERE type = 'data of reclada-component'
-                    UNION 
-                    SELECT guid 
-                        FROM reclada.v_component
-                )"""
-    res = run_cmd_scalar(cmd)
-    cmd = '''DELETE FROM reclada.object 
-                WHERE guid in 
-                (
-                    SELECT r.obj_id
-                        FROM reclada.v_revision r
-                        WHERE NOT EXISTS(
-                            SELECT 
-                                FROM reclada.object o 
-                                    WHERE r.obj_id::text = o.attributes->>'revision'
-                        )
-                )'''
-    res = run_cmd_scalar(cmd)
-    cmd = '''DELETE FROM dev.component_object'''
-    res = run_cmd_scalar(cmd)
+    res = run_cmd_scalar('''DELETE FROM reclada.object 
+                                WHERE class in (
+                                    select reclada_object.get_GUID_for_class('Message')
+                                );''')
+    print(res)
+    res = run_cmd_scalar('''with t as (
+                                select object,subject,guid 
+                                    from reclada.v_relationship
+                                        WHERE type = 'data of reclada-component'
+                            )
+                            DELETE FROM reclada.object 
+                                WHERE guid in 
+                                (   
+                                    SELECT object  FROM t
+                                    UNION
+                                    SELECT subject FROM t
+                                    UNION
+                                    SELECT guid    FROM t
+                                    UNION 
+                                    SELECT guid    FROM reclada.v_component
+                                );''')
+    print(res)
+    res = run_cmd_scalar('''DELETE FROM reclada.object 
+                                WHERE guid in 
+                                (
+                                    SELECT r.obj_id
+                                        FROM reclada.v_revision r
+                                );''')
+    print(res)
+    res = run_cmd_scalar('''update reclada.object 
+                                set attributes = attributes - 'revision';''')
+    print(res)
+    res = run_cmd_scalar('''DELETE FROM dev.component_object;''')
+    print(res)
+    res = run_cmd_scalar('''select reclada_object.refresh_mv('All');''')
+    print(res)
 
 
 if __name__ == "__main__":
