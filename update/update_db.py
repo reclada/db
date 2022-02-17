@@ -332,11 +332,6 @@ def install_components(debug_db=False):
 
 def clear_db_from_components():
     print('clear db from components...')
-    res = run_cmd_scalar('''DELETE FROM reclada.object 
-                                WHERE class in (
-                                    select reclada_object.get_GUID_for_class('Message')
-                                );''')
-    print(res)
     res = run_cmd_scalar('''with t as (
                                 select object,subject,guid 
                                     from reclada.v_relationship

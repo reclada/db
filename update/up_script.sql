@@ -54,6 +54,8 @@ select reclada_object.create_relationship
             and o.attributes->>'function' in ('reclada_object.list','reclada_object.get_query_condition_filter')
         ) or (
             o.class in (select reclada_object.get_GUID_for_class('ObjectDisplay'))
+        ) or (
+            o.class in (select reclada_object.get_GUID_for_class('Message'))
         );
 
 
