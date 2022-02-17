@@ -189,5 +189,13 @@ if __name__ == "__main__":
     input("Press Enter to install components . . .")
     install_components(True)
 
-    input("Press Enter to run testing . . .")    
+    input("Press Enter to run testing clean db . . .")    
     run_test()
+
+    input("Press Enter to run testing upgraded db . . .")
+    os.system('python install_db.py')
+    upgrade()
+    if not run_object_create:
+        install_components(True)
+    run_test()
+
