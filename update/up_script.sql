@@ -18,3 +18,8 @@ drop function reclada_object.datasource_insert;
 \i 'view/reclada.v_ui_active_object.sql' 
 
 --} REC-564 
+
+\i 'function/reclada_object.update.sql'
+\i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.merge.sql'
+\i 'view/reclada.v_object_unifields.sql'

@@ -7,3 +7,6 @@
 --{function/reclada_object.merge}
 --{function/reclada_object.list}
 
+--{view/reclada.v_object_unifields}
+
+
