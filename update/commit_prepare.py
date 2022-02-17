@@ -154,7 +154,7 @@ if __name__ == "__main__":
         os.remove(current_dump)
         rmdir('db')
         os.system('python install_db.py')
-        upgrade()
+        upgrade(commit_ver)
     else:
         print("skipped downgrade test...")
     input("Press Enter to update jsonschemas and install_db.sql . . .")
@@ -194,8 +194,7 @@ if __name__ == "__main__":
 
     input("Press Enter to run testing upgraded db . . .")
     os.system('python install_db.py')
-    upgrade()
+    upgrade(commit_ver)
     if not run_object_create:
         install_components(True)
     run_test()
-

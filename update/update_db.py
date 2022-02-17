@@ -332,9 +332,9 @@ def install_components(debug_db=False):
 
 def clear_db_from_components():
     print('clear db from components...')
-    res = run_cmd_scalar('''with t as (
-                                select object,subject,guid 
-                                    from reclada.v_relationship
+    res = run_cmd_scalar('''WITH t as (
+                                SELECT object, subject, guid 
+                                    FROM reclada.v_relationship
                                         WHERE type = 'data of reclada-component'
                             )
                             DELETE FROM reclada.object 
@@ -356,12 +356,12 @@ def clear_db_from_components():
                                         FROM reclada.v_revision r
                                 );''')
     print(res)
-    res = run_cmd_scalar('''update reclada.object 
-                                set attributes = attributes - 'revision';''')
+    res = run_cmd_scalar('''UPDATE reclada.object 
+                                SET attributes = attributes - 'revision';''')
     print(res)
     res = run_cmd_scalar('''DELETE FROM dev.component_object;''')
     print(res)
-    res = run_cmd_scalar('''select reclada_object.refresh_mv('All');''')
+    res = run_cmd_scalar('''SELECT reclada_object.refresh_mv('All');''')
     print(res)
 
 
