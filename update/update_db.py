@@ -28,7 +28,6 @@ db_name = db_URI.split('/')[-1]
 ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
 LAMBDA_NAME = j["LAMBDA_NAME"]
 LAMBDA_REGION = j["LAMBDA_REGION"]
-run_object_create = j["run_object_create"]
 version = j["version"]
 quick_install = j["quick_install"]
 downgrade_test = j["downgrade_test"]
@@ -332,6 +331,20 @@ def install_components(debug_db=False):
 
 def clear_db_from_components():
     print('clear db from components...')
+    res = run_cmd_scalar('''DO
+                            $do$
+                            DECLARE
+                                _objs  jsonb[];
+                            BEGIN
+                                SELECT array_agg(distinct obj_data)
+                                    FROM reclada.v_component_objects o
+                                    INTO _objs;
+                                
+                                select reclada_object.delete(cn)
+                                    from unnest(_objs) AS cn;
+                            END
+                            $do$;''')#to delete indexes
+
     res = run_cmd_scalar('''WITH t as (
                                 SELECT object, subject, guid 
                                     FROM reclada.v_relationship
@@ -395,7 +408,7 @@ if __name__ == "__main__":
             if cur_ver_db == config_version:
                 break
 
-    if cur_ver_db >= 48 and run_object_create: # Components do not exist before 48
+    if cur_ver_db >= 48: # Components do not exist before 48
         install_components() #upgrade components
     
     os.chdir('..')

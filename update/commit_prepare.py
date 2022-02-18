@@ -9,7 +9,6 @@ from update_db import rmdir
 from update_db import run_test
 from update_db import run_cmd_scalar
 from update_db import downgrade_test
-from update_db import run_object_create
 from update_db import pg_dump
 from update_db import db_name
 from update_db import branch_db
@@ -23,7 +22,7 @@ import datetime
 import json
 
 
-def upgrade(commit_ver):
+def upgrade():
     res = os.popen('python create_up.sql.py').read()
 
     if res != 'Done\n':
@@ -34,8 +33,6 @@ def upgrade(commit_ver):
     if get_version_from_db() >= 48: # Components do not exist before 48
         replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects,True)
 
-    if commit_ver >= 48 and run_object_create: # Components do not exist before 48
-        install_components(True)
 
 if __name__ == "__main__":
     print(f'Current database: {db_name}')
@@ -46,7 +43,7 @@ if __name__ == "__main__":
     down_test = downgrade_test
 
     downgrade_dump = 'downgrade_dump.sql'
-    current_dump = path = os.path.join('db','update','install_db.sql')
+    current_dump   = 'current_dump.sql'
 
     commit_ver = get_version_from_commit()
     try:
@@ -58,26 +55,17 @@ if __name__ == "__main__":
     if install_db:
         os.system('python install_db.py')
         if down_test:
-            print('trying to find dump of current version...')
-            clone_db()
-            os.chdir('..')
-            if os.path.isfile(current_dump):
-                print('success!')
-            else:
-                print('dump not found...')
-                print('pg_dump for current version...')
-                current_dump = 'current_dump.sql'
-                pg_dump(current_dump,t)
+            print('pg_dump for current version...')
+            pg_dump(current_dump,t)
     else:
         print('install_db.py skipped, database has actual version')
         down_test = False
     
     input("Press Enter to apply new version . . .")
 
-    upgrade(commit_ver)
+    upgrade()
 
     if down_test:
-        clear_db_from_components()
         run_cmd_scalar('select dev.downgrade_version();')
         print('pg_dump after downgrade version...')
         pg_dump(downgrade_dump,t)
@@ -152,9 +140,8 @@ if __name__ == "__main__":
             
         os.remove(downgrade_dump)
         os.remove(current_dump)
-        rmdir('db')
         os.system('python install_db.py')
-        upgrade(commit_ver)
+        upgrade()
     else:
         print("skipped downgrade test...")
     input("Press Enter to update jsonschemas and install_db.sql . . .")
@@ -194,7 +181,5 @@ if __name__ == "__main__":
 
     input("Press Enter to run testing upgraded db . . .")
     os.system('python install_db.py')
-    upgrade(commit_ver)
-    if not run_object_create:
-        install_components(True)
+    upgrade()
     run_test()
