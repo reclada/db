@@ -43,6 +43,8 @@ def psql_str(cmd:str,DB_URI:str = db_URI)->str:
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
 
 def pg_dump(file_name:str,t:str):
+    run_cmd_scalar('delete from dev.component_object;')
+
     os.system(f'pg_dump -N public -f {file_name} -O {db_URI}')
 
     with open('up_script.sql',encoding='utf8') as f:
@@ -337,11 +339,11 @@ def clear_db_from_components():
                                 _objs  jsonb[];
                             BEGIN
                                 SELECT array_agg(distinct obj_data)
-                                    FROM reclada.v_component_objects o
+                                    FROM reclada.v_component_object o
                                     INTO _objs;
                                 
-                                select reclada_object.delete(cn)
-                                    from unnest(_objs) AS cn;
+                                PERFORM reclada_object.delete(cn)
+                                    FROM unnest(_objs) AS cn;
                             END
                             $do$;''')#to delete indexes
 

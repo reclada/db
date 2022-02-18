@@ -38,7 +38,7 @@ SELECT reclada_object.create_subclass('{
     }
 }'::jsonb);
 --{ 4 DataSet
-    SELECT reclada_object.create_subclass('{
+SELECT reclada_object.create_subclass('{
         "class": "RecladaObject",
         "attributes": {
             "newClass": "DataSet",
@@ -88,42 +88,6 @@ SELECT reclada_object.create_subclass('{
         "required": ["class", "channelName", "event"]
     }
 }'::jsonb);
-
-    SELECT reclada_object.create('{
-            "GUID":"db0dc9e3-fb73-4afd-9c5e-4c2fd4beca56",
-            "class": "Message",
-             "attributes":{"attrs": ["type"], "class": "Job", "event": "delete", "channelName": "job_deleted"}
-        }'::jsonb);
-
-    SELECT reclada_object.create('{
-            "GUID":"db05f29e-6b0f-4f7d-87cf-7adc8b63767b",
-            "class": "Message",
-             "attributes":{"attrs": ["status", "type"], "class": "Job", "event": "update", "channelName": "job_updated"}
-        }'::jsonb);
-    
-    SELECT reclada_object.create('{
-            "GUID":"db0d90f7-a662-4e59-ba86-5d21bae8db54",
-            "class": "Message",
-             "attributes":{"attrs": ["status", "type"], "class": "Job", "event": "create", "channelName": "job_created"}
-        }'::jsonb);
-
-    SELECT reclada_object.create('{
-            "GUID":"db00f139-6bdc-4eec-9023-160f2f6fd200",
-            "class": "Message",
-             "attributes":{"attrs": ["type"], "class": "Task", "event": "delete", "channelName": "task_deleted"}
-        }'::jsonb);
-
-    SELECT reclada_object.create('{
-            "GUID":"db0615ac-7325-4217-b693-9e325b3b3760",
-            "class": "Message",
-             "attributes":{"attrs": ["status", "type"], "class": "Task", "event": "update", "channelName": "task_updated"}
-        }'::jsonb);
-
-    SELECT reclada_object.create('{
-            "GUID":"db069383-7432-48b1-ac60-13018e147749",
-            "class": "Message",
-             "attributes":{"attrs": ["status", "type"], "class": "Task", "event": "create", "channelName": "task_created"}
-        }'::jsonb);
 
 --{ 6 Index
 SELECT reclada_object.create_subclass('{

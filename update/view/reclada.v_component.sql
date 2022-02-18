@@ -1,4 +1,4 @@
-drop VIEW if EXISTS reclada.v_component;
+-- drop VIEW if EXISTS reclada.v_component;
 CREATE OR REPLACE VIEW reclada.v_component
 AS
     SELECT  obj.id            ,
@@ -14,5 +14,5 @@ AS
             obj.status        ,
             obj.data
 	FROM reclada.v_active_object obj
-   	WHERE class_name = 'Component';
+   	WHERE obj.class_name = 'Component';
 --select * from reclada.v_component

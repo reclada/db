@@ -4,8 +4,14 @@
     to run text script of functions
 */
 
+alter table dev.component_object add id_object bigint;
+\i 'function/dev.begin_install_component.sql'
 \i 'function/dev.finish_install_component.sql'
+\i 'function/dev.downgrade_version.sql'
 \i 'view/reclada.v_object_display.sql'
+\i 'view/reclada.v_component_object.sql'
+\i 'view/reclada.v_component.sql'
+
 
 select reclada_object.create_relationship
                     (

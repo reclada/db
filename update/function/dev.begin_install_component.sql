@@ -25,8 +25,8 @@ BEGIN
                        select _name, _repository, _commit_hash, _guid;
 
     delete from dev.component_object;
-    insert into dev.component_object(data)
-        select obj_data 
+    insert into dev.component_object(data,id_object)
+        select obj_data, id_object
             from reclada.v_component_object
                 where component_name = _name;
     return 'OK';

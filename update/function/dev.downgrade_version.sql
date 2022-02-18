@@ -5,6 +5,7 @@ LANGUAGE PLPGSQL VOLATILE
 as
 $do$
 declare 
+    _comp_obj jsonb;
     current_ver int; 
     downgrade_script text;
     v_state   TEXT;
@@ -26,6 +27,45 @@ BEGIN
     if COALESCE(downgrade_script,'') = '' then
         RAISE EXCEPTION 'downgrade_script is empty! from dev.downgrade_version()';
     end if;
+
+    select data from reclada.v_component
+        where name = 'db'
+        into _comp_obj;
+    
+    DELETE from reclada.object 
+        where id in (
+            select value::bigint 
+                from jsonb_array_elements(_comp_obj#>'{attributes,created}')
+            union 
+            select id 
+                from reclada.v_component 
+                    where name = 'db'
+        );
+
+    DELETE from reclada.object 
+        where id in (select id 
+                from reclada.v_relationship r
+                    WHERE subject in (
+                            select guid from reclada.object 
+                                where id in (
+                                    select value::bigint 
+                                        from jsonb_array_elements(_comp_obj#>'{attributes,created}')
+                                )
+                        )
+                        and not exists (select from reclada.object o where r.subject = o.guid)
+        );
+
+    UPDATE reclada.object 
+        SET status = reclada_object.get_active_status_obj_id()
+        WHERE id in (
+            SELECT value::bigint 
+                FROM jsonb_array_elements(_comp_obj#>'{attributes,deleted}')
+            UNION 
+            SELECT max(id)
+                FROM reclada.v_object obj
+   	                WHERE obj.class_name = 'Component'
+                        and obj.attrs->>'name' = 'db'
+        );
 
     EXECUTE downgrade_script;
 

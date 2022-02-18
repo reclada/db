@@ -71,7 +71,4 @@ if __name__ == "__main__":
     if need_update:
         os.system('python update_db.py')
 
-    if get_version_from_db() >= 48: # Components do not exist before 48
-        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
-
     install_components()
