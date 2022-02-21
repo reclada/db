@@ -37,6 +37,7 @@ DECLARE
     _obj_guid       uuid;
     _row_count      int;
     _defs           jsonb = '{}'::jsonb;
+	_tran_id        bigint;
 BEGIN
 
     _class_list := _data->'class';
@@ -44,7 +45,8 @@ BEGIN
         perform reclada.raise_exception('The reclada object class is not specified',_f_name);
     END IF;
 
-    _obj_guid := COALESCE((_data->>'GUID')::uuid,public.uuid_generate_v4());
+    _obj_guid := COALESCE((_data->>'GUID')::uuid, public.uuid_generate_v4());
+    _tran_id  := COALESCE((_data->>'transactionID')::bigint, reclada.get_transaction_id());
 
     IF (jsonb_typeof(_class_list) != 'array') THEN
         _class_list := '[]'::jsonb || _class_list;
@@ -128,29 +130,23 @@ BEGIN
 
     _version := coalesce(_version,1);
 
-    _create_obj := format('{
-        "class": "jsonschema",
-        "GUID": "%s",
-        "attributes": {
-            "forClass": "%s",
-            "version": "%s",
-            "schema": {
-                "type": "object",
-                "$defs": %s,
-                "properties": %s,
-                "required": %s
-            },
-            "parentList":%s
-        }
-    }',
-    _obj_guid::text,
-    _new_class,
-    _version,
-    _defs,
-    _properties,
-    _required,
-    _parent_list
-    )::jsonb;
+    _create_obj := jsonb_build_object(
+        'class'         , 'jsonschema'   ,
+        'GUID'          , _obj_guid::text,
+        'transactionID' , _tran_id       ,
+        'attributes'    , jsonb_build_object(
+                'forClass'  , _new_class ,
+                'version'   , _version   ,
+                'parentList',_parent_list,
+                'schema'    , jsonb_build_object(
+                    'type'      , 'object'   ,
+                    '$defs'     , _defs      ,
+                    'properties', _properties,
+                    'required'  , _required  
+                )
+            )
+        );
+        
     IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
         _create_obj := jsonb_set(_create_obj, '{attributes,dupChecking}',attrs->'dupChecking');
         IF ( jsonb_typeof(attrs->'dupBehavior') = 'string' ) THEN

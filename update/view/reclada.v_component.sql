@@ -6,6 +6,7 @@ AS
             obj.attrs->>'name'      as name,
             obj.attrs->>'repository'   as repository,
             obj.attrs->>'commitHash'   as commit_hash,
+            obj.transaction_id,
             obj.revision_num  ,
             obj.status_caption,
             obj.revision      ,
