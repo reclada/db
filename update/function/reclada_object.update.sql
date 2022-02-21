@@ -122,7 +122,8 @@ BEGIN
                     END IF;
                 WHEN 'Insert' THEN
                     -- DO nothing
-                WHEN 'Merge' THEN                    
+                WHEN 'Merge' THEN     
+                    _data := reclada_object.remove_parent_guid(_data, _parent_field);               
                     RETURN reclada_object.update(
                         reclada_object.merge(
                             _data - 'class', 
