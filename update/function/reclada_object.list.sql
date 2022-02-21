@@ -398,7 +398,10 @@ BEGIN
     IF ver = '2' THEN
         _pre_query := (select val from reclada.v_ui_active_object);
         _from := 'res AS obj';
-        _pre_query := REPLACE(_pre_query,'#@#@#where#@#@#', query_conditions  );
+        _pre_query := REPLACE(_pre_query, '#@#@#where#@#@#'  , query_conditions);
+        _pre_query := REPLACE(_pre_query, '#@#@#orderby#@#@#', order_by        );
+        order_by :=  REPLACE(order_by, '{', '{"{');
+        order_by :=  REPLACE(order_by, '}', '}"}'); --obj.data#>'{some_field}'  -->  obj.data#>'{"{some_field}"}'
 
     ELSE
         _pre_query := '';
@@ -429,6 +432,7 @@ BEGIN
     _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
     _exec_text := REPLACE(_exec_text, '#@#@#limit#@#@#'    , limit_            );
     -- RAISE NOTICE 'conds: %', _exec_text;
+
     EXECUTE _exec_text
         INTO objects;
     objects := coalesce(objects,'[]'::jsonb);
