@@ -23,3 +23,5 @@ drop function reclada_object.datasource_insert;
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.merge.sql'
 \i 'view/reclada.v_object_unifields.sql'
+
+ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 10;
