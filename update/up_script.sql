@@ -10,9 +10,11 @@
 \i 'function/reclada_object.create_subclass.sql'
 \i 'function/reclada_object.create_relationship.sql'
 \i 'function/dev.downgrade_component.sql'
+\i 'function/reclada_object.update.sql'
 
 \i 'view/reclada.v_object_display.sql'
 drop VIEW reclada.v_component_object;
+drop VIEW reclada.v_component;
 \i 'view/reclada.v_component.sql'
 \i 'view/reclada.v_component_object.sql'
 
@@ -64,8 +66,6 @@ select reclada_object.create_relationship
             and o.attributes->>'function' in ('reclada_object.list','reclada_object.get_query_condition_filter')
         ) or (
             o.class in (select reclada_object.get_GUID_for_class('ObjectDisplay'))
-        ) or (
-            o.class in (select reclada_object.get_GUID_for_class('Message'))
         );
 
 
@@ -74,28 +74,27 @@ $do$
 DECLARE
 	_tran_id bigint = reclada.get_transaction_id();
 BEGIN
-
     update reclada.object u
         set transaction_id = _tran_id
         from reclada.v_component_object o
-            where u.id = o.id
-                and componen_name = 'db';
+            where (u.id = o.id or u.guid = o.component_guid)
+                and o.component_name = 'db';
     
     _tran_id = reclada.get_transaction_id();
 
     update reclada.object u
         set transaction_id = _tran_id
         from reclada.v_component_object o
-            where u.id = o.id
-                and componen_name = 'SciNLP';
+            where (u.id = o.id or u.guid = o.component_guid)
+                and component_name = 'SciNLP';
 
     _tran_id = reclada.get_transaction_id();
 
     update reclada.object u
         set transaction_id = _tran_id
         from reclada.v_component_object o
-            where u.id = o.id
-                and componen_name = 'reclada-runtime';
+            where (u.id = o.id or u.guid = o.component_guid)
+                and component_name = 'reclada-runtime';
 END
 $do$;
 

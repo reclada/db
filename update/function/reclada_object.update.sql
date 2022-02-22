@@ -155,7 +155,7 @@ BEGIN
                 _class_uuid,
                 reclada_object.get_active_status_obj_id(),--status 
                 _attrs || format('{"revision":"%s"}',revid)::jsonb,
-                transaction_id,
+                coalesce((_data->>'transactionID')::bigint, transaction_id),
                 _parent_guid
             FROM reclada.v_object v
             JOIN 

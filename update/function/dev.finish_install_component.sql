@@ -6,15 +6,16 @@ DECLARE
     _f_name   text := 'dev.finish_install_component';
     _comp_obj jsonb;
     _data     jsonb;
-	_tran_id bigint = reclada.get_transaction_id();
+	_tran_id  bigint := reclada.get_transaction_id();
 BEGIN
+
     perform reclada.raise_exception('Component does not found.',_f_name)
         where not exists(select 1 from dev.component);
     
     select ('{
                 "GUID": "' || guid::text || '",
                 "class":"Component",
-                "transactionID":'|| _tran_id::text |||',
+                "transactionID":'|| _tran_id::text ||',
                 "attributes": {
                     "name":"' || name || '",
                     "repository":"' || repository || '",
@@ -31,7 +32,8 @@ BEGIN
             where status = 'need to check';
 
     update dev.component_object
-        set data = data || jsonb_build_object('transactionID',_tran_id);
+        set data = data || jsonb_build_object('transactionID',_tran_id)
+            where status != 'delete';
 
     perform reclada_object.delete(data)
         from dev.component_object

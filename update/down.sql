@@ -3,14 +3,16 @@
 
 --{function/dev.begin_install_component}
 --{function/dev.finish_install_component}
+--{function/dev.downgrade_component}
+--{function/reclada_object.create_relationship}
+--{function/reclada_object.create_subclass}
+--{function/reclada_object.update}
+
 --{function/dev.downgrade_version}
 --{view/reclada.v_object_display}
 drop VIEW reclada.v_component_object;
 --{view/reclada.v_component}
 --{view/reclada.v_component_object}
-
-alter table dev.component_object
-    drop column id_object;
 
     delete from reclada.object 
         where guid in 
