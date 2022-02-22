@@ -35,7 +35,8 @@ DECLARE
     _dup_behavior reclada.dp_bhvr;
     _uni_field    text;
     _cnt          int;
-    _guid_list      text;
+    _tran_id      bigint;
+    _guid_list    text;
 BEGIN
 
     SELECT  valid_schema, 
@@ -48,12 +49,19 @@ BEGIN
                 _class_name ,
                 _class_uuid ;
 
-
     _obj_id := _data->>'GUID';
     IF (_obj_id IS NULL) THEN
         perform reclada.raise_exception('Could not update object with no GUID',_f_name);
     END IF;
 
+    _tran_id = coalesce(    
+                    (_data->>'transactionID')::bigint, 
+                    (
+                        select transaction_id 
+                            from reclada.v_active_object 
+                                where obj_id = _obj_id
+                    )
+                );
 
     -- don't allow update jsonschema
     if _class_name = 'jsonschema' then
@@ -71,7 +79,7 @@ BEGIN
     END IF;
 
     branch := _data->'branch';
-    SELECT reclada_revision.create(user_info->>'sub', branch, _obj_id) 
+    SELECT reclada_revision.create(user_info->>'sub', branch, _obj_id, _tran_id) 
         INTO revid;
 
     SELECT prnt_guid, prnt_field
@@ -155,7 +163,7 @@ BEGIN
                 _class_uuid,
                 reclada_object.get_active_status_obj_id(),--status 
                 _attrs || format('{"revision":"%s"}',revid)::jsonb,
-                coalesce((_data->>'transactionID')::bigint, transaction_id),
+                _tran_id,
                 _parent_guid
             FROM reclada.v_object v
             JOIN 

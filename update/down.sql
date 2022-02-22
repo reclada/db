@@ -1,6 +1,19 @@
 -- you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
+update reclada.object u
+    set transaction_id = m.tran_id
+    from (
+        select  (data->>'id')::bigint as id  ,
+                (data->>'tran_id')::bigint tran_id
+            from dev.meta_data
+    ) m
+    where m.id = u.id;
+
+delete from dev.meta_data where ver = 49;
+
+drop table dev.meta_data;
+
 --{function/dev.begin_install_component}
 --{function/dev.finish_install_component}
 --{function/dev.downgrade_component}

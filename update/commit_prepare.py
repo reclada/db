@@ -29,7 +29,7 @@ def upgrade():
         raise Exception(f'create_up.sql.py error: {res}')
 
     run_file('up.sql')
-    input('Enter to upgrade db component')
+    input('Enter to upgrade db component . . .')
     if get_version_from_db() >= 48: # Components do not exist before 48
         replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects,True)
 
@@ -97,7 +97,9 @@ if __name__ == "__main__":
                             sc = set()
                             sd = set()
                         suffix = ", true);\n"
-                        for prefix in ["SELECT pg_catalog.setval('dev.ver_id_seq',","SELECT pg_catalog.setval('reclada."]:
+                        for prefix in [ "SELECT pg_catalog.setval('dev.ver_id_seq',",
+                                        "SELECT pg_catalog.setval('reclada.",
+                                        "SELECT pg_catalog.setval('dev.component_object_id_seq'"]:
                             if (ldd[i].startswith(prefix)
                                 and lcd[j].startswith(prefix)
                                 and ldd[i].endswith(suffix)

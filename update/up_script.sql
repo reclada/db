@@ -4,6 +4,15 @@
     to run text script of functions
 */
 
+create table dev.meta_data(
+    id bigint
+        NOT NULL
+        GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1)
+        UNIQUE ,
+    ver bigint,
+    data jsonb
+);
+
 \i 'function/dev.begin_install_component.sql'
 \i 'function/dev.finish_install_component.sql'
 \i 'function/dev.downgrade_version.sql'
@@ -69,32 +78,33 @@ select reclada_object.create_relationship
         );
 
 
-DO
-$do$
-DECLARE
-	_tran_id bigint = reclada.get_transaction_id();
-BEGIN
-    update reclada.object u
-        set transaction_id = _tran_id
+insert into dev.meta_data(ver,data)
+    select  49, 
+            jsonb_build_object( 'id'     , o.id ,
+                                'tran_id', u.transaction_id
+                            ) as v
         from reclada.v_component_object o
-            where (u.id = o.id or u.guid = o.component_guid)
-                and o.component_name = 'db';
+        join reclada.object u
+            on u.id = o.id
+        join 
+        (
+            SELECT transaction_id ,attrs->>'name' component_name
+                FROM reclada.v_object 
+                    where class_name = 'Component' 
+        ) t
+            on t.component_name = o.component_name;
+
+
+update reclada.object u
+    set transaction_id = t.transaction_id
+    from reclada.v_component_object o
+    join 
+    (
+        SELECT transaction_id ,attrs->>'name' component_name
+            FROM reclada.v_object 
+                where class_name = 'Component' 
+    ) t
+        on t.component_name = o.component_name
+        where u.id = o.id;
     
-    _tran_id = reclada.get_transaction_id();
-
-    update reclada.object u
-        set transaction_id = _tran_id
-        from reclada.v_component_object o
-            where (u.id = o.id or u.guid = o.component_guid)
-                and component_name = 'SciNLP';
-
-    _tran_id = reclada.get_transaction_id();
-
-    update reclada.object u
-        set transaction_id = _tran_id
-        from reclada.v_component_object o
-            where (u.id = o.id or u.guid = o.component_guid)
-                and component_name = 'reclada-runtime';
-END
-$do$;
 
