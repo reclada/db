@@ -125,6 +125,8 @@ drop table tmp;
  
 /*#@#@#upgrade_script#@#@#*/
 
+/*#@#@#upgrade_component_script#@#@#*/
+
 --}!!! write upgrare script HERE !!!
 
 insert into dev.ver(ver,upgrade_script,downgrade_script)

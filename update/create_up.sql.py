@@ -1,3 +1,5 @@
+from update_db import get_cmd_install_component_db
+
 if __name__ == "__main__":
     try:
         upgrade_script = ''
@@ -19,6 +21,8 @@ if __name__ == "__main__":
             up = template.replace('/*#@#@#upgrade_script#@#@#*/',upgrade_script)
             up = up.replace('/*#@#@#version#@#@#*/',str(version))
 
+            ucs = get_cmd_install_component_db()
+            up = template.replace('/*#@#@#upgrade_component_script#@#@#*/', ucs)
 
             with open("up.sql",'w', encoding = "utf-8") as f:
                 f.write(up)

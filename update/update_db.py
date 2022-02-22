@@ -105,24 +105,32 @@ def clone(component_name:str,repository:str,branch:str='',debug_db=False):
     os.chdir(path_dest)
     
     #folder: repos/db/update/component_name
-        
+
+def get_current_remote_url()->str:
+    cmd = "git config --get remote.origin.url"
+    return os.popen(cmd).read()
+
+def get_current_repo_hash()->str:
+    cmd = "git log --pretty=format:%H -n 1"
+    return os.popen(cmd).read()
 
 def get_repo_hash(component_name:str,repository:str,branch:str,debug_db=False):
     # folder: db/update
     rmdir(component_name)
     clone(component_name,repository,branch,debug_db)
     #folder: repos/db/update/component_name
-    cmd = "git log --pretty=format:%H -n 1"
-    repo_hash = os.popen(cmd).read()
+    repo_hash = get_current_repo_hash()
     return repo_hash
 
 #{ Components
 
-def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
-    exists = Path('update').exists()
-    if exists:
-        os.chdir('update') # for lower 48 don't need
-    file_name = 'object_create_patched.sql'
+def get_cmd_install_component_db()->str:
+    return f""" SELECT reclada.raise_notice('Begin install component db...');
+                SELECT dev.begin_install_component('db','{get_current_remote_url()}','{get_current_repo_hash()}');
+                {patch_object_create()}
+                SELECT dev.finish_install_component();"""
+
+def patch_object_create(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME)->str:
     with open('object_create.sql') as f:
         obj_cr = f.read()
 
@@ -130,8 +138,16 @@ def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONME
     obj_cr = obj_cr.replace('#@#lregion#@#', l_region)
     obj_cr = obj_cr.replace('#@#ename#@#', e_name)
 
+    return obj_cr
+
+def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
+    exists = Path('update').exists()
+    if exists:
+        os.chdir('update') # for lower 48 don't need
+    file_name = 'object_create_patched.sql'
+    
     with open(file_name,'w') as f:
-        f.write(obj_cr)
+        f.write(patch_object_create(l_name, l_region, e_name))
 
     run_file(file_name,DB_URI)
     os.remove(file_name)
@@ -327,7 +343,6 @@ def install_components(debug_db=False):
     if v < 48: # Components do not exist before 48
         install_objects() 
     else:
-        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects,debug_db)
         replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
         replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git',branch_runtime,runtime_install)
 
