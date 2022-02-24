@@ -4,7 +4,7 @@
 --
 
 -- Dumped from database version 13.3
--- Dumped by pg_dump version 13.3
+-- Dumped by pg_dump version 14.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3116,14 +3116,15 @@ DECLARE
     number_of_objects   int;
     objects             jsonb;
     res                 jsonb;
-    _exec_text           text;
-    _pre_query           text;
+    _exec_text          text;
+    _pre_query          text;
     _from               text;
     class_uuid          uuid;
     last_change         text;
     tran_id             bigint;
-    _filter             JSONB;
-    _object_display     JSONB;
+    _filter             jsonb;
+    _object_display     jsonb;
+    _order_row          jsonb;
 BEGIN
 
     perform reclada.validate_json(data, _f_name);
@@ -3140,8 +3141,24 @@ BEGIN
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
         (order_by_jsonb = 'null'::jsonb) OR
-        (order_by_jsonb = '[]'::jsonb)) THEN
-        order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
+        (order_by_jsonb = '[]'::jsonb)) then
+        
+        select (vod.table #> '{orderRow}') as orderRow
+        	from reclada.v_object_display vod
+        	where vod.class_guid = (reclada_object.get_schema(_class)#>>'{GUID}')::uuid
+        	into _order_row;
+        if _order_row is not null then     
+        	select '[' || string_agg(('{"field": "' || obf.field || '", ' || '"order": ' || obf.order_by || '}'), ', ') || ']'
+			from(
+ 	 			 select je.value as order_by, 
+ 	 			 		split_part(je.key, ':', 1) as field
+ 	 			 	from jsonb_array_elements(_order_row) jae
+ 	 			 	cross join jsonb_each(jae.value) je
+ 	 		) obf
+				into order_by_jsonb;
+    	ELSE
+        	order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
+        end if;
     END IF;
     SELECT string_agg(
         format(
@@ -5655,6 +5672,40 @@ COPY dev.component (name, repository, commit_hash, guid) FROM stdin;
 --
 
 COPY dev.component_object (id, status, data) FROM stdin;
+28	create_subclass	{"class": "RecladaObject", "attributes": {"newClass": "Task", "required": ["type", "command"], "properties": {"type": {"type": "string"}, "command": {"type": "string"}, "inputParameters": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "outputParameters": {"type": "array", "items": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}}}}}
+29	create_subclass	{"class": "RecladaObject", "attributes": {"newClass": "Parameter", "required": ["name", "type"], "properties": {"file": {"type": "string"}, "name": {"type": "string"}, "type": {"enum": ["code", "stdout", "stderr", "file"], "type": "string"}}}}
+30	create_subclass	{"class": "RecladaObject", "attributes": {"newClass": "Trigger", "required": ["previousJobCode", "nextTask"], "properties": {"nextTask": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "previousJobCode": {"type": "integer"}, "paramsRelationships": {"type": "array", "items": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}}}}}
+31	create_subclass	{"class": "Task", "attributes": {"newClass": "Pipeline", "required": ["triggers"], "properties": {"triggers": {"type": "array", "items": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}}}}}
+32	create_subclass	{"class": "Task", "attributes": {"newClass": "Job", "required": ["task", "status"], "properties": {"task": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "runner": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "status": {"type": "string", "enum ": ["new", "pending", "running", "failed", "success"]}, "inputParameters": {"type": "array", "items": {"type": "object"}}, "outputParameters": {"type": "array", "items": {"type": "object"}}}}}
+33	create_subclass	{"class": "Task", "attributes": {"newClass": "PipelineLite", "required": ["tasks"], "properties": {"tasks": {"type": "array", "items": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "minItems": 1}}}}
+34	create	{"GUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd", "class": "PipelineLite", "attributes": {"type": "pipelineLite", "tasks": ["84bdb994-0ad6-4964-9ac3-c168b42859d2", "e8545f43-d92d-4bd2-92f4-c30366cfb798", "8ea37d52-593a-4d06-97ef-46c2d4731bff", "6c750669-729f-45ac-ade7-61ed85cbcda3", "0a3321d5-3325-472a-bd30-ec65a964980f", "fb85ebf8-13f2-4ecf-8085-85922b49c3fc", "091a8814-f444-4364-a0ce-0f6a7878789a", "b1d94fae-d9c6-40d6-9431-4d895b3ded5a", "8e23c12f-90ef-45db-b331-e89a35e1ed34"], "command": ""}}
+35	create	{"GUID": "84bdb994-0ad6-4964-9ac3-c168b42859d2", "class": "Task", "attributes": {"type": "PipelineLite stage 0", "command": "./pipeline/create_pipeline.sh"}, "parentGUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd"}
+36	create	{"GUID": "e8545f43-d92d-4bd2-92f4-c30366cfb798", "class": "Task", "attributes": {"type": "PipelineLite stage 1", "command": "./pipeline/copy_file_from_s3.sh"}, "parentGUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd"}
+37	create	{"GUID": "8ea37d52-593a-4d06-97ef-46c2d4731bff", "class": "Task", "attributes": {"type": "PipelineLite stage 2", "command": "./pipeline/badgerdoc_run.sh"}, "parentGUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd"}
+38	create	{"GUID": "6c750669-729f-45ac-ade7-61ed85cbcda3", "class": "Task", "attributes": {"type": "PipelineLite stage 3", "command": "./pipeline/bd2reclada_run.sh"}, "parentGUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd"}
+39	create	{"GUID": "0a3321d5-3325-472a-bd30-ec65a964980f", "class": "Task", "attributes": {"type": "PipelineLite stage 4", "command": "./pipeline/loading_data_to_db.sh"}, "parentGUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd"}
+40	create	{"GUID": "fb85ebf8-13f2-4ecf-8085-85922b49c3fc", "class": "Task", "attributes": {"type": "PipelineLite stage 5", "command": "./pipeline/scinlp_run.sh"}, "parentGUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd"}
+41	create	{"GUID": "091a8814-f444-4364-a0ce-0f6a7878789a", "class": "Task", "attributes": {"type": "PipelineLite stage 6", "command": "./pipeline/loading_results_to_db.sh"}, "parentGUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd"}
+42	create	{"GUID": "b1d94fae-d9c6-40d6-9431-4d895b3ded5a", "class": "Task", "attributes": {"type": "PipelineLite stage 7", "command": "./pipeline/custom_task.sh"}, "parentGUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd"}
+43	create	{"GUID": "8e23c12f-90ef-45db-b331-e89a35e1ed34", "class": "Task", "attributes": {"type": "PipelineLite stage 8", "command": "./pipeline/coping_results.sh"}, "parentGUID": "c4e2bfaf-977e-4bcd-a83f-7ae9b220d3dd"}
+44	create_subclass	{"class": "RecladaObject", "attributes": {"newClass": "Value", "required": ["name"], "properties": {"name": {"type": "string"}, "value": {"type": "string"}}}}
+45	create_subclass	{"class": "Job", "attributes": {"newClass": "Runner", "required": ["environment", "status"], "properties": {"status": {"type": "string", "enum ": ["up", "down", "idle"]}, "environment": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}}}}
+46	create	{"class": "Runner", "attributes": {"task": "512a3dde-23c7-4771-b180-20f8781ac084", "type": "K8S", "status": "down", "command": "", "environment": "7b196912-d973-40a9-b0e2-15ecbd921b2f"}}
+47	create	{"class": "Runner", "attributes": {"task": "512a3dde-23c7-4771-b180-20f8781ac084", "type": "K8S", "status": "down", "command": "", "environment": "7b196912-d973-40a9-b0e2-15ecbd921b2f"}}
+48	create	{"class": "Runner", "attributes": {"task": "512a3dde-23c7-4771-b180-20f8781ac084", "type": "K8S", "status": "down", "command": "", "environment": "7b196912-d973-40a9-b0e2-15ecbd921b2f"}}
+49	create	{"class": "Runner", "attributes": {"task": "512a3dde-23c7-4771-b180-20f8781ac084", "type": "K8S", "status": "down", "command": "", "environment": "7b196912-d973-40a9-b0e2-15ecbd921b2f"}}
+50	create	{"class": "Runner", "attributes": {"task": "512a3dde-23c7-4771-b180-20f8781ac084", "type": "K8S", "status": "down", "command": "", "environment": "7b196912-d973-40a9-b0e2-15ecbd921b2f"}}
+51	create_subclass	{"class": "RecladaObject", "attributes": {"newClass": "Environment", "required": ["name"], "properties": {"name": {"type": "string"}, "description": {"type": "string"}}}}
+52	create_subclass	{"class": "RecladaObject", "attributes": {"newClass": "FileExtension", "required": ["extension", "mimeType"], "properties": {"mimeType": {"type": "string"}, "extension": {"type": "string"}}}}
+53	create	{"class": "FileExtension", "attributes": {"mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "extension": ".xlsx"}}
+54	create_subclass	{"class": "Task", "attributes": {"newClass": "Connector", "required": ["type", "name", "environment"], "properties": {"name": {"type": "string"}, "environment": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "connectionDetails": {"type": "string"}}}}
+55	create	{"GUID": "d6910d90-898b-4f20-a197-dc9b5348c0cd", "class": "Index", "attributes": {"name": "command_index_", "fields": ["(attributes ->> 'command'::text)"], "method": "btree", "wherePredicate": "((attributes ->> 'command'::text) IS NOT NULL)"}}
+56	create	{"GUID": "41ef9b75-990d-4236-9249-30a25af0f313", "class": "Index", "attributes": {"name": "environment_index_", "fields": ["(attributes ->> 'environment'::text)"], "method": "btree", "wherePredicate": "((attributes ->> 'environment'::text) IS NOT NULL)"}}
+57	create	{"GUID": "7ad7c2c9-62ef-4327-91e3-d9ce6a51b57a", "class": "Index", "attributes": {"name": "extension_index_", "fields": ["(attributes ->> 'extension'::text)"], "method": "btree", "wherePredicate": "((attributes ->> 'extension'::text) IS NOT NULL)"}}
+58	create	{"GUID": "e0c140be-91e2-40ba-bd0f-d52e6e51a4e1", "class": "Index", "attributes": {"name": "job_status_index", "fields": ["(attributes ->> 'status'::text)"], "method": "btree", "wherePredicate": "((attributes ->> 'status'::text) IS NOT NULL)"}}
+59	create	{"GUID": "bea625a1-725d-4c9e-8cce-d184e59bfca0", "class": "Index", "attributes": {"name": "task_index_", "fields": ["(attributes ->> 'task'::text)"], "method": "btree", "wherePredicate": "((attributes ->> 'task'::text) IS NOT NULL)"}}
+60	create	{"GUID": "8c8b8c3f-befe-469b-90e0-0b71370fdddc", "class": "Index", "attributes": {"name": "tasks_index_", "fields": ["(attributes ->> 'tasks'::text)"], "method": "btree", "wherePredicate": "((attributes ->> 'tasks'::text) IS NOT NULL)"}}
+61	create	{"GUID": "0db204d4-d22a-4ff4-93f2-0222aff47278", "class": "Index", "attributes": {"name": "triggers_index_", "fields": ["(attributes ->> 'triggers'::text)"], "method": "btree", "wherePredicate": "((attributes ->> 'triggers'::text) IS NOT NULL)"}}
 \.
 
 
@@ -6100,6 +6151,13 @@ CREATE INDEX class_index ON reclada.object USING btree (class);
 
 
 --
+-- Name: class_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX class_index_ ON reclada.object USING btree (((attributes ->> 'class'::text))) WHERE ((attributes ->> 'class'::text) IS NOT NULL);
+
+
+--
 -- Name: colspan_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
@@ -6114,6 +6172,20 @@ CREATE INDEX column_index_v47 ON reclada.object USING btree (((attributes -> 'co
 
 
 --
+-- Name: command_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX command_index_ ON reclada.object USING btree (((attributes ->> 'command'::text))) WHERE ((attributes ->> 'command'::text) IS NOT NULL);
+
+
+--
+-- Name: commithash_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX commithash_index_ ON reclada.object USING btree (((attributes ->> 'commitHash'::text))) WHERE ((attributes ->> 'commitHash'::text) IS NOT NULL);
+
+
+--
 -- Name: document_fileguid_index; Type: INDEX; Schema: reclada; Owner: -
 --
 
@@ -6121,10 +6193,24 @@ CREATE INDEX document_fileguid_index ON reclada.object USING btree (((attributes
 
 
 --
+-- Name: environment_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX environment_index_ ON reclada.object USING btree (((attributes ->> 'environment'::text))) WHERE ((attributes ->> 'environment'::text) IS NOT NULL);
+
+
+--
 -- Name: environment_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
 CREATE INDEX environment_index_v47 ON reclada.object USING hash (((attributes -> 'environment'::text))) WHERE ((attributes -> 'environment'::text) IS NOT NULL);
+
+
+--
+-- Name: event_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX event_index_ ON reclada.object USING btree (((attributes ->> 'event'::text))) WHERE ((attributes ->> 'event'::text) IS NOT NULL);
 
 
 --
@@ -6156,6 +6242,20 @@ CREATE INDEX left_index_v47 ON reclada.object USING btree (((attributes -> 'left
 
 
 --
+-- Name: login_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX login_index_ ON reclada.object USING btree (((attributes ->> 'login'::text))) WHERE ((attributes ->> 'login'::text) IS NOT NULL);
+
+
+--
+-- Name: name_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX name_index_ ON reclada.object USING btree (((attributes ->> 'name'::text))) WHERE ((attributes ->> 'name'::text) IS NOT NULL);
+
+
+--
 -- Name: nexttask_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
@@ -6167,6 +6267,13 @@ CREATE INDEX nexttask_index_v47 ON reclada.object USING hash (((attributes -> 'n
 --
 
 CREATE INDEX number_index_v47 ON reclada.object USING btree (((attributes -> 'number'::text))) WHERE ((attributes -> 'number'::text) IS NOT NULL);
+
+
+--
+-- Name: object_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX object_index_ ON reclada.object USING btree (((attributes ->> 'object'::text))) WHERE ((attributes ->> 'object'::text) IS NOT NULL);
 
 
 --
@@ -6212,6 +6319,20 @@ CREATE INDEX runner_type_index ON reclada.object USING btree (((attributes ->> '
 
 
 --
+-- Name: schema_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX schema_index_ ON reclada.object USING btree (((attributes ->> 'schema'::text))) WHERE ((attributes ->> 'schema'::text) IS NOT NULL);
+
+
+--
+-- Name: subject_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX subject_index_ ON reclada.object USING btree (((attributes ->> 'subject'::text))) WHERE ((attributes ->> 'subject'::text) IS NOT NULL);
+
+
+--
 -- Name: subject_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
@@ -6219,10 +6340,24 @@ CREATE INDEX subject_index_v47 ON reclada.object USING hash (((attributes -> 'su
 
 
 --
+-- Name: task_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX task_index_ ON reclada.object USING btree (((attributes ->> 'task'::text))) WHERE ((attributes ->> 'task'::text) IS NOT NULL);
+
+
+--
 -- Name: task_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
 CREATE INDEX task_index_v47 ON reclada.object USING hash (((attributes -> 'task'::text))) WHERE ((attributes -> 'task'::text) IS NOT NULL);
+
+
+--
+-- Name: tasks_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX tasks_index_ ON reclada.object USING btree (((attributes ->> 'tasks'::text))) WHERE ((attributes ->> 'tasks'::text) IS NOT NULL);
 
 
 --
@@ -6254,10 +6389,24 @@ CREATE INDEX transaction_id_index ON reclada.object USING btree (transaction_id)
 
 
 --
+-- Name: triggers_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX triggers_index_ ON reclada.object USING btree (((attributes ->> 'triggers'::text))) WHERE ((attributes ->> 'triggers'::text) IS NOT NULL);
+
+
+--
 -- Name: triggers_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
 CREATE INDEX triggers_index_v47 ON reclada.object USING gin (((attributes -> 'triggers'::text))) WHERE ((attributes -> 'triggers'::text) IS NOT NULL);
+
+
+--
+-- Name: type_index; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX type_index ON reclada.object USING btree (((attributes ->> 'type'::text))) WHERE ((attributes ->> 'type'::text) IS NOT NULL);
 
 
 --

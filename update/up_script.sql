@@ -13,6 +13,13 @@ create table dev.meta_data(
     data jsonb
 );
 
+\i 'function/reclada_object.list.sql'
+
+
+drop function reclada_object.datasource_insert;
+\i 'function/reclada_object.object_insert.sql'
+\i 'function/reclada_object.delete.sql'
+
 \i 'function/dev.begin_install_component.sql'
 \i 'function/dev.finish_install_component.sql'
 \i 'function/dev.downgrade_version.sql'
@@ -108,3 +115,11 @@ update reclada.object u
         where u.id = o.id;
     
 
+
+
+\i 'function/reclada_object.update.sql'
+\i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.merge.sql'
+\i 'view/reclada.v_object_unifields.sql'
+
+ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 10;

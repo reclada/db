@@ -10,8 +10,6 @@ update reclada.object u
     ) m
     where m.id = u.id;
 
-delete from dev.meta_data where ver = 49;
-
 drop table dev.meta_data;
 
 --{function/dev.begin_install_component}
@@ -44,4 +42,13 @@ drop VIEW reclada.v_component_object;
 
     -- delete from reclada.object 
     --     where class in (select reclada_object.get_GUID_for_class('Index'));
+
+
+--{function/reclada_object.create}
+--{function/reclada_object.merge}
+--{function/reclada_object.list}
+
+--{view/reclada.v_object_unifields}
+
+ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 1;
 
