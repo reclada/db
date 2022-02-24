@@ -1,6 +1,5 @@
 from update_db import get_version_from_commit
 from update_db import get_version_from_db
-from update_db import clone_db
 from update_db import install_components
 from update_db import clear_db_from_components
 from update_db import run_file
@@ -11,9 +10,7 @@ from update_db import run_cmd_scalar
 from update_db import downgrade_test
 from update_db import pg_dump
 from update_db import db_name
-from update_db import branch_db
-from update_db import install_objects
-from update_db import replace_component
+from update_db import install_component_db
 
 from json.decoder import JSONDecodeError
 import time
@@ -173,6 +170,7 @@ if __name__ == "__main__":
         print('If evrything okay - run this script again before commit to update jsonschemas and install_db.sql')
     
     input("Press Enter to install components . . .")
+    install_component_db() 
     install_components(True)
 
     input("Press Enter to run testing clean db . . .")    

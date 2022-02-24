@@ -108,7 +108,7 @@ def clone(component_name:str,repository:str,branch:str='',debug_db=False):
 
 def get_current_remote_url()->str:
     cmd = "git config --get remote.origin.url"
-    return os.popen(cmd).read()
+    return os.popen(cmd).read()[:-1]
 
 def get_current_repo_hash()->str:
     cmd = "git log --pretty=format:%H -n 1"
@@ -131,6 +131,18 @@ def get_cmd_install_component_db()->str:
                 SELECT dev.begin_install_component('db','{url}','{get_current_repo_hash()}');
                 {patch_object_create()}
                 SELECT dev.finish_install_component();"""
+
+
+def install_component_db():
+    
+    file_name = 'object_create_patched.sql'
+    
+    with open(file_name,'w') as f:
+        f.write(get_cmd_install_component_db())
+
+    run_file(file_name)
+    os.remove(file_name)
+
 
 def patch_object_create(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME)->str:
     with open('object_create.sql') as f:

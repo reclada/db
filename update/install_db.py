@@ -10,10 +10,7 @@ from update_db import quick_install
 from update_db import version
 from update_db import config_version
 from update_db import json_schema_install
-from update_db import branch_db
-from update_db import install_objects
-from update_db import replace_component
-from update_db import get_cmd_install_component_db
+from update_db import install_component_db
 
 
 import os
@@ -45,7 +42,7 @@ def db_install():
             use_dump = True
             os.chdir('update')
             run_file('install_db.sql')
-            run_cmd_scalar( get_cmd_install_component_db() )
+            install_component_db()
             os.chdir('..')
 
         need_update = not((max_dump_commit == config_version - 1) 
