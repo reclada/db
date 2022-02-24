@@ -12,16 +12,16 @@ BEGIN
     perform reclada.raise_exception('Component does not found.',_f_name)
         where not exists(select 1 from dev.component);
     
-    select ('{
-                "GUID": "' || guid::text || '",
-                "class":"Component",
-                "transactionID":'|| _tran_id::text ||',
-                "attributes": {
-                    "name":"' || name || '",
-                    "repository":"' || repository || '",
-                    "commitHash":"' || commit_hash  || '"
-                }
-            }')::jsonb
+    select jsonb_build_object(
+                                'GUID'          , guid::text,
+                                'class'         , 'Component',
+                                'transactionID' , _tran_id,
+                                'attributes'    , jsonb_build_object(
+                                    'name'        , name,
+                                    'repository'  , repository,
+                                    'commitHash'  , commit_hash
+                                )
+                            )
         from dev.component
         into _comp_obj;
 

@@ -125,8 +125,10 @@ def get_repo_hash(component_name:str,repository:str,branch:str,debug_db=False):
 #{ Components
 
 def get_cmd_install_component_db()->str:
+    url = get_current_remote_url()
+    
     return f""" SELECT reclada.raise_notice('Begin install component db...');
-                SELECT dev.begin_install_component('db','{get_current_remote_url()}','{get_current_repo_hash()}');
+                SELECT dev.begin_install_component('db','{url}','{get_current_repo_hash()}');
                 {patch_object_create()}
                 SELECT dev.finish_install_component();"""
 

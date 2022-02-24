@@ -22,7 +22,7 @@ if __name__ == "__main__":
             up = up.replace('/*#@#@#version#@#@#*/',str(version))
 
             ucs = get_cmd_install_component_db()
-            up = template.replace('/*#@#@#upgrade_component_script#@#@#*/', ucs)
+            up = up.replace('/*#@#@#upgrade_component_script#@#@#*/', ucs)
 
             with open("up.sql",'w', encoding = "utf-8") as f:
                 f.write(up)

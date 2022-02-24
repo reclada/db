@@ -29,9 +29,6 @@ def upgrade():
         raise Exception(f'create_up.sql.py error: {res}')
 
     run_file('up.sql')
-    input('Enter to upgrade db component . . .')
-    if get_version_from_db() >= 48: # Components do not exist before 48
-        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects,True)
 
 
 if __name__ == "__main__":
