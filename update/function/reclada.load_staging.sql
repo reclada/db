@@ -11,10 +11,10 @@ BEGIN
         FROM NEW_TABLE
         INTO _length_data;
     --add row_number() over(order by data) as id
-    FOR i IN 1.._length_data / _batch_size LOOP -- refact
+    FOR i IN 1..ceiling(_length_data / _batch_size) LOOP -- refact
         SELECT jsonb_agg(data)
             FROM NEW_TABLE
-            WHERE (i - 1)  * 1000 < id <= i * 1000
+            WHERE ((i - 1)  * 1000) < id <= (i * 1000)
             INTO _data_agg;
         PERFORM reclada_object.create(_data_agg);
     END LOOP;

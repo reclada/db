@@ -18,3 +18,18 @@ drop function reclada_object.datasource_insert;
 \i 'view/reclada.v_ui_active_object.sql' 
 
 --} REC-564 
+
+CREATE TABLE reclada.staging(
+    data    jsonb   NOT NULL,
+    id      bigint
+);
+
+ALTER TABLE reclada.staging ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME reclada.staging_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
