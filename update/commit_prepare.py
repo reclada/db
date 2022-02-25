@@ -91,12 +91,15 @@ if __name__ == "__main__":
                             sc = set()
                             sd = set()
                         suffix = ", true);\n"
-                        for prefix in ["SELECT pg_catalog.setval('dev.ver_id_seq',","SELECT pg_catalog.setval('reclada."]:
+                        for prefix in ["SELECT pg_catalog.setval('dev.ver_id_seq',", "SELECT pg_catalog.setval('reclada."]:
                             if (ldd[i].startswith(prefix)
                                 and lcd[j].startswith(prefix)
                                 and ldd[i].endswith(suffix)
                                 and lcd[j].endswith(suffix)):
                                 break
+                            if (ldd[i].startswith("-- Dumped by pg_dump version")
+                                    and lcd[j].startswith("-- Dumped by pg_dump version")):
+                                break                            
                         else:
                             if (ldd[i] != lcd[j]):
                                 good = False

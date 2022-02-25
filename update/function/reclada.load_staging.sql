@@ -3,19 +3,17 @@ RETURNS TRIGGER
 AS $$
 DECLARE
     _data_agg jsonb;
-    _batch_size bigint;
-    _length_data bigint;
+    _batch_size bigint := 1000;
 BEGIN
-    _batch_size := 1000;
-    SELECT COUNT(data)
-        FROM NEW_TABLE
-        INTO _length_data;
-    --add row_number() over(order by data) as id
-    FOR i IN 1..ceiling(_length_data / _batch_size) LOOP -- refact
-        SELECT jsonb_agg(data)
-            FROM NEW_TABLE
-            WHERE ((i - 1)  * 1000) < id <= (i * 1000)
-            INTO _data_agg;
+    FOR _data_agg IN (select jsonb_agg(vrn.data)	  
+                        from (
+                            select data,
+                                ROUND((ROW_NUMBER()OVER()-1)/_batch_size) AS rn
+                                from NEW_TABLE
+                        ) vrn
+                        group by vrn.rn
+                     ) 
+    LOOP 
         PERFORM reclada_object.create(_data_agg);
     END LOOP;
     RETURN NEW;

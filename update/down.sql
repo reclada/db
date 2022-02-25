@@ -7,3 +7,13 @@
 --{function/reclada_object.merge}
 --{function/reclada_object.list}
 
+DROP TRIGGER load_staging on reclada.staging;
+
+--{function/reclada.load_staging}
+DROP TABLE reclada.staging;
+
+--{view/reclada.staging}
+--{trigger/load_staging}
+
+
+
