@@ -6,6 +6,7 @@
 --{function/reclada_object.update}
 --{function/reclada_object.merge}
 --{function/reclada_object.list}
+--{view/reclada.v_ui_active_object}
 
 --{view/reclada.v_object_unifields}
 
