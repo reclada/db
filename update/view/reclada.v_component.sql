@@ -1,4 +1,4 @@
-drop VIEW if EXISTS reclada.v_component;
+-- drop VIEW if EXISTS reclada.v_component;
 CREATE OR REPLACE VIEW reclada.v_component
 AS
     SELECT  obj.id            ,
@@ -6,6 +6,7 @@ AS
             obj.attrs->>'name'      as name,
             obj.attrs->>'repository'   as repository,
             obj.attrs->>'commitHash'   as commit_hash,
+            obj.transaction_id,
             obj.revision_num  ,
             obj.status_caption,
             obj.revision      ,
@@ -14,5 +15,5 @@ AS
             obj.status        ,
             obj.data
 	FROM reclada.v_active_object obj
-   	WHERE class_name = 'Component';
+   	WHERE obj.class_name = 'Component';
 --select * from reclada.v_component

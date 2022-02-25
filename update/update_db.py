@@ -28,7 +28,6 @@ db_name = db_URI.split('/')[-1]
 ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
 LAMBDA_NAME = j["LAMBDA_NAME"]
 LAMBDA_REGION = j["LAMBDA_REGION"]
-run_object_create = j["run_object_create"]
 version = j["version"]
 quick_install = j["quick_install"]
 downgrade_test = j["downgrade_test"]
@@ -44,9 +43,11 @@ def psql_str(cmd:str,DB_URI:str = db_URI)->str:
 #zero = 'fbcc09e9f4f5b03f0f952b95df8b481ec83b6685\n'
 
 def pg_dump(file_name:str,t:str):
+    run_cmd_scalar('delete from dev.component_object;')
+
     os.system(f'pg_dump -N public -f {file_name} -O {db_URI}')
 
-    with open('up_script.sql') as f:
+    with open('up_script.sql',encoding='utf8') as f:
         ver_str = f.readline()
         ver = int(ver_str.replace('-- version =',''))
             
@@ -63,27 +64,16 @@ def pg_dump(file_name:str,t:str):
 
 def json_schema_install(DB_URI=db_URI):
     file_name = 'patched.sql'
-    rmdir('postgres-json-schema')
-    os.chdir('..')
-    os.chdir('..')
-    cd = Path('postgres-json-schema').exists()
-    if not cd:
-        os.chdir('db')
-        os.chdir('update')
-        os.system(f'git clone https://github.com/gavinwahl/postgres-json-schema.git')
-    os.chdir('postgres-json-schema')
+    clone('postgres-json-schema','https://github.com/gavinwahl/postgres-json-schema.git')
     with open('postgres-json-schema--0.1.1.sql') as s, open(file_name,'w') as d:
         d.write(s.read().replace('@extschema@','public').replace('CREATE OR REPLACE FUNCTION ','CREATE OR REPLACE FUNCTION public.'))
 
     run_file(file_name,DB_URI)
     os.chdir('..')
-    if cd:
-        os.chdir('db')
-        os.chdir('update')
     rmdir('postgres-json-schema')
 
 
-def clone(component_name:str,repository:str,branch:str):
+def clone(component_name:str,repository:str,branch:str='',debug_db=False):
     # folder: update
     rmdir(component_name)
     os.chdir('..') #folder: db
@@ -92,16 +82,19 @@ def clone(component_name:str,repository:str,branch:str):
     if not (os.path.exists(component_name) and os.path.isdir(component_name)):
         os.system(f'git clone {repository}')
         os.chdir(component_name)
-        res = checkout(branch)
+        if branch != '':
+            res = checkout(branch)
+        # else use default branch
         os.chdir('..')
 
     folder_source = component_name
     if component_name == 'db':
         folder_source = f'db_copy_{str(uuid.uuid4())}'
         shutil.copytree('db',folder_source)
-        os.chdir(folder_source)
-        checkout('.')
-        os.chdir('..')
+        if not debug_db:
+            os.chdir(folder_source)
+            res = checkout(branch)
+            os.chdir('..')
     
     path_dest = os.path.join('db','update',component_name)
 
@@ -110,26 +103,48 @@ def clone(component_name:str,repository:str,branch:str):
         rmdir(folder_source)
 
     os.chdir(path_dest)
-    res = checkout(branch)
+    
     #folder: repos/db/update/component_name
-        
 
-def get_repo_hash(component_name:str,repository:str,branch:str):
+def get_current_remote_url()->str:
+    cmd = "git config --get remote.origin.url"
+    return os.popen(cmd).read()[:-1]
+
+def get_current_repo_hash()->str:
+    cmd = "git log --pretty=format:%H -n 1"
+    return os.popen(cmd).read()
+
+def get_repo_hash(component_name:str,repository:str,branch:str,debug_db=False):
     # folder: db/update
     rmdir(component_name)
-    if component_name != 'db':
-        clone(component_name,repository,branch)
-        #folder: repos/db/update/component_name
-    cmd = "git log --pretty=format:%H -n 1"
-    repo_hash = os.popen(cmd).read()
+    clone(component_name,repository,branch,debug_db)
+    #folder: repos/db/update/component_name
+    repo_hash = get_current_repo_hash()
     return repo_hash
 
 #{ Components
 
-def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
-    #if Path('update').exists():
-    #    os.chdir('update') # for lower 48 don't need
+def get_cmd_install_component_db()->str:
+    url = get_current_remote_url()
+    
+    return f""" SELECT reclada.raise_notice('Begin install component db...');
+                SELECT dev.begin_install_component('db','{url}','{get_current_repo_hash()}');
+                {patch_object_create()}
+                SELECT dev.finish_install_component();"""
+
+
+def install_component_db():
+    
     file_name = 'object_create_patched.sql'
+    
+    with open(file_name,'w') as f:
+        f.write(get_cmd_install_component_db())
+
+    run_file(file_name)
+    os.remove(file_name)
+
+
+def patch_object_create(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME)->str:
     with open('object_create.sql') as f:
         obj_cr = f.read()
 
@@ -137,12 +152,22 @@ def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONME
     obj_cr = obj_cr.replace('#@#lregion#@#', l_region)
     obj_cr = obj_cr.replace('#@#ename#@#', e_name)
 
+    return obj_cr
+
+def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
+    exists = Path('update').exists()
+    if exists:
+        os.chdir('update') # for lower 48 don't need
+    file_name = 'object_create_patched.sql'
+    
     with open(file_name,'w') as f:
-        f.write(obj_cr)
+        f.write(patch_object_create(l_name, l_region, e_name))
 
     run_file(file_name,DB_URI)
     os.remove(file_name)
-    #os.chdir('..')
+
+    if exists:
+        os.chdir('..')
 
 
 def run_file(file_name,DB_URI=db_URI):
@@ -153,12 +178,21 @@ def run_file(file_name,DB_URI=db_URI):
 def run_cmd_scalar(command,DB_URI=db_URI)->str:
     command = command.replace('"','""').replace('\n',' ')
     cmd = psql_str(f'-c "{command}"',DB_URI)
-    return os.popen(cmd).read().strip()
+    res = os.popen(cmd).read().strip()
+    return res
 
 
 def checkout(to:str = branch_db):
-    cmd = f'git checkout {to} -q'
+    cmd = f'git status'
     r = os.popen(cmd).read()
+    if r.find('nothing to commit, working tree clean')<0:
+        cmd = f'git clean -fxd -q'
+        r = os.popen(cmd).read()
+        cmd = f'git checkout . -q'
+        r = os.popen(cmd).read()
+    if to != '':
+        cmd = f'git checkout {to} -q'
+        r = os.popen(cmd).read()
     return r
 
 def runtime_install():
@@ -179,20 +213,19 @@ def install_psql_script(directory:str,files:list):
 
 #} Components
 
-def replace_component(name:str,repository:str,branch:str,component_installer)->str:
+def replace_component(name:str,repository:str,branch:str,component_installer,debug_db=False)->str:
     '''
         replace or install reclada-component
     '''
-    print(f'installing {name}...')
+    print(f'installing component "{name}"...')
     guid = run_cmd_scalar(f"SELECT guid FROM reclada.v_component WHERE name = '{name}'")
 
-    repo_hash = get_repo_hash(name,repository,branch)
+    repo_hash = get_repo_hash(name,repository,branch,debug_db)
     if guid != '':
         db_hash = run_cmd_scalar(f"SELECT commit_hash FROM reclada.v_component WHERE guid = '{guid}'")
         if db_hash == repo_hash:
-            if name != 'db':
-                os.chdir('..')
-                rmdir(name)
+            os.chdir('..')
+            rmdir(name)
             print(f'Component {name} has actual version')
             return
 
@@ -204,9 +237,8 @@ def replace_component(name:str,repository:str,branch:str,component_installer)->s
         res = run_cmd_scalar(cmd)
         if res != 'OK':
             raise Exception('Component does not installed')
-    if name != 'db':
-        os.chdir('..')
-        rmdir(name)
+    os.chdir('..')
+    rmdir(name)
 
 
 def rmdir(top:str): 
@@ -299,13 +331,13 @@ def recreate_db():
     db_URI_postgres = '/'.join(splt)
     
     def execute(cmd:str):
-        os.system(psql_str(f'-c "{cmd}"', db_URI_postgres))
+        run_cmd_scalar(cmd, db_URI_postgres)
     
     execute(f'''REVOKE CONNECT ON DATABASE {db_name} FROM PUBLIC, {db_user};''')
-    execute(f'''SELECT pg_terminate_backend(pid)        '''
-        +   f'''    FROM pg_stat_activity               '''
-        +   f'''        WHERE pid <> pg_backend_pid()   '''
-        +   f'''           AND datname = '{db_name}';        ''')
+    execute(f'''SELECT pg_terminate_backend(pid)        
+                    FROM pg_stat_activity               
+                    WHERE pid <> pg_backend_pid()   
+                        AND datname = '{db_name}';''')
     execute(f'''DROP DATABASE {db_name};''')
     execute(f'''CREATE DATABASE {db_name};''')
 
@@ -320,32 +352,61 @@ def run_test():
     os.chdir('..')
     rmdir('QAAutotests')
 
-def install_components():
+def install_components(debug_db=False):
     v = get_version_from_db()
     if v < 48: # Components do not exist before 48
         install_objects() 
     else:
-        replace_component('db','https://gitlab.reclada.com/developers/db.git',branch_db,install_objects)
         replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
         replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git',branch_runtime,runtime_install)
 
 def clear_db_from_components():
+    print('clear db from components...')
+    res = run_cmd_scalar('''DO
+                            $do$
+                            DECLARE
+                                _objs  jsonb[];
+                            BEGIN
+                                SELECT array_agg(distinct obj_data)
+                                    FROM reclada.v_component_object o
+                                    INTO _objs;
+                                
+                                PERFORM reclada_object.delete(cn)
+                                    FROM unnest(_objs) AS cn;
+                            END
+                            $do$;''')#to delete indexes
 
-    cmd = f"""WITH d AS (
-                    SELECT component_guid, obj_id, relationship_guid
-                        FROM reclada.v_component_object
-                )
-                DELETE FROM reclada.object 
-                    WHERE guid in 
-                    (
-                        SELECT obj_id FROM d
-                        UNION
-                        SELECT relationship_guid FROM d
-                        UNION 
-                        SELECT guid FROM reclada.v_component
-                    )"""
-    res = run_cmd_scalar(cmd)
-
+    res = run_cmd_scalar('''WITH t as (
+                                SELECT object, subject, guid 
+                                    FROM reclada.v_relationship
+                                        WHERE type = 'data of reclada-component'
+                            )
+                            DELETE FROM reclada.object 
+                                WHERE guid in 
+                                (   
+                                    SELECT object  FROM t
+                                    UNION
+                                    SELECT subject FROM t
+                                    UNION
+                                    SELECT guid    FROM t
+                                    UNION 
+                                    SELECT guid    FROM reclada.v_component
+                                );''')
+    print(res)
+    res = run_cmd_scalar('''DELETE FROM reclada.object 
+                                WHERE guid in 
+                                (
+                                    SELECT r.obj_id
+                                        FROM reclada.v_revision r
+                                );''')
+    print(res)
+    res = run_cmd_scalar('''UPDATE reclada.object 
+                                SET attributes = attributes - 'revision';''')
+    print(res)
+    res = run_cmd_scalar('''DELETE FROM dev.component_object;''')
+    print(res)
+    res = run_cmd_scalar('''SELECT reclada_object.refresh_mv('All');''')
+    print(res)
 
 
 if __name__ == "__main__":
@@ -368,18 +429,18 @@ if __name__ == "__main__":
         for commit in res:
             commit_v = get_version_from_commit(commit)
             os.chdir('update')
-            print(f'commit: {commit}\tcommit_version: {commit_v}')
             if commit_v == cur_ver_db + 1:
-                print('\trun')
+                print(f'commit: {commit}\tcommit_version: {commit_v}')
                 os.system('python create_up.sql.py')
                 run_file('up.sql',DB_URI)
                 cur_ver_db+=1
-            else:
-                print(f'\talready applied')
             os.chdir('..')
 
             if cur_ver_db == config_version:
                 break
 
+    if cur_ver_db >= 48: # Components do not exist before 48
+        install_components() #upgrade components
+    
     os.chdir('..')
     rmdir('db')

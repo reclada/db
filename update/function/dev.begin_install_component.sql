@@ -26,7 +26,7 @@ BEGIN
 
     delete from dev.component_object;
     insert into dev.component_object(data)
-        select obj_data 
+        select obj_data
             from reclada.v_component_object
                 where component_name = _name;
     return 'OK';
