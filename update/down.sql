@@ -92,4 +92,4 @@ AS
 ;
 ANALYZE reclada.v_object_unifields;
 
---{view/reclada.v_ui_active_object}
+ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 1;
