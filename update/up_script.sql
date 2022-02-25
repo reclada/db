@@ -16,10 +16,6 @@ create table dev.meta_data(
 \i 'function/reclada_object.list.sql'
 
 
-drop function reclada_object.datasource_insert;
-\i 'function/reclada_object.object_insert.sql'
-\i 'function/reclada_object.delete.sql'
-
 \i 'function/dev.begin_install_component.sql'
 \i 'function/dev.finish_install_component.sql'
 \i 'function/dev.downgrade_version.sql'
