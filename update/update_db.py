@@ -15,7 +15,6 @@ with open('update_config.json') as f:
 j = json.loads(j)
 
 branch_db = j["branch_db"]
-branch_runtime = j["branch_runtime"]
 branch_SciNLP = j["branch_SciNLP"]
 branch_QAAutotests = j["branch_QAAutotests"]
 
@@ -25,9 +24,7 @@ db_URI = db_URI.replace(parsed.password, urllib.parse.quote(parsed.password))
 
 db_user = parsed.username
 db_name = db_URI.split('/')[-1]
-ENVIRONMENT_NAME = j["ENVIRONMENT_NAME"]
-LAMBDA_NAME = j["LAMBDA_NAME"]
-LAMBDA_REGION = j["LAMBDA_REGION"]
+components = j["components"]
 version = j["version"]
 quick_install = j["quick_install"]
 downgrade_test = j["downgrade_test"]
@@ -114,11 +111,12 @@ def get_current_repo_hash()->str:
     cmd = "git log --pretty=format:%H -n 1"
     return os.popen(cmd).read()
 
-def get_repo_hash(component_name:str,repository:str,branch:str,debug_db=False):
-    # folder: db/update
-    rmdir(component_name)
-    clone(component_name,repository,branch,debug_db)
-    #folder: repos/db/update/component_name
+def get_repo_hash(component_name:str):
+    # folder: repos/db/update
+    os.chdir('..')
+    os.chdir('..')
+    os.chdir(component_name)
+    #folder: repos/component_name
     repo_hash = get_current_repo_hash()
     return repo_hash
 
@@ -213,14 +211,15 @@ def install_psql_script(directory:str,files:list):
 
 #} Components
 
-def replace_component(name:str,repository:str,branch:str,component_installer,debug_db=False)->str:
+def replace_component(name:str)->str:
     '''
         replace or install reclada-component
     '''
     print(f'installing component "{name}"...')
     guid = run_cmd_scalar(f"SELECT guid FROM reclada.v_component WHERE name = '{name}'")
 
-    repo_hash = get_repo_hash(name,repository,branch,debug_db)
+    repo_hash = get_repo_hash(name)
+    #folder: repos/component_name
     if guid != '':
         db_hash = run_cmd_scalar(f"SELECT commit_hash FROM reclada.v_component WHERE guid = '{guid}'")
         if db_hash == repo_hash:
@@ -228,11 +227,23 @@ def replace_component(name:str,repository:str,branch:str,component_installer,deb
             rmdir(name)
             print(f'Component {name} has actual version')
             return
-
+    repository = get_current_remote_url()
     cmd = f"SELECT dev.begin_install_component('{name}','{repository}','{repo_hash}');"
     res = run_cmd_scalar(cmd)
     if res == 'OK':
-        component_installer()
+        f_name = 'configuration.json'
+        if os.path.exists(f_name):
+            j = ''
+            with open(f_name) as f:
+                j = f.read()
+            j = json.loads(j)
+            parametres = j["parametres"]
+            installer =  j["installer"]
+
+            # HERE install_psql_script
+        else:
+            raise Exception(f'Component "{name}" does not have "configuration.json"')
+
         cmd = "SELECT dev.finish_install_component();"
         res = run_cmd_scalar(cmd)
         if res != 'OK':
