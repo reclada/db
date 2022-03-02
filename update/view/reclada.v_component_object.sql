@@ -7,7 +7,6 @@ AS
             o.class_name, 
             o.obj_id,
             o.data obj_data,
-            o.id as id_object,
             r.guid relationship_guid
         FROM reclada.v_component c
         JOIN reclada.v_relationship r
