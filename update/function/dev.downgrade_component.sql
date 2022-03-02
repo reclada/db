@@ -8,12 +8,13 @@ as
 $$
 declare 
     _comp_obj jsonb;
+    _rev_num  int;
 BEGIN
 
-    SELECT data 
+    SELECT data, revision_num
         FROM reclada.v_component
             WHERE name = _component_name
-        INTO _comp_obj;
+        INTO _comp_obj, _rev_num;
 
     DELETE from reclada.object 
         WHERE transaction_id  = (_comp_obj->>'transactionID')::bigint;
@@ -22,10 +23,9 @@ BEGIN
         SET status = reclada_object.get_active_status_obj_id()
         FROM (
             SELECT transaction_id
-                from reclada.object 
-                    WHERE guid = (_comp_obj->>'GUID')::uuid
-                ORDER BY id DESC 
-                LIMIT 1
+                from reclada.v_object o
+                    WHERE o.obj_id = (_comp_obj->>'GUID')::uuid
+                        AND coalesce(revision_num, 1) = coalesce(_rev_num, 1) - 1
         ) c
             WHERE u.transaction_id = c.transaction_id
                 and NOT EXISTS (
