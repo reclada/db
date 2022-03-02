@@ -122,4 +122,5 @@ ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 10;
 
 -----------
 \i 'view/reclada.v_ui_active_object.sql'
+\i 'view/reclada.v_get_duplicates_query.sql'
 
