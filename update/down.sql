@@ -47,6 +47,7 @@ drop VIEW reclada.v_component_object;
 --{function/reclada_object.create}
 --{function/reclada_object.merge}
 --{function/reclada_object.list}
+--{view/reclada.v_ui_active_object}
 
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 CREATE MATERIALIZED VIEW reclada.v_object_unifields
@@ -92,4 +93,3 @@ AS
 ANALYZE reclada.v_object_unifields;
 
 ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 1;
-

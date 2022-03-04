@@ -78,6 +78,8 @@ select reclada_object.create_relationship
             and o.attributes->>'function' in ('reclada_object.list','reclada_object.get_query_condition_filter')
         ) or (
             o.class in (select reclada_object.get_GUID_for_class('ObjectDisplay'))
+        ) or (
+            o.class in (select reclada_object.get_GUID_for_class('Message'))
         );
 
 
@@ -119,3 +121,6 @@ update reclada.object u
 \i 'view/reclada.v_object_unifields.sql'
 
 ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 10;
+
+-----------
+\i 'view/reclada.v_ui_active_object.sql'

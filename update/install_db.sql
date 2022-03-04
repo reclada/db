@@ -961,12 +961,13 @@ CREATE FUNCTION dev.downgrade_component(_component_name text) RETURNS text
     AS $$
 declare 
     _comp_obj jsonb;
+    _rev_num  int;
 BEGIN
 
-    SELECT data 
+    SELECT data, revision_num
         FROM reclada.v_component
             WHERE name = _component_name
-        INTO _comp_obj;
+        INTO _comp_obj, _rev_num;
 
     DELETE from reclada.object 
         WHERE transaction_id  = (_comp_obj->>'transactionID')::bigint;
@@ -975,10 +976,9 @@ BEGIN
         SET status = reclada_object.get_active_status_obj_id()
         FROM (
             SELECT transaction_id
-                from reclada.object 
-                    WHERE guid = (_comp_obj->>'GUID')::uuid
-                ORDER BY id DESC 
-                LIMIT 1
+                from reclada.v_object o
+                    WHERE o.obj_id = (_comp_obj->>'GUID')::uuid
+                        AND coalesce(revision_num, 1) = coalesce(_rev_num, 1) - 1
         ) c
             WHERE u.transaction_id = c.transaction_id
                 and NOT EXISTS (
@@ -3273,7 +3273,10 @@ BEGIN
     IF ver = '2' THEN
         _pre_query := (select val from reclada.v_ui_active_object);
         _from := 'res AS obj';
-        _pre_query := REPLACE(_pre_query,'#@#@#where#@#@#', query_conditions  );
+        _pre_query := REPLACE(_pre_query, '#@#@#where#@#@#'  , query_conditions);
+        _pre_query := REPLACE(_pre_query, '#@#@#orderby#@#@#', order_by        );
+        order_by :=  REPLACE(order_by, '{', '{"{');
+        order_by :=  REPLACE(order_by, '}', '}"}'); --obj.data#>'{some_field}'  -->  obj.data#>'{"{some_field}"}'
 
     ELSE
         _pre_query := '';
@@ -3304,6 +3307,7 @@ BEGIN
     _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
     _exec_text := REPLACE(_exec_text, '#@#@#limit#@#@#'    , limit_            );
     -- RAISE NOTICE 'conds: %', _exec_text;
+
     EXECUTE _exec_text
         INTO objects;
     objects := coalesce(objects,'[]'::jsonb);
@@ -4948,7 +4952,6 @@ CREATE VIEW reclada.v_component_object AS
     o.class_name,
     o.obj_id,
     o.data AS obj_data,
-    o.id AS id_object,
     r.guid AS relationship_guid
    FROM ((reclada.v_component c
      JOIN reclada.v_relationship r ON (((r.parent_guid = c.guid) AND ('data of reclada-component'::text = r.type))))
@@ -5600,6 +5603,7 @@ d as (
             attrs 
         FROM reclada.v_active_object obj 
             where #@#@#where#@#@#
+                ORDER BY #@#@#orderby#@#@#
                 OFFSET #@#@#offset#@#@#
                 LIMIT #@#@#limit#@#@#
 ),
@@ -5685,93 +5689,105 @@ COPY dev.component_object (id, status, data) FROM stdin;
 
 COPY dev.meta_data (id, ver, data) FROM stdin;
 1	49	{"id": 18, "tran_id": 10}
-2	49	{"id": 28, "tran_id": 52}
-3	49	{"id": 86, "tran_id": 85}
-4	49	{"id": 62, "tran_id": 61}
-5	49	{"id": 182, "tran_id": 180}
-6	49	{"id": 74, "tran_id": 73}
-7	49	{"id": 61, "tran_id": 60}
-8	49	{"id": 59, "tran_id": 58}
-9	49	{"id": 85, "tran_id": 84}
-10	49	{"id": 84, "tran_id": 83}
-11	49	{"id": 57, "tran_id": 56}
-12	49	{"id": 14, "tran_id": 55}
-13	49	{"id": 26, "tran_id": 54}
-14	49	{"id": 31, "tran_id": 37}
-15	49	{"id": 16, "tran_id": 33}
-16	49	{"id": 12, "tran_id": 15}
-17	49	{"id": 6, "tran_id": 14}
-18	49	{"id": 8, "tran_id": 13}
-19	49	{"id": 29, "tran_id": 4}
-20	49	{"id": 60, "tran_id": 59}
-21	49	{"id": 89, "tran_id": 87}
-22	49	{"id": 93, "tran_id": 91}
-23	49	{"id": 176, "tran_id": 174}
-24	49	{"id": 178, "tran_id": 176}
-25	49	{"id": 180, "tran_id": 178}
-26	49	{"id": 184, "tran_id": 182}
-27	49	{"id": 186, "tran_id": 184}
-28	49	{"id": 188, "tran_id": 186}
-29	49	{"id": 190, "tran_id": 188}
-30	49	{"id": 192, "tran_id": 190}
-31	49	{"id": 194, "tran_id": 192}
-32	49	{"id": 196, "tran_id": 194}
-33	49	{"id": 198, "tran_id": 196}
-34	49	{"id": 200, "tran_id": 198}
-35	49	{"id": 202, "tran_id": 200}
-36	49	{"id": 204, "tran_id": 202}
-37	49	{"id": 206, "tran_id": 204}
-38	49	{"id": 208, "tran_id": 206}
-39	49	{"id": 211, "tran_id": 209}
-40	49	{"id": 213, "tran_id": 211}
-41	49	{"id": 215, "tran_id": 213}
-42	49	{"id": 217, "tran_id": 215}
-43	49	{"id": 219, "tran_id": 217}
-44	49	{"id": 221, "tran_id": 219}
-45	49	{"id": 223, "tran_id": 221}
-46	49	{"id": 225, "tran_id": 223}
-47	49	{"id": 227, "tran_id": 225}
-48	49	{"id": 229, "tran_id": 227}
-49	49	{"id": 232, "tran_id": 230}
-50	49	{"id": 234, "tran_id": 232}
-51	49	{"id": 236, "tran_id": 234}
-52	49	{"id": 238, "tran_id": 236}
-53	49	{"id": 240, "tran_id": 238}
-54	49	{"id": 242, "tran_id": 240}
-55	49	{"id": 244, "tran_id": 242}
-56	49	{"id": 246, "tran_id": 244}
-57	49	{"id": 248, "tran_id": 246}
-58	49	{"id": 250, "tran_id": 248}
-59	49	{"id": 252, "tran_id": 250}
-60	49	{"id": 254, "tran_id": 252}
-61	49	{"id": 256, "tran_id": 254}
-62	49	{"id": 258, "tran_id": 256}
-63	49	{"id": 260, "tran_id": 258}
-64	49	{"id": 262, "tran_id": 260}
-65	49	{"id": 264, "tran_id": 262}
-66	49	{"id": 266, "tran_id": 264}
-67	49	{"id": 268, "tran_id": 266}
-68	49	{"id": 270, "tran_id": 268}
-69	49	{"id": 272, "tran_id": 270}
-70	49	{"id": 274, "tran_id": 272}
-71	49	{"id": 276, "tran_id": 274}
-72	49	{"id": 278, "tran_id": 276}
-73	49	{"id": 280, "tran_id": 278}
-74	49	{"id": 282, "tran_id": 280}
-75	49	{"id": 284, "tran_id": 282}
-76	49	{"id": 286, "tran_id": 284}
-77	49	{"id": 288, "tran_id": 286}
-78	49	{"id": 290, "tran_id": 288}
-79	49	{"id": 292, "tran_id": 290}
-80	49	{"id": 294, "tran_id": 292}
-81	49	{"id": 296, "tran_id": 294}
-82	49	{"id": 298, "tran_id": 296}
-83	49	{"id": 300, "tran_id": 298}
-84	49	{"id": 302, "tran_id": 300}
-85	49	{"id": 304, "tran_id": 302}
-86	49	{"id": 306, "tran_id": 304}
-87	49	{"id": 308, "tran_id": 306}
-88	49	{"id": 310, "tran_id": 308}
+2	49	{"id": 40, "tran_id": 17}
+3	49	{"id": 41, "tran_id": 18}
+4	49	{"id": 42, "tran_id": 19}
+5	49	{"id": 47, "tran_id": 24}
+6	49	{"id": 48, "tran_id": 25}
+7	49	{"id": 49, "tran_id": 26}
+8	49	{"id": 28, "tran_id": 52}
+9	49	{"id": 86, "tran_id": 85}
+10	49	{"id": 62, "tran_id": 61}
+11	49	{"id": 182, "tran_id": 180}
+12	49	{"id": 74, "tran_id": 73}
+13	49	{"id": 61, "tran_id": 60}
+14	49	{"id": 59, "tran_id": 58}
+15	49	{"id": 85, "tran_id": 84}
+16	49	{"id": 84, "tran_id": 83}
+17	49	{"id": 57, "tran_id": 56}
+18	49	{"id": 14, "tran_id": 55}
+19	49	{"id": 26, "tran_id": 54}
+20	49	{"id": 31, "tran_id": 37}
+21	49	{"id": 16, "tran_id": 33}
+22	49	{"id": 12, "tran_id": 15}
+23	49	{"id": 6, "tran_id": 14}
+24	49	{"id": 8, "tran_id": 13}
+25	49	{"id": 29, "tran_id": 4}
+26	49	{"id": 60, "tran_id": 59}
+27	49	{"id": 89, "tran_id": 87}
+28	49	{"id": 93, "tran_id": 91}
+29	49	{"id": 176, "tran_id": 174}
+30	49	{"id": 178, "tran_id": 176}
+31	49	{"id": 180, "tran_id": 178}
+32	49	{"id": 184, "tran_id": 182}
+33	49	{"id": 186, "tran_id": 184}
+34	49	{"id": 188, "tran_id": 186}
+35	49	{"id": 190, "tran_id": 188}
+36	49	{"id": 192, "tran_id": 190}
+37	49	{"id": 194, "tran_id": 192}
+38	49	{"id": 196, "tran_id": 194}
+39	49	{"id": 198, "tran_id": 196}
+40	49	{"id": 200, "tran_id": 198}
+41	49	{"id": 202, "tran_id": 200}
+42	49	{"id": 204, "tran_id": 202}
+43	49	{"id": 206, "tran_id": 204}
+44	49	{"id": 208, "tran_id": 206}
+45	49	{"id": 211, "tran_id": 209}
+46	49	{"id": 213, "tran_id": 211}
+47	49	{"id": 215, "tran_id": 213}
+48	49	{"id": 217, "tran_id": 215}
+49	49	{"id": 219, "tran_id": 217}
+50	49	{"id": 221, "tran_id": 219}
+51	49	{"id": 223, "tran_id": 221}
+52	49	{"id": 225, "tran_id": 223}
+53	49	{"id": 227, "tran_id": 225}
+54	49	{"id": 229, "tran_id": 227}
+55	49	{"id": 232, "tran_id": 230}
+56	49	{"id": 234, "tran_id": 232}
+57	49	{"id": 236, "tran_id": 234}
+58	49	{"id": 238, "tran_id": 236}
+59	49	{"id": 240, "tran_id": 238}
+60	49	{"id": 242, "tran_id": 240}
+61	49	{"id": 244, "tran_id": 242}
+62	49	{"id": 246, "tran_id": 244}
+63	49	{"id": 248, "tran_id": 246}
+64	49	{"id": 250, "tran_id": 248}
+65	49	{"id": 252, "tran_id": 250}
+66	49	{"id": 254, "tran_id": 252}
+67	49	{"id": 254, "tran_id": 252}
+68	49	{"id": 256, "tran_id": 254}
+69	49	{"id": 256, "tran_id": 254}
+70	49	{"id": 258, "tran_id": 256}
+71	49	{"id": 258, "tran_id": 256}
+72	49	{"id": 260, "tran_id": 258}
+73	49	{"id": 260, "tran_id": 258}
+74	49	{"id": 262, "tran_id": 260}
+75	49	{"id": 262, "tran_id": 260}
+76	49	{"id": 264, "tran_id": 262}
+77	49	{"id": 264, "tran_id": 262}
+78	49	{"id": 266, "tran_id": 264}
+79	49	{"id": 268, "tran_id": 266}
+80	49	{"id": 270, "tran_id": 268}
+81	49	{"id": 272, "tran_id": 270}
+82	49	{"id": 274, "tran_id": 272}
+83	49	{"id": 276, "tran_id": 274}
+84	49	{"id": 278, "tran_id": 276}
+85	49	{"id": 280, "tran_id": 278}
+86	49	{"id": 282, "tran_id": 280}
+87	49	{"id": 284, "tran_id": 282}
+88	49	{"id": 286, "tran_id": 284}
+89	49	{"id": 288, "tran_id": 286}
+90	49	{"id": 290, "tran_id": 288}
+91	49	{"id": 292, "tran_id": 290}
+92	49	{"id": 294, "tran_id": 292}
+93	49	{"id": 296, "tran_id": 294}
+94	49	{"id": 298, "tran_id": 296}
+95	49	{"id": 300, "tran_id": 298}
+96	49	{"id": 302, "tran_id": 300}
+97	49	{"id": 304, "tran_id": 302}
+98	49	{"id": 306, "tran_id": 304}
+99	49	{"id": 308, "tran_id": 306}
+100	49	{"id": 310, "tran_id": 308}
 \.
 
 
@@ -5923,12 +5939,6 @@ COPY reclada.field (id, path, json_type) FROM stdin;
 
 COPY reclada.object (id, status, attributes, transaction_id, created_time, created_by, class, guid, parent_guid) FROM stdin;
 22	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"caption": "active"}	9	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	14af3113-18b5-4da8-af57-bdf37a6693aa	3748b1f7-b674-47ca-9ded-d011b16bbf7b	\N
-40	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["status", "type"], "class": "Task", "event": "create", "channelName": "task_created"}	17	2021-09-22 14:53:03.155494+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	4e79a0e3-6cf6-42b0-bc0e-f4222530d316	\N
-41	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["status", "type"], "class": "Task", "event": "update", "channelName": "task_updated"}	18	2021-09-22 14:53:03.155494+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	8a4f92ef-0e48-4387-9e93-688525ba8697	\N
-42	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["type"], "class": "Task", "event": "delete", "channelName": "task_deleted"}	19	2021-09-22 14:53:03.155494+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	5f1b0908-8ea2-44f8-a380-7d9aee07ea99	\N
-47	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["status", "type"], "class": "Job", "event": "create", "channelName": "job_created"}	24	2021-09-22 14:53:03.95338+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	45f586df-e867-4024-a92c-81d26ada1a16	\N
-48	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["status", "type"], "class": "Job", "event": "update", "channelName": "job_updated"}	25	2021-09-22 14:53:03.95338+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	cca09dc6-2eb4-4d41-99c6-063d8763f789	\N
-49	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["type"], "class": "Job", "event": "delete", "channelName": "job_deleted"}	26	2021-09-22 14:53:03.95338+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	b58aa7bb-c002-4c55-85a3-8ba8b167c92b	\N
 24	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"caption": "archive"}	53	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	14af3113-18b5-4da8-af57-bdf37a6693aa	9dc0a032-90d6-4638-956e-9cd64cd2900c	\N
 2	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["forClass", "schema"], "properties": {"schema": {"type": "object"}, "forClass": {"type": "string"}, "parentList": {"type": "array", "items": {"type": "string"}}}}, "version": 1, "forClass": "jsonschema", "parentList": []}	32	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	5362d59b-82a1-4c7c-8ec3-07c256009fb0	\N
 50	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["subject", "type", "object"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "type": {"type": "string", "enum ": ["params"]}, "object": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "disable": {"type": "boolean", "default": false}, "subject": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}}}, "version": "1", "forClass": "Relationship", "parentList": []}	27	2021-09-22 14:53:04.158111+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	2d054574-8f7a-4a9a-a3b3-0400ad9d0489	\N
@@ -5958,8 +5968,8 @@ COPY reclada.unique_object (id, id_field) FROM stdin;
 41	{31,154,155}
 97	{321,322,323}
 186	{9,31,602,603,604}
-253	{13}
-257	{22,33,40,41}
+265	{13}
+269	{22,33,40,41}
 \.
 
 
@@ -5970,12 +5980,6 @@ COPY reclada.unique_object (id, id_field) FROM stdin;
 COPY reclada.unique_object_reclada_object (id, id_unique_object, id_reclada_object) FROM stdin;
 4	6	24
 5	6	22
-16	2	49
-17	2	48
-18	2	47
-19	2	42
-20	2	41
-21	2	40
 \.
 
 
@@ -5983,14 +5987,14 @@ COPY reclada.unique_object_reclada_object (id, id_unique_object, id_reclada_obje
 -- Name: component_object_id_seq; Type: SEQUENCE SET; Schema: dev; Owner: -
 --
 
-SELECT pg_catalog.setval('dev.component_object_id_seq', 125, true);
+SELECT pg_catalog.setval('dev.component_object_id_seq', 137, true);
 
 
 --
 -- Name: meta_data_id_seq; Type: SEQUENCE SET; Schema: dev; Owner: -
 --
 
-SELECT pg_catalog.setval('dev.meta_data_id_seq', 88, true);
+SELECT pg_catalog.setval('dev.meta_data_id_seq', 100, true);
 
 
 --
@@ -6018,35 +6022,35 @@ SELECT pg_catalog.setval('reclada.draft_id_seq', 1, false);
 -- Name: field_id_seq; Type: SEQUENCE SET; Schema: reclada; Owner: -
 --
 
-SELECT pg_catalog.setval('reclada.field_id_seq', 847, true);
+SELECT pg_catalog.setval('reclada.field_id_seq', 883, true);
 
 
 --
 -- Name: object_id_seq; Type: SEQUENCE SET; Schema: reclada; Owner: -
 --
 
-SELECT pg_catalog.setval('reclada.object_id_seq', 382, true);
+SELECT pg_catalog.setval('reclada.object_id_seq', 394, true);
 
 
 --
 -- Name: transaction_id; Type: SEQUENCE SET; Schema: reclada; Owner: -
 --
 
-SELECT pg_catalog.setval('reclada.transaction_id', 348, true);
+SELECT pg_catalog.setval('reclada.transaction_id', 360, true);
 
 
 --
 -- Name: unique_object_id_seq; Type: SEQUENCE SET; Schema: reclada; Owner: -
 --
 
-SELECT pg_catalog.setval('reclada.unique_object_id_seq', 257, true);
+SELECT pg_catalog.setval('reclada.unique_object_id_seq', 269, true);
 
 
 --
 -- Name: unique_object_reclada_object_id_seq; Type: SEQUENCE SET; Schema: reclada; Owner: -
 --
 
-SELECT pg_catalog.setval('reclada.unique_object_reclada_object_id_seq', 284, true);
+SELECT pg_catalog.setval('reclada.unique_object_reclada_object_id_seq', 296, true);
 
 
 --
