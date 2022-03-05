@@ -35,19 +35,25 @@ tmp AS
             format('"%s":%s',
                   (t.path_head[array_position(t.path_head, 'properties') + 1 : ])::text, -- {schema,properties,nested_1,nested_2,nested_3} -> {nested_1,nested_2,nested_3}
                   t.path_tail->'default'
-            )
-             AS default_jsonb,
+            ) AS default_jsonb_old,
+            reclada.jsonb_deep_set(
+                '{}'::jsonb,
+                 t.path_head[array_position(t.path_head, 'properties') + 1 : ],
+                 t.path_tail->'default')
+            AS default_jsonb,
             t.obj_id
         FROM paths_to_default t
         WHERE t.path_tail->'default' IS NOT NULL
 ),
 default_field AS
 (
-    SELECT   format('{%s}', string_agg(default_jsonb, ','))::jsonb AS default_value,
+    SELECT   format('{%s}', string_agg(default_jsonb_old, ','))::jsonb AS default_value_old,
+            jsonb_object_agg(default_jsonb) AS default_value,
              obj_id
         FROM tmp
         GROUP BY obj_id
 )
+
 SELECT
         obj.id,
         obj.obj_id,
@@ -61,7 +67,15 @@ SELECT
         LEFT JOIN default_field def
         ON def.obj_id = obj.obj_id;
 
+
 ANALYZE reclada.v_class_lite;
 
 --SELECT * FROM reclada.v_class_lite;
 --SELECT * FROM reclada.v_active_object
+
+------------------------------------------
+CREATE AGGREGATE jsonb_object_agg(jsonb) (
+  SFUNC = 'jsonb_concat',
+  STYPE = jsonb,
+  INITCOND = '{}'
+);
