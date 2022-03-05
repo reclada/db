@@ -15,7 +15,6 @@ with open('update_config.json') as f:
 j = json.loads(j)
 
 branch_db = j["branch_db"]
-branch_SciNLP = j["branch_SciNLP"]
 branch_QAAutotests = j["branch_QAAutotests"]
 
 db_URI = j["db_URI"]
@@ -124,10 +123,12 @@ def get_repo_hash(component_name:str):
 
 def get_cmd_install_component_db()->str:
     url = get_current_remote_url()
-    
+    with open("object_create.sql") as f:
+        object_create = f.read()
+
     return f""" SELECT reclada.raise_notice('Begin install component db...');
                 SELECT dev.begin_install_component('db','{url}','{get_current_repo_hash()}');
-                {patch_object_create()}
+                {object_create}
                 SELECT dev.finish_install_component();"""
 
 
@@ -140,32 +141,6 @@ def install_component_db():
 
     run_file(file_name)
     os.remove(file_name)
-
-
-def patch_object_create(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME)->str:
-    with open('object_create.sql') as f:
-        obj_cr = f.read()
-
-    obj_cr = obj_cr.replace('#@#lname#@#', l_name)
-    obj_cr = obj_cr.replace('#@#lregion#@#', l_region)
-    obj_cr = obj_cr.replace('#@#ename#@#', e_name)
-
-    return obj_cr
-
-def install_objects(l_name=LAMBDA_NAME, l_region=LAMBDA_REGION, e_name=ENVIRONMENT_NAME, DB_URI=db_URI):
-    exists = Path('update').exists()
-    if exists:
-        os.chdir('update') # for lower 48 don't need
-    file_name = 'object_create_patched.sql'
-    
-    with open(file_name,'w') as f:
-        f.write(patch_object_create(l_name, l_region, e_name))
-
-    run_file(file_name,DB_URI)
-    os.remove(file_name)
-
-    if exists:
-        os.chdir('..')
 
 
 def run_file(file_name,DB_URI=db_URI):
@@ -193,14 +168,6 @@ def checkout(to:str = branch_db):
         r = os.popen(cmd).read()
     return r
 
-def runtime_install():
-    install_psql_script('db/objects',["install_objects.sql"])
-
-
-def scinlp_install():
-    install_psql_script('src/db',["bdobjects.sql","nlpobjects.sql","nlpatterns.sql"])
-
-
 def install_psql_script(directory:str,files:list):
     path = directory.split('/')
     os.chdir(os.path.join(*path))
@@ -210,6 +177,27 @@ def install_psql_script(directory:str,files:list):
         os.chdir('..')
 
 #} Components
+
+def psql_script_installer(directory:str, files:list, parametres:dict):
+    path = directory.split('/')
+    os.chdir(os.path.join(*path))
+
+    for file_name in files:
+        with open(file_name) as f:
+            obj_cr = f.read()
+
+        for key, value in parametres.items():
+            obj_cr = obj_cr.replace(f'#@#{key}#@#', value)
+
+        file_name_patched = f'{file_name}_patched.sql'
+        with open(file_name_patched,'w') as f:
+            f.write(obj_cr)
+
+        run_file(file_name_patched)
+        os.remove(file_name_patched)
+    
+    for _ in path:
+        os.chdir('..')
 
 def replace_component(name:str)->str:
     '''
@@ -224,7 +212,8 @@ def replace_component(name:str)->str:
         db_hash = run_cmd_scalar(f"SELECT commit_hash FROM reclada.v_component WHERE guid = '{guid}'")
         if db_hash == repo_hash:
             os.chdir('..')
-            rmdir(name)
+            os.chdir('db')
+            os.chdir('update')
             print(f'Component {name} has actual version')
             return
     repository = get_current_remote_url()
@@ -232,24 +221,27 @@ def replace_component(name:str)->str:
     res = run_cmd_scalar(cmd)
     if res == 'OK':
         f_name = 'configuration.json'
-        if os.path.exists(f_name):
-            j = ''
-            with open(f_name) as f:
-                j = f.read()
-            j = json.loads(j)
-            parametres = j["parametres"]
-            installer =  j["installer"]
+        if not os.path.exists(f_name):
+            shutil.copyfile('configuration_default.json', f_name)
+        j = ''
+        with open(f_name) as f:
+            j = f.read()
+        j = json.loads(j)
+        parametres = j["parametres"]
+        installer =  j["installer"]
 
-            # HERE install_psql_script
+        if installer['type'] == 'psql_script':
+            psql_script_installer(installer['directory'], installer['files'], parametres)
         else:
-            raise Exception(f'Component "{name}" does not have "configuration.json"')
-
+            raise Exception(f'installer type: "{installer["type"]}" invalid')
+       
         cmd = "SELECT dev.finish_install_component();"
         res = run_cmd_scalar(cmd)
         if res != 'OK':
             raise Exception('Component does not installed')
     os.chdir('..')
-    rmdir(name)
+    os.chdir('db')
+    os.chdir('update')
 
 
 def rmdir(top:str): 
@@ -366,10 +358,10 @@ def run_test():
 def install_components(debug_db=False):
     v = get_version_from_db()
     if v < 48: # Components do not exist before 48
-        install_objects() 
+        raise Exception('Version lower 48 is not allowed')
     else:
-        replace_component('SciNLP','https://gitlab.reclada.com/developers/SciNLP.git',branch_SciNLP,scinlp_install)
-        replace_component('reclada-runtime','https://gitlab.reclada.com/developers/reclada-runtime.git',branch_runtime,runtime_install)
+        for comp_name in components:
+            replace_component(comp_name)
 
 def clear_db_from_components():
     print('clear db from components...')

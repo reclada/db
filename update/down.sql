@@ -93,3 +93,8 @@ AS
 ANALYZE reclada.v_object_unifields;
 
 ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 1;
+
+------
+--{view/reclada.v_ui_active_object}
+--{function/reclada_object.create_job}
+--{function/api.storage_generate_presigned_post}

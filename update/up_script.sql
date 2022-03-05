@@ -124,3 +124,6 @@ ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 10;
 
 -----------
 \i 'view/reclada.v_ui_active_object.sql'
+
+\i 'function/reclada_object.create_job.sql'
+\i 'function/api.storage_generate_presigned_post.sql'

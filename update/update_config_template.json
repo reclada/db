@@ -1,6 +1,5 @@
 {
     "branch_db" : "master",
-    "branch_runtime" : "master",
     "branch_SciNLP" : "master",
     "branch_QAAutotests" : "master",
     "db_URI" : "postgresql://[user_name]:[password]@[host(server_name)]:[port(default: 5432)]/[db_name]",
