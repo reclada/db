@@ -355,7 +355,7 @@ def run_test():
     os.chdir('..')
     rmdir('QAAutotests')
 
-def install_components(debug_db=False):
+def install_components():
     v = get_version_from_db()
     if v < 48: # Components do not exist before 48
         raise Exception('Version lower 48 is not allowed')

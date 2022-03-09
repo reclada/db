@@ -171,7 +171,7 @@ if __name__ == "__main__":
     
     input("Press Enter to install components . . .")
     install_component_db() 
-    install_components(True)
+    install_components()
 
     input("Press Enter to run testing clean db . . .")    
     run_test()
