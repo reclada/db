@@ -4,6 +4,7 @@ CREATE OR REPLACE FUNCTION dev.finish_install_component()
 RETURNS text AS $$
 DECLARE
     _f_name   text := 'dev.finish_install_component';
+    _parent_component_name text;
     _comp_obj jsonb;
     _data     jsonb;
 	_tran_id  bigint := reclada.get_transaction_id();
@@ -21,9 +22,11 @@ BEGIN
                                     'repository'  , repository,
                                     'commitHash'  , commit_hash
                                 )
-                            )
+                            ),
+            parent_component_name
         from dev.component
-        into _comp_obj;
+        into _comp_obj,
+             _parent_component_name;
 
     delete from dev.component;
 
@@ -85,6 +88,17 @@ BEGIN
         perform reclada_object.create(_comp_obj);
     end if;
     
+    perform reclada_object.create_relationship(
+                'data of reclada-component',
+                c.guid ,
+                (_comp_obj     ->>'GUID')::uuid ,
+                '{}'::jsonb                ,
+                c.guid ,
+                _tran_id
+            )
+        from reclada.v_component c
+            where _parent_component_name = c.name;
+
     perform reclada_object.refresh_mv('All');
 
     return 'OK';

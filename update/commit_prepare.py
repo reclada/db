@@ -165,12 +165,12 @@ if __name__ == "__main__":
             with open(f'{for_class}.json','a') as f:
                 f.write(attrs)
         os.chdir('..')
+        install_component_db() 
     else:
         print('skipped . . .')
         print('If evrything okay - run this script again before commit to update jsonschemas and install_db.sql')
     
     input("Press Enter to install components . . .")
-    install_component_db() 
     install_components()
 
     input("Press Enter to run testing clean db . . .")    

@@ -110,11 +110,10 @@ def get_current_repo_hash()->str:
     cmd = "git log --pretty=format:%H -n 1"
     return os.popen(cmd).read()
 
-def get_repo_hash(component_name:str):
+def get_repo_hash(path:str):
     # folder: repos/db/update
-    os.chdir('..')
-    os.chdir('..')
-    os.chdir(component_name)
+    for cd in path.split('/'):
+        os.chdir(cd)
     #folder: repos/component_name
     repo_hash = get_current_repo_hash()
     return repo_hash
@@ -179,8 +178,11 @@ def install_psql_script(directory:str,files:list):
 #} Components
 
 def psql_script_installer(directory:str, files:list, parametres:dict):
-    path = directory.split('/')
-    os.chdir(os.path.join(*path))
+    if directory != '':
+        path = directory.split('/')
+        os.chdir(os.path.join(*path))
+    else:
+        path = []
 
     for file_name in files:
         with open(file_name) as f:
@@ -199,25 +201,32 @@ def psql_script_installer(directory:str, files:list, parametres:dict):
     for _ in path:
         os.chdir('..')
 
-def replace_component(name:str)->str:
+def get_component_guid(name:str)->str:
+    return run_cmd_scalar(f"SELECT guid FROM reclada.v_component WHERE name = '{name}'")
+
+def replace_component(path:str, parent_component_name:str = '')->str:
     '''
         replace or install reclada-component
     '''
+    name = path.split('/')[-1]
     print(f'installing component "{name}"...')
-    guid = run_cmd_scalar(f"SELECT guid FROM reclada.v_component WHERE name = '{name}'")
+    getcwd = os.getcwd()
 
-    repo_hash = get_repo_hash(name)
+    guid = get_component_guid(name)
+
+    repo_hash = get_repo_hash(path)
     #folder: repos/component_name
     if guid != '':
         db_hash = run_cmd_scalar(f"SELECT commit_hash FROM reclada.v_component WHERE guid = '{guid}'")
-        if db_hash == repo_hash:
-            os.chdir('..')
-            os.chdir('db')
-            os.chdir('update')
+        if db_hash == repo_hash and db_hash != '':
             print(f'Component {name} has actual version')
+            os.chdir(getcwd)
             return
     repository = get_current_remote_url()
-    cmd = f"SELECT dev.begin_install_component('{name}','{repository}','{repo_hash}');"
+    
+    if parent_component_name != '':
+        parent_component_name = f",'{parent_component_name}'"
+    cmd = f"SELECT dev.begin_install_component('{name}','{repository}','{repo_hash}'{parent_component_name});"
     res = run_cmd_scalar(cmd)
     if res == 'OK':
         f_name = 'configuration.json'
@@ -229,9 +238,10 @@ def replace_component(name:str)->str:
         j = json.loads(j)
         parametres = j["parametres"]
         installer =  j["installer"]
+        components =  j.setdefault('components', [] )
 
         if installer['type'] == 'psql_script':
-            psql_script_installer(installer['directory'], installer['files'], parametres)
+            psql_script_installer(installer.setdefault('directory',''), installer['files'], parametres)
         else:
             raise Exception(f'installer type: "{installer["type"]}" invalid')
        
@@ -239,9 +249,10 @@ def replace_component(name:str)->str:
         res = run_cmd_scalar(cmd)
         if res != 'OK':
             raise Exception('Component does not installed')
-    os.chdir('..')
-    os.chdir('db')
-    os.chdir('update')
+        for p in components:
+            replace_component(p, name)
+
+    os.chdir(getcwd)
 
 
 def rmdir(top:str): 

@@ -7,7 +7,7 @@
     "version": "latest",
     "downgrade_test": true,
     "components":[
-        "reclada-runtime",
-        "SciNLP"
+        "../../reclada-runtime",
+        "../../SciNLP"
     ]
 }
