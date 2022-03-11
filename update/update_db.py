@@ -225,8 +225,8 @@ def replace_component(path:str, parent_component_name:str = '')->str:
     repository = get_current_remote_url()
     
     if parent_component_name != '':
-        parent_component_name = f",'{parent_component_name}'"
-    cmd = f"SELECT dev.begin_install_component('{name}','{repository}','{repo_hash}'{parent_component_name});"
+        parent_component_name = f",'{parent_component_name}'::text"
+    cmd = f"SELECT dev.begin_install_component('{name}'::text,'{repository}'::text,'{repo_hash}'::text{parent_component_name});"
     res = run_cmd_scalar(cmd)
     if res == 'OK':
         f_name = 'configuration.json'
