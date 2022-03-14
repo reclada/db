@@ -16,7 +16,7 @@ BEGIN
     LOOP 
         PERFORM reclada_object.create(_data_agg);
     END LOOP;
+    DELETE FROM reclada.staging;
     RETURN NEW;
-    TRUNCATE TABLE NEW_TABLE;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
