@@ -419,6 +419,8 @@ def clear_db_from_components():
     print(res)
     res = run_cmd_scalar('''DELETE FROM dev.component_object;''')
     print(res)
+    res = run_cmd_scalar('''DELETE FROM dev.meta_data;''')
+    print(res)
     res = run_cmd_scalar('''SELECT reclada_object.refresh_mv('All');''')
     print(res)
 

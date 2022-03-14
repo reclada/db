@@ -82,6 +82,14 @@ select reclada_object.create_relationship
             o.class in (select reclada_object.get_GUID_for_class('ObjectDisplay'))
         ) or (
             o.class in (select reclada_object.get_GUID_for_class('Message'))
+            and o.guid not in (
+                            '0a05ffb8-c25d-400d-b3fb-59ac0fcef8a0',
+                            '0a0abcd6-5a7c-4126-8541-ca719622e51f',
+                            '0a01f056-e9c1-4c1f-b7eb-94e34827ff85',
+                            '0a0f2b7d-cb6e-4097-86a9-218ced87f896',
+                            '0a04bcd3-ecb3-4f76-b1aa-5068f38bb303',
+                            '0a0c1e85-ac9a-4d65-8bc8-e0c40f3a6c6c'
+                        )
         );
 
 
