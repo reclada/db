@@ -9,6 +9,9 @@ DROP VIEW IF EXISTS reclada.v_revision;
 DROP VIEW IF EXISTS reclada.v_task;
 DROP VIEW IF EXISTS reclada.v_ui_active_object;
 DROP VIEW IF EXISTS reclada.v_dto_json_schema;
+DROP VIEW IF EXISTS reclada.v_component_object;
+DROP VIEW IF EXISTS reclada.v_component;
+DROP VIEW IF EXISTS reclada.v_relationship;
 DROP VIEW IF EXISTS reclada.v_active_object;
 DROP VIEW IF EXISTS reclada.v_object;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
@@ -84,10 +87,6 @@ SELECT
 
 ANALYZE reclada.v_class_lite;
 
---SELECT * FROM reclada.v_class_lite;
---SELECT * FROM reclada.v_active_object;
-
-
 
 --{function/reclada_object.get_guid_for_class}
 
@@ -125,6 +124,9 @@ ANALYZE reclada.v_user;
 --{view/reclada.v_object}
 --{view/reclada.v_object_display}
 --{view/reclada.v_active_object}
+--{view/reclada.v_relationship}
+--{view/reclada.v_component}
+--{view/reclada.v_component_object}
 --{view/reclada.v_dto_json_schema}
 --{view/reclada.v_ui_active_object}
 --{view/reclada.v_task}

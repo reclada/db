@@ -26,6 +26,9 @@ DROP VIEW IF EXISTS reclada.v_revision;
 DROP VIEW IF EXISTS reclada.v_task;
 DROP VIEW IF EXISTS reclada.v_ui_active_object;
 DROP VIEW IF EXISTS reclada.v_dto_json_schema;
+DROP VIEW IF EXISTS reclada.v_component_object;
+DROP VIEW IF EXISTS reclada.v_component;
+DROP VIEW IF EXISTS reclada.v_relationship;
 DROP VIEW IF EXISTS reclada.v_active_object;
 DROP VIEW IF EXISTS reclada.v_object;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
@@ -45,6 +48,9 @@ DROP VIEW IF EXISTS reclada.v_object_display;
 \i 'view/reclada.v_user.sql'
 \i 'view/reclada.v_object.sql'
 \i 'view/reclada.v_active_object.sql'
+\i 'view/reclada.v_relationship.sql'
+\i 'view/reclada.v_component.sql'
+\i 'view/reclada.v_component_object.sql'
 \i 'view/reclada.v_dto_json_schema.sql'
 \i 'view/reclada.v_ui_active_object.sql'
 \i 'view/reclada.v_task.sql'
