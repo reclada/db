@@ -122,5 +122,58 @@ update reclada.object u
 
 ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 10;
 
------------
+
 \i 'view/reclada.v_ui_active_object.sql'
+
+
+
+--{REC 624
+
+CREATE AGGREGATE jsonb_object_agg(jsonb) (
+  SFUNC = 'jsonb_concat',
+  STYPE = jsonb,
+  INITCOND = '{}'
+);
+
+
+\i 'reclada.jsonb_merge.sql'
+\i 'function/reclada_object.list.sql'
+
+
+DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
+DROP VIEW IF EXISTS reclada.v_parent_field;
+DROP VIEW IF EXISTS reclada.v_class;
+DROP VIEW IF EXISTS reclada.v_import_info;
+DROP VIEW IF EXISTS reclada.v_revision;
+DROP VIEW IF EXISTS reclada.v_task;
+DROP VIEW IF EXISTS reclada.v_ui_active_object;
+DROP VIEW IF EXISTS reclada.v_dto_json_schema;
+DROP VIEW IF EXISTS reclada.v_active_object;
+DROP VIEW IF EXISTS reclada.v_object;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
+DROP VIEW IF EXISTS reclada.v_object_display;
+
+\i 'function/reclada_object.get_jsonschema_guid.sql'
+\i 'view/reclada.v_class_lite.sql'
+\i 'function/reclada_object.get_guid_for_class.sql'
+\i 'view/reclada.v_object_status.sql'
+
+\i 'function/reclada_object.delete.sql'
+\i 'view/reclada.v_object_display.sql'
+\i 'function/reclada_object.need_flat.sql'
+
+\i 'view/reclada.v_user.sql'
+\i 'view/reclada.v_object.sql'
+\i 'view/reclada.v_active_object.sql'
+\i 'view/reclada.v_dto_json_schema.sql'
+\i 'view/reclada.v_ui_active_object.sql'
+\i 'view/reclada.v_task.sql'
+\i 'view/reclada.v_revision.sql'
+\i 'view/reclada.v_import_info.sql'
+\i 'view/reclada.v_class.sql'
+\i 'view/reclada.v_parent_field.sql'
+\i 'view/reclada.v_object_unifields.sql'
+--REC 624}

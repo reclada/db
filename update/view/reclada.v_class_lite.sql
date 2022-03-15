@@ -72,10 +72,3 @@ ANALYZE reclada.v_class_lite;
 
 --SELECT * FROM reclada.v_class_lite;
 --SELECT * FROM reclada.v_active_object
-
-------------------------------------------
-CREATE AGGREGATE jsonb_object_agg(jsonb) (
-  SFUNC = 'jsonb_concat',
-  STYPE = jsonb,
-  INITCOND = '{}'
-);
