@@ -1,13 +1,13 @@
 {
     "branch_db" : "master",
-    "branch_runtime" : "master",
     "branch_SciNLP" : "master",
     "branch_QAAutotests" : "master",
     "db_URI" : "postgresql://[user_name]:[password]@[host(server_name)]:[port(default: 5432)]/[db_name]",
     "quick_install" : true,
-    "LAMBDA_NAME" : "LAMBDA_NAME",
-    "ENVIRONMENT_NAME" : "ENVIRONMENT_NAME",
-    "LAMBDA_REGION": "LAMBDA_REGION",
     "version": "latest",
-    "downgrade_test":true
+    "downgrade_test": true,
+    "components":[
+        "../../reclada-runtime",
+        "../../SciNLP"
+    ]
 }

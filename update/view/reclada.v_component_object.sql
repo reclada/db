@@ -4,6 +4,7 @@ AS
     SELECT  o.id,
             c.name component_name, 
             c.guid component_guid, 
+            o.transaction_id,
             o.class_name, 
             o.obj_id,
             o.data obj_data,

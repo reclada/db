@@ -44,7 +44,7 @@ BEGIN
 
     SELECT attrs
     FROM reclada.v_active_object
-    WHERE class_name = 'Context'
+    WHERE class_name = 'RuntimeContext'
     ORDER BY id DESC
     LIMIT 1
     INTO context;

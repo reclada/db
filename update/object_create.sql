@@ -296,29 +296,7 @@ SELECT reclada_object.create_subclass('{
         "required": ["name","commitHash","repository"]
     }
 }'::jsonb);
--- 8
-SELECT reclada_object.create_subclass('{
-    "class": "RecladaObject",
-    "attributes": {
-        "newClass": "Context",
-        "properties": {
-            "Lambda": {"type": "string"},
-            "Region": {"type": "string"},
-            "Environment": {"type": "string"}
-        },
-        "required": ["Lambda","Region","Environment"]
-    }
-}'::jsonb);
 
-    SELECT reclada_object.create('{
-            "GUID": "db0bb665-6aa4-45d5-876c-173a7e921f94",
-            "class": "Context",
-            "attributes": {
-                "Lambda": "#@#lname#@#",
-                "Region": "#@#lregion#@#",
-                "Environment": "#@#ename#@#"
-            }    
-        }'::jsonb);
 --{ 9 DTOJsonSchema
 SELECT reclada_object.create_subclass('{
     "class": "RecladaObject",
