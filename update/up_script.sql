@@ -1,4 +1,4 @@
--- version = 49
+-- version = 50
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
@@ -17,7 +17,7 @@ CREATE AGGREGATE jsonb_object_agg(jsonb) (
 \i 'function/reclada_object.list.sql'
 
 
-DROP VIEW IF EXISTS reclada.v_unifields_pivoted;
+
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 DROP VIEW IF EXISTS reclada.v_parent_field;
 DROP VIEW IF EXISTS reclada.v_class;
