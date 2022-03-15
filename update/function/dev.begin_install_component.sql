@@ -4,7 +4,8 @@ CREATE OR REPLACE FUNCTION dev.begin_install_component
 (
     _name        text,
     _repository  text,
-    _commit_hash text
+    _commit_hash text,
+    _parent_component_name text = ''
 )
 RETURNS text AS $$
 DECLARE
@@ -20,13 +21,14 @@ BEGIN
         into _guid;
 
     _guid = coalesce(_guid,public.uuid_generate_v4());
+    _parent_component_name = nullif(_parent_component_name,'');
 
-    insert into dev.component( name,  repository,  commit_hash,  guid)
-                       select _name, _repository, _commit_hash, _guid;
+    insert into dev.component( name,  repository,  commit_hash,  guid,  parent_component_name)
+                       select _name, _repository, _commit_hash, _guid, _parent_component_name;
 
     delete from dev.component_object;
     insert into dev.component_object(data)
-        select obj_data 
+        select obj_data
             from reclada.v_component_object
                 where component_name = _name;
     return 'OK';

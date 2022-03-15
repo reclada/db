@@ -50,7 +50,7 @@ AS $function$
                 ) a
             ) b
                 INTO res;
-            IF schema IS NOT NULL AND NOT validate_json_schema(schema, res) THEN
+            IF schema IS NOT NULL AND NOT validate_json_schema(schema, res->'attributes') THEN
                 RAISE EXCEPTION 'Objects aren''t mergeable. Solve duplicate conflicate manually.';
             END IF;
             RETURN res;

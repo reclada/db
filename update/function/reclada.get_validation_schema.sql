@@ -9,6 +9,7 @@ DECLARE
     _schema_obj     jsonb;
     _properties     jsonb = '{}'::jsonb;
     _required       jsonb = '[]'::jsonb;
+    _defs           jsonb = '{}'::jsonb;
     _parent_schema  jsonb ;
     _parent_list    jsonb ;
     _parent         uuid ;
@@ -29,15 +30,18 @@ BEGIN
     LOOP
         _parent_schema := reclada.get_validation_schema(_parent);
         _properties := _properties || coalesce((_parent_schema->'properties'),'{}'::jsonb);
+        _defs       := _defs       || coalesce((_parent_schema->'$defs'     ),'{}'::jsonb);
         _required   := _required   || coalesce((_parent_schema->'required'  ),'[]'::jsonb);
         _res := _res || _parent_schema ;  
     END LOOP;
     
     _parent_schema := _schema_obj#>'{attributes,schema}';
     _properties := _properties || coalesce((_parent_schema->'properties'),'{}'::jsonb);
+    _defs       := _defs       || coalesce((_parent_schema->'$defs'     ),'{}'::jsonb);
     _required   := _required   || coalesce((_parent_schema->'required'  ),'[]'::jsonb);
     _res := _res || _parent_schema ;  
     _res := _res || jsonb_build_object( 'required'  , _required,
+                                        '$defs'     , _defs    ,
                                         'properties', _properties);
     return _res;
 END;
