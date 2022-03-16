@@ -1,0 +1,16 @@
+{
+    "installer":{
+        "type":"database",
+        "branch_db" : "master",
+        "branch_QAAutotests" : "master",
+        "db_URI" : "postgresql://[user_name]:[password]@[host(server_name)]:[port(default: 5432)]/[db_name]",
+        "quick_install" : true,
+        "version": "latest",
+        "downgrade_test": true
+    },
+    "parametres":{},
+    "components":[
+        "../reclada-runtime",
+        "../SciNLP"
+    ]
+}
