@@ -48,7 +48,7 @@ tmp AS
 default_field AS
 (
     SELECT   format('{%s}', string_agg(default_jsonb_old, ','))::jsonb AS default_value_old,
-            jsonb_object_agg(default_jsonb) AS default_value,
+             reclada.jsonb_object_agg(default_jsonb) AS default_value,
              obj_id
         FROM tmp
         GROUP BY obj_id

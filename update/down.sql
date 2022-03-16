@@ -1,6 +1,11 @@
 -- you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
+--{function/reclada.jsonb_merge}
+--{function/reclada_object.list}
+
+
+
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 DROP VIEW IF EXISTS reclada.v_parent_field;
 DROP VIEW IF EXISTS reclada.v_class;
@@ -18,6 +23,7 @@ DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
 DROP VIEW IF EXISTS reclada.v_object_display;
+DROP AGGREGATE IF EXISTS reclada.jsonb_object_agg(jsonb);
 
 --{function/reclada_object.get_jsonschema_guid}
 

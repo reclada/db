@@ -6,14 +6,15 @@
 
 --{REC 624
 
-CREATE AGGREGATE jsonb_object_agg(jsonb) (
+
+CREATE AGGREGATE reclada.jsonb_object_agg(jsonb) (
   SFUNC = 'jsonb_concat',
   STYPE = jsonb,
   INITCOND = '{}'
 );
 
 
-\i 'reclada.jsonb_merge.sql'
+\i 'function/reclada.jsonb_merge.sql'
 \i 'function/reclada_object.list.sql'
 
 
