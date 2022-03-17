@@ -432,7 +432,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         DB_URI = sys.argv[1]
 
-    #clone_db()
+    clone_db()
     cur_ver_db = get_version_from_db(DB_URI)
     print(f'current version database: {cur_ver_db}')
 
@@ -456,8 +456,9 @@ if __name__ == "__main__":
             if cur_ver_db == config_version:
                 break
 
+    os.chdir('..')
+    rmdir('db')
+    
     if cur_ver_db >= 48: # Components do not exist before 48
         install_components() #upgrade components
     
-    os.chdir('..')
-    rmdir('db')
