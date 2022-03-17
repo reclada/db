@@ -158,10 +158,11 @@ def checkout(to:str = branch_db):
     cmd = f'git status'
     r = os.popen(cmd).read()
     if r.find('nothing to commit, working tree clean')<0:
+        input('Warning: Found not committed changes')
         #cmd = f'git clean -fxd -q'
         #r = os.popen(cmd).read()
-        cmd = f'git checkout . -q'
-        r = os.popen(cmd).read()
+        #cmd = f'git checkout . -q'
+        #r = os.popen(cmd).read()
     if to != '':
         cmd = f'git checkout {to} -q'
         r = os.popen(cmd).read()
