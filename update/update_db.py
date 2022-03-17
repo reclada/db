@@ -157,8 +157,8 @@ def run_cmd_scalar(command,DB_URI=db_URI)->str:
 def checkout(to:str = branch_db):
     cmd = f'git status'
     r = os.popen(cmd).read()
-    if r.find('nothing to commit, working tree clean')<0:
-        input('Warning: Found not committed changes')
+    if r.find('nothing to commit, working tree clean')<0 and r.find('nothing added to commit')<0:
+        input('Warning: Found not committed changes, press ENTER to continue')
         #cmd = f'git clean -fxd -q'
         #r = os.popen(cmd).read()
         #cmd = f'git checkout . -q'
