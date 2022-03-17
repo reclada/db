@@ -158,8 +158,8 @@ def checkout(to:str = branch_db):
     cmd = f'git status'
     r = os.popen(cmd).read()
     if r.find('nothing to commit, working tree clean')<0:
-        cmd = f'git clean -fxd -q'
-        r = os.popen(cmd).read()
+        #cmd = f'git clean -fxd -q'
+        #r = os.popen(cmd).read()
         cmd = f'git checkout . -q'
         r = os.popen(cmd).read()
     if to != '':
@@ -431,7 +431,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         DB_URI = sys.argv[1]
 
-    clone_db()
+    #clone_db()
     cur_ver_db = get_version_from_db(DB_URI)
     print(f'current version database: {cur_ver_db}')
 
