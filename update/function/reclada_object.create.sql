@@ -259,12 +259,15 @@ BEGIN
                         WHEN 'Insert' THEN
                             -- DO nothing
                         WHEN 'Merge' THEN
-                            PERFORM reclada_object.create_relationship(
-                                    _rel_type,
-                                    _obj_guid,
-                                    (new_data->>'GUID')::uuid,
-                                    '{"dupBehavior": "Merge"}'::jsonb
-                                );
+                            IF new_data->>'GUID' IS NOT NULL THEN
+                                PERFORM reclada_object.create_relationship(
+                                        _rel_type,
+                                        _obj_guid,
+                                        (new_data->>'GUID')::uuid,
+                                        '{"dupBehavior": "Merge"}'::jsonb
+                                    );
+                            END IF;
+                            new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
                             SELECT reclada_object.update(
                                     reclada_object.merge(
                                             new_data - 'class', 

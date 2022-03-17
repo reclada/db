@@ -1,78 +1,104 @@
 -- you can use "--{function/reclada_object.get_schema}"
 -- to add current version of object to downgrade script
 
+alter table dev.component drop column parent_component_name;
+--{function/dev.finish_install_component}
+--{function/dev.begin_install_component}
 
---{ REC-564
-
---{function/reclada_object.create}
---{function/reclada_object.create_relationship}
---{function/reclada_object.get_parent_guid}
+--{view/reclada.v_ui_active_object}
 --{view/reclada.v_component_object}
---{view/reclada.v_relationship}
---{view/reclada.v_component}
+--{function/reclada_object.create_job}
+--{function/api.storage_generate_presigned_post}
 
-    delete from reclada.object 
-        where parent_guid in (  '7534ae14-df31-47aa-9b46-2ad3e60b4b6e',
-                                '38d35ba3-7910-4e6e-8632-13203269e4b9',
-                                'b17500cb-e998-4f55-979b-2ba1218a3b45'
-                            );
+update reclada.object u
+    set transaction_id = m.tran_id
+    from (
+        select  (data->>'id')::bigint as id  ,
+                (data->>'tran_id')::bigint tran_id
+            from dev.meta_data
+    ) m
+    where m.id = u.id;
 
-    delete from reclada.object 
-        where class in (select reclada_object.get_GUID_for_class('Component'));
+drop table dev.meta_data;
 
-    delete from reclada.object 
-        where guid in (select reclada_object.get_GUID_for_class('Component'));
-    
-    delete from reclada.object 
-        where class in (select reclada_object.get_GUID_for_class('Index'));
-    
-    delete from reclada.object 
-        where guid in (select reclada_object.get_GUID_for_class('Index'));
---} REC-564
-
-
---{ REC-594
-
---{view/reclada.v_filter_mapping}
-
-DROP VIEW reclada.v_revision;
-DROP VIEW reclada.v_import_info;
-DROP VIEW reclada.v_dto_json_schema;
-DROP VIEW reclada.v_class;
-DROP VIEW reclada.v_task;
-DROP VIEW reclada.v_object_display;
-DROP VIEW reclada.v_active_object;
---{view/reclada.v_object}
---{view/reclada.v_active_object}
---{view/reclada.v_object_display}
---{view/reclada.v_task}
---{view/reclada.v_class}
---{view/reclada.v_dto_json_schema}
---{view/reclada.v_import_info}
---{view/reclada.v_revision}
-
---} REC-594
-
-
---{ REC-562
-
---{function/reclada_object.create_subclass}
---{function/reclada_object.update}
---{function/reclada_object.create}
---{function/reclada_object.list}
---{function/reclada.validate_json_schema}
---{function/reclada.get_validation_schema}
---{function/reclada_object.get_schema}
-
---} REC-562
-
---{ REC-564
-drop table dev.component;
-drop table dev.component_object;
---{function/reclada_object.datasource_insert}
---{function/reclada_object.object_insert}
---{function/reclada_object.delete}
 --{function/dev.begin_install_component}
 --{function/dev.finish_install_component}
---} REC-564
-drop index if exists reclada.fields_index_;
+--{function/dev.downgrade_component}
+--{function/reclada_object.create_relationship}
+--{function/reclada_object.create_subclass}
+--{function/reclada_object.update}
+
+--{function/dev.downgrade_version}
+--{view/reclada.v_object_display}
+drop VIEW reclada.v_component_object;
+--{view/reclada.v_component}
+--{view/reclada.v_component_object}
+
+    delete from reclada.object 
+        where guid in 
+        (
+            SELECT relationship_guid 
+                FROM reclada.v_component_object 
+                    where class_name in (   'jsonschema', 
+                                            'DataSet',
+                                            'User',
+                                            'DTOJsonSchema',
+                                            'ObjectDisplay',
+                                            'Message'
+                                        )
+                        and component_name = 'db'
+        );
+
+    -- delete from reclada.object 
+    --     where class in (select reclada_object.get_GUID_for_class('Index'));
+
+
+--{function/reclada_object.create}
+--{function/reclada_object.merge}
+--{function/reclada_object.list}
+--{view/reclada.v_ui_active_object}
+
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
+CREATE MATERIALIZED VIEW reclada.v_object_unifields
+AS
+    SELECT
+        for_class,
+        class_uuid,
+        CAST (dup_behavior AS reclada.dp_bhvr) AS dup_behavior,
+        is_cascade,
+        is_mandatory,
+        uf as unifield,
+        uni_number,
+        row_number() OVER (PARTITION BY for_class,uni_number ORDER BY uf) AS field_number,
+        copy_field
+    FROM
+        (
+        SELECT
+            for_class,
+            obj_id                                      AS class_uuid,
+            dup_behavior,
+            is_cascade::boolean                         AS is_cascade,
+            (dc->>'isMandatory')::boolean               AS is_mandatory,
+            jsonb_array_elements_text(dc->'uniFields')  AS uf,
+            dc->'uniFields'::text                       AS field_list,
+            row_number() OVER ( PARTITION BY for_class ORDER BY dc->'uniFields'::text) AS uni_number,
+            copy_field
+        FROM
+            (
+            SELECT
+                for_class,
+                attributes->>'dupBehavior'           AS dup_behavior,
+                (attributes->>'isCascade')           AS is_cascade,
+                jsonb_array_elements( attributes ->'dupChecking') AS dc,
+                obj_id,
+                attributes->>'copyField' as copy_field
+            FROM
+                reclada.v_class_lite vc
+            WHERE
+                attributes ->'dupChecking' is not null
+            ) a
+        ) b
+;
+ANALYZE reclada.v_object_unifields;
+
+ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 1;

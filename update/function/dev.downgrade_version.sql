@@ -27,6 +27,8 @@ BEGIN
         RAISE EXCEPTION 'downgrade_script is empty! from dev.downgrade_version()';
     end if;
 
+    perform dev.downgrade_component('db');
+    
     EXECUTE downgrade_script;
 
     -- mark, that chanches applied
