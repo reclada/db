@@ -13,7 +13,7 @@ CREATE AGGREGATE reclada.jsonb_object_agg(jsonb) (
   INITCOND = '{}'
 );
 
-
+\i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada.jsonb_merge.sql'
 \i 'function/reclada_object.list.sql'
 

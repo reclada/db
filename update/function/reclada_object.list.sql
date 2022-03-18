@@ -434,7 +434,7 @@ BEGIN
                         || CASE
                             WHEN ver = '2'
                                 THEN 'obj.data '
-                            ELSE 'reclada.jsonb_merge(data, default_value) AS data
+                            ELSE 'reclada.jsonb_merge(data, format(''{"attributes": %s}'',default_value)::jsonb) AS data
                                  '
                         END
                             ||
@@ -580,6 +580,7 @@ BEGIN
     END IF;
 
     RETURN res;
+
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
