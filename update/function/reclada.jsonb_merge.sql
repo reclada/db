@@ -14,7 +14,7 @@ RETURNS jsonb AS $$
                             WHEN e2.v IS NULL THEN e1.v
                             WHEN e1.v IS NULL THEN e2.v
                             WHEN e1.v = e2.v THEN e1.v
-                            ELSE jsonb_merge(e1.v, e2.v)
+                            ELSE reclada.jsonb_merge(e1.v, e2.v)
                         END)
                     FROM jsonb_each(current_data) e1(k, v)
                         FULL JOIN jsonb_each(new_data) e2(k, v) USING (k)
