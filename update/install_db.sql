@@ -4,7 +4,7 @@
 --
 
 -- Dumped from database version 13.3
--- Dumped by pg_dump version 14.1
+-- Dumped by pg_dump version 13.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -881,7 +881,7 @@ BEGIN
 
     SELECT attrs
     FROM reclada.v_active_object
-    WHERE class_name = 'Context'
+    WHERE class_name = 'RuntimeContext'
     ORDER BY id DESC
     LIMIT 1
     INTO context;
@@ -919,10 +919,10 @@ $$;
 
 
 --
--- Name: begin_install_component(text, text, text); Type: FUNCTION; Schema: dev; Owner: -
+-- Name: begin_install_component(text, text, text, text); Type: FUNCTION; Schema: dev; Owner: -
 --
 
-CREATE FUNCTION dev.begin_install_component(_name text, _repository text, _commit_hash text) RETURNS text
+CREATE FUNCTION dev.begin_install_component(_name text, _repository text, _commit_hash text, _parent_component_name text DEFAULT ''::text) RETURNS text
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -938,17 +938,130 @@ BEGIN
         into _guid;
 
     _guid = coalesce(_guid,public.uuid_generate_v4());
+    _parent_component_name = nullif(_parent_component_name,'');
 
-    insert into dev.component( name,  repository,  commit_hash,  guid)
-                       select _name, _repository, _commit_hash, _guid;
+    insert into dev.component( name,  repository,  commit_hash,  guid,  parent_component_name)
+                       select _name, _repository, _commit_hash, _guid, _parent_component_name;
 
     delete from dev.component_object;
     insert into dev.component_object(data)
-        select obj_data 
+        select obj_data
             from reclada.v_component_object
                 where component_name = _name;
     return 'OK';
 END;
+$$;
+
+
+--
+-- Name: downgrade_component(text); Type: FUNCTION; Schema: dev; Owner: -
+--
+
+CREATE FUNCTION dev.downgrade_component(_component_name text) RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    CREATE TEMP TABLE del_comp(
+        tran_id bigint,
+        id bigint,
+        guid uuid,
+        name text,
+        rev_num bigint
+    );
+
+    with recursive t as (
+        SELECT  transaction_id, 
+                id, 
+                guid, 
+                name, 
+                null as pre, 
+                null::bigint as pre_id,
+                0 as lvl,
+                c.revision_num
+            from reclada.v_component c
+                WHERE not exists(
+                        SELECT 
+                            FROM reclada.v_component_object co 
+                                where co.obj_id = c.guid
+                    )
+        union
+        select  cc.transaction_id, 
+                cc.id, 
+                cc.guid, 
+                cc.name, 
+                t.name as pre, 
+                t.id as pre_id,
+                t.lvl+1 as lvl,
+                cc.revision_num
+            from t
+            join reclada.v_component_object co
+                on t.guid = co.component_guid
+            join reclada.v_component cc
+                on cc.id = co.id
+    ),
+    h as (
+        SELECT  t.transaction_id, 
+                t.id, 
+                t.guid, 
+                t.name, 
+                t.pre, 
+                t.pre_id, 
+                t.lvl,
+                t.revision_num
+            FROM t
+                where name = _component_name
+        union
+        select  t.transaction_id, 
+                t.id, 
+                t.guid, 
+                t.name, 
+                t.pre, 
+                t.pre_id, 
+                t.lvl,
+                null revision_num
+            FROM h
+            JOIN t
+                on t.pre_id = h.id
+    )
+    insert into del_comp(tran_id, id, guid, name, rev_num)
+        SELECT    transaction_id, id, guid, name, revision_num  
+            FROM h;
+
+    DELETE from reclada.object 
+        WHERE transaction_id  in (select tran_id from del_comp);
+
+
+    with recursive t as (
+        SELECT o.transaction_id, o.obj_id
+            from reclada.v_object o
+                WHERE o.obj_id = (SELECT guid from del_comp where name = _component_name)
+                    AND coalesce(revision_num, 1) = coalesce(
+                            (SELECT rev_num from del_comp where name = _component_name), 
+                            1
+                        ) - 1
+        union 
+        select o.transaction_id, o.obj_id
+            from t
+            JOIN reclada.v_relationship r
+                ON r.parent_guid = t.obj_id
+                    AND 'data of reclada-component' = r.type
+            join reclada.v_object o
+                on o.obj_id = r.subject
+                    and o.transaction_id >= t.transaction_id
+                    and o.class_name = 'Component'
+    )
+    update reclada.object u
+        SET status = reclada_object.get_active_status_obj_id()
+        FROM t c
+            WHERE u.transaction_id = c.transaction_id
+                and NOT EXISTS (
+                        SELECT from reclada.object o
+                            WHERE o.status != reclada_object.get_archive_status_obj_id()
+                                and o.guid = u.guid
+                    );
+    drop TABLE del_comp;
+    return 'OK';
+END
 $$;
 
 
@@ -982,6 +1095,8 @@ BEGIN
         RAISE EXCEPTION 'downgrade_script is empty! from dev.downgrade_version()';
     end if;
 
+    perform dev.downgrade_component('db');
+    
     EXECUTE downgrade_script;
 
     -- mark, that chanches applied
@@ -1030,41 +1145,39 @@ CREATE FUNCTION dev.finish_install_component() RETURNS text
     AS $$
 DECLARE
     _f_name   text := 'dev.finish_install_component';
-    _obj      jsonb;
+    _parent_component_name text;
+    _comp_obj jsonb;
     _data     jsonb;
+	_tran_id  bigint := reclada.get_transaction_id();
 BEGIN
+
     perform reclada.raise_exception('Component does not found.',_f_name)
         where not exists(select 1 from dev.component);
     
-    select ('{
-                "GUID": "' || guid::text || '",
-                "class":"Component",
-                "attributes": {
-                    "name":"' || name || '",
-                    "repository":"' || repository || '",
-                    "commitHash":"' || commit_hash  || '"
-                }
-            }')::jsonb
+    select jsonb_build_object(
+                                'GUID'          , guid::text,
+                                'class'         , 'Component',
+                                'transactionID' , _tran_id,
+                                'attributes'    , jsonb_build_object(
+                                    'name'        , name,
+                                    'repository'  , repository,
+                                    'commitHash'  , commit_hash
+                                )
+                            ),
+            parent_component_name
         from dev.component
-        into _obj;
+        into _comp_obj,
+             _parent_component_name;
 
     delete from dev.component;
-
-    if exists
-    (
-        select 
-            from reclada.object o
-                where o.guid = (_obj->>'GUID')::uuid
-    ) then
-        perform reclada_object.update(_obj);
-    else
-        perform reclada_object.create(_obj);
-    end if;
-
 
     update dev.component_object
         set status = 'delete'
             where status = 'need to check';
+
+    update dev.component_object
+        set data = data || jsonb_build_object('transactionID',_tran_id)
+            where status != 'delete';
 
     perform reclada_object.delete(data)
         from dev.component_object
@@ -1077,20 +1190,22 @@ BEGIN
     LOOP
         perform reclada_object.create_relationship(
                 'data of reclada-component',
-                (_obj ->>'GUID')::uuid ,
+                (_comp_obj ->>'GUID')::uuid ,
                 (cr.v ->>'GUID')::uuid ,
                 '{}'::jsonb            ,
-                (_obj  ->>'GUID')::uuid
+                (_comp_obj  ->>'GUID')::uuid,
+                _tran_id
             )
             from (select reclada_object.create_subclass(_data)#>'{0}' v) cr;
     END LOOP;
 
     perform reclada_object.create_relationship(
                 'data of reclada-component',
-                (_obj     ->>'GUID')::uuid ,
+                (_comp_obj     ->>'GUID')::uuid ,
                 (el.value ->>'GUID')::uuid ,
                 '{}'::jsonb                ,
-                (_obj     ->>'GUID')::uuid
+                (_comp_obj     ->>'GUID')::uuid,
+                _tran_id
             )
         from dev.component_object c
         cross join lateral (
@@ -1102,6 +1217,31 @@ BEGIN
     perform reclada_object.update(data)
         from dev.component_object
             where status = 'update';
+
+    if exists
+    (
+        select 
+            from reclada.object o
+                where o.guid = (_comp_obj->>'GUID')::uuid
+    ) then
+        perform reclada_object.update(_comp_obj);
+    else
+        perform reclada_object.create(_comp_obj);
+    end if;
+    
+    perform reclada_object.create_relationship(
+                'data of reclada-component',
+                c.guid ,
+                (_comp_obj     ->>'GUID')::uuid ,
+                '{}'::jsonb                ,
+                c.guid ,
+                _tran_id
+            )
+        from reclada.v_component c
+            where _parent_component_name = c.name;
+
+    perform reclada_object.refresh_mv('All');
+
     return 'OK';
 
 END;
@@ -2020,12 +2160,15 @@ BEGIN
                         WHEN 'Insert' THEN
                             -- DO nothing
                         WHEN 'Merge' THEN
-                            PERFORM reclada_object.create_relationship(
-                                    _rel_type,
-                                    _obj_guid,
-                                    (new_data->>'GUID')::uuid,
-                                    '{"dupBehavior": "Merge"}'::jsonb
-                                );
+                            IF new_data->>'GUID' IS NOT NULL THEN
+                                PERFORM reclada_object.create_relationship(
+                                        _rel_type,
+                                        _obj_guid,
+                                        (new_data->>'GUID')::uuid,
+                                        '{"dupBehavior": "Merge"}'::jsonb
+                                    );
+                            END IF;
+                            new_data := reclada_object.remove_parent_guid(new_data, _parent_field);
                             SELECT reclada_object.update(
                                     reclada_object.merge(
                                             new_data - 'class', 
@@ -2137,7 +2280,7 @@ DECLARE
 BEGIN
     SELECT attrs->>'Environment'
         FROM reclada.v_active_object
-        WHERE class_name = 'Context'
+        WHERE class_name = 'RuntimeContext'
         ORDER BY created_time DESC
         LIMIT 1
         INTO _environment;
@@ -2175,10 +2318,10 @@ $$;
 
 
 --
--- Name: create_relationship(text, uuid, uuid, jsonb, uuid); Type: FUNCTION; Schema: reclada_object; Owner: -
+-- Name: create_relationship(text, uuid, uuid, jsonb, uuid, bigint); Type: FUNCTION; Schema: reclada_object; Owner: -
 --
 
-CREATE FUNCTION reclada_object.create_relationship(_rel_type text, _obj_guid uuid, _subj_guid uuid, _extra_attrs jsonb DEFAULT '{}'::jsonb, _parent_guid uuid DEFAULT NULL::uuid) RETURNS jsonb
+CREATE FUNCTION reclada_object.create_relationship(_rel_type text, _obj_guid uuid, _subj_guid uuid, _extra_attrs jsonb DEFAULT '{}'::jsonb, _parent_guid uuid DEFAULT NULL::uuid, _tran_id bigint DEFAULT reclada.get_transaction_id()) RETURNS jsonb
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -2200,12 +2343,14 @@ BEGIN
     IF (_rel_cnt = 0) THEN
         _obj := format('{
             "class": "Relationship",
+            "transactionID": %s,
             "attributes": {
                     "type": "%s",
                     "object": "%s",
                     "subject": "%s"
                 }
             }',
+            _tran_id :: text,
             _rel_type,
             _obj_GUID,
             _subj_GUID)::jsonb;
@@ -2228,7 +2373,7 @@ $$;
 
 CREATE FUNCTION reclada_object.create_subclass(_data jsonb) RETURNS jsonb
     LANGUAGE plpgsql
-    AS $$
+    AS $_$
 DECLARE
     _class_list     jsonb;
     _res            jsonb = '{}'::jsonb;
@@ -2253,7 +2398,9 @@ DECLARE
     _create_obj     jsonb;
     _component_guid uuid;
     _obj_guid       uuid;
-    _row_count              int;
+    _row_count      int;
+    _defs           jsonb = '{}'::jsonb;
+	_tran_id        bigint;
 BEGIN
 
     _class_list := _data->'class';
@@ -2261,7 +2408,8 @@ BEGIN
         perform reclada.raise_exception('The reclada object class is not specified',_f_name);
     END IF;
 
-    _obj_guid := COALESCE((_data->>'GUID')::uuid,public.uuid_generate_v4());
+    _obj_guid := COALESCE((_data->>'GUID')::uuid, public.uuid_generate_v4());
+    _tran_id  := COALESCE((_data->>'transactionID')::bigint, reclada.get_transaction_id());
 
     IF (jsonb_typeof(_class_list) != 'array') THEN
         _class_list := '[]'::jsonb || _class_list;
@@ -2275,7 +2423,7 @@ BEGIN
     _new_class  := attrs->>'newClass';
     _properties := COALESCE(attrs -> 'properties','{}'::jsonb);
     _required   := COALESCE(attrs -> 'required'  ,'[]'::jsonb);
-
+    _defs       := COALESCE(attrs -> '$defs'     ,'{}'::jsonb);
     SELECT guid 
         FROM dev.component 
         INTO _component_guid;
@@ -2284,9 +2432,10 @@ BEGIN
         update dev.component_object
             set status = 'ok'
             where status = 'need to check'
-                and _new_class  = data #>> '{attributes,forClass}'
-                and _properties = data #>  '{attributes,schema,properties}'
-                and _required   = data #>  '{attributes,schema,required}'
+                and _new_class  =          data #>> '{attributes,forClass}'
+                and _properties = COALESCE(data #>  '{attributes,schema,properties}','{}'::jsonb)
+                and _required   = COALESCE(data #>  '{attributes,schema,required}'  ,'[]'::jsonb)
+                and _defs       = COALESCE(data #>  '{attributes,schema,$defs}'     ,'{}'::jsonb)
                 and jsonb_array_length(_class_list) = jsonb_array_length(data #> '{attributes,parentList}');
 
         GET DIAGNOSTICS _row_count := ROW_COUNT;
@@ -2344,27 +2493,23 @@ BEGIN
 
     _version := coalesce(_version,1);
 
-    _create_obj := format('{
-        "class": "jsonschema",
-        "GUID": "%s",
-        "attributes": {
-            "forClass": "%s",
-            "version": "%s",
-            "schema": {
-                "type": "object",
-                "properties": %s,
-                "required": %s
-            },
-            "parentList":%s
-        }
-    }',
-    _obj_guid::text,
-    _new_class,
-    _version,
-    _properties,
-    _required,
-    _parent_list
-    )::jsonb;
+    _create_obj := jsonb_build_object(
+        'class'         , 'jsonschema'   ,
+        'GUID'          , _obj_guid::text,
+        'transactionID' , _tran_id       ,
+        'attributes'    , jsonb_build_object(
+                'forClass'  , _new_class ,
+                'version'   , _version   ,
+                'parentList',_parent_list,
+                'schema'    , jsonb_build_object(
+                    'type'      , 'object'   ,
+                    '$defs'     , _defs      ,
+                    'properties', _properties,
+                    'required'  , _required  
+                )
+            )
+        );
+        
     IF ( jsonb_typeof(attrs->'dupChecking') = 'array' ) THEN
         _create_obj := jsonb_set(_create_obj, '{attributes,dupChecking}',attrs->'dupChecking');
         IF ( jsonb_typeof(attrs->'dupBehavior') = 'string' ) THEN
@@ -2385,7 +2530,7 @@ BEGIN
     PERFORM reclada_object.refresh_mv('uniFields');
     return _res;
 END;
-$$;
+$_$;
 
 
 --
@@ -3230,7 +3375,10 @@ BEGIN
     IF ver = '2' THEN
         _pre_query := (select val from reclada.v_ui_active_object);
         _from := 'res AS obj';
-        _pre_query := REPLACE(_pre_query,'#@#@#where#@#@#', query_conditions  );
+        _pre_query := REPLACE(_pre_query, '#@#@#where#@#@#'  , query_conditions);
+        _pre_query := REPLACE(_pre_query, '#@#@#orderby#@#@#', order_by        );
+        order_by :=  REPLACE(order_by, '{', '{"{');
+        order_by :=  REPLACE(order_by, '}', '}"}'); --obj.data#>'{some_field}'  -->  obj.data#>'{"{some_field}"}'
 
     ELSE
         _pre_query := '';
@@ -3261,6 +3409,7 @@ BEGIN
     _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
     _exec_text := REPLACE(_exec_text, '#@#@#limit#@#@#'    , limit_            );
     -- RAISE NOTICE 'conds: %', _exec_text;
+
     EXECUTE _exec_text
         INTO objects;
     objects := coalesce(objects,'[]'::jsonb);
@@ -3679,7 +3828,7 @@ CREATE FUNCTION reclada_object.merge(lobj jsonb, robj jsonb, schema jsonb DEFAUL
                 ) a
             ) b
                 INTO res;
-            IF schema IS NOT NULL AND NOT validate_json_schema(schema, res) THEN
+            IF schema IS NOT NULL AND NOT validate_json_schema(schema, res->'attributes') THEN
                 RAISE EXCEPTION 'Objects aren''t mergeable. Solve duplicate conflicate manually.';
             END IF;
             RETURN res;
@@ -4007,7 +4156,8 @@ DECLARE
     _dup_behavior reclada.dp_bhvr;
     _uni_field    text;
     _cnt          int;
-    _guid_list      text;
+    _tran_id      bigint;
+    _guid_list    text;
 BEGIN
 
     SELECT  valid_schema, 
@@ -4020,12 +4170,19 @@ BEGIN
                 _class_name ,
                 _class_uuid ;
 
-
     _obj_id := _data->>'GUID';
     IF (_obj_id IS NULL) THEN
         perform reclada.raise_exception('Could not update object with no GUID',_f_name);
     END IF;
 
+    _tran_id = coalesce(    
+                    (_data->>'transactionID')::bigint, 
+                    (
+                        select transaction_id 
+                            from reclada.v_active_object 
+                                where obj_id = _obj_id
+                    )
+                );
 
     -- don't allow update jsonschema
     if _class_name = 'jsonschema' then
@@ -4043,7 +4200,7 @@ BEGIN
     END IF;
 
     branch := _data->'branch';
-    SELECT reclada_revision.create(user_info->>'sub', branch, _obj_id) 
+    SELECT reclada_revision.create(user_info->>'sub', branch, _obj_id, _tran_id) 
         INTO revid;
 
     SELECT prnt_guid, prnt_field
@@ -4094,7 +4251,8 @@ BEGIN
                     END IF;
                 WHEN 'Insert' THEN
                     -- DO nothing
-                WHEN 'Merge' THEN                    
+                WHEN 'Merge' THEN     
+                    _data := reclada_object.remove_parent_guid(_data, _parent_field);               
                     RETURN reclada_object.update(
                         reclada_object.merge(
                             _data - 'class', 
@@ -4127,7 +4285,7 @@ BEGIN
                 _class_uuid,
                 reclada_object.get_active_status_obj_id(),--status 
                 _attrs || format('{"revision":"%s"}',revid)::jsonb,
-                transaction_id,
+                _tran_id,
                 _parent_guid
             FROM reclada.v_object v
             JOIN 
@@ -4403,7 +4561,8 @@ CREATE TABLE dev.component (
     name text NOT NULL,
     repository text NOT NULL,
     commit_hash text NOT NULL,
-    guid uuid NOT NULL
+    guid uuid NOT NULL,
+    parent_component_name text
 );
 
 
@@ -4424,6 +4583,31 @@ CREATE TABLE dev.component_object (
 
 ALTER TABLE dev.component_object ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME dev.component_object_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: meta_data; Type: TABLE; Schema: dev; Owner: -
+--
+
+CREATE TABLE dev.meta_data (
+    id bigint NOT NULL,
+    ver bigint,
+    data jsonb
+);
+
+
+--
+-- Name: meta_data_id_seq; Type: SEQUENCE; Schema: dev; Owner: -
+--
+
+ALTER TABLE dev.meta_data ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME dev.meta_data_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -4576,7 +4760,7 @@ ALTER TABLE reclada.object ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1
+    CACHE 10
 );
 
 
@@ -4826,6 +5010,7 @@ CREATE VIEW reclada.v_component AS
     (obj.attrs ->> 'name'::text) AS name,
     (obj.attrs ->> 'repository'::text) AS repository,
     (obj.attrs ->> 'commitHash'::text) AS commit_hash,
+    obj.transaction_id,
     obj.revision_num,
     obj.status_caption,
     obj.revision,
@@ -4864,8 +5049,10 @@ CREATE VIEW reclada.v_relationship AS
 --
 
 CREATE VIEW reclada.v_component_object AS
- SELECT c.name AS component_name,
+ SELECT o.id,
+    c.name AS component_name,
     c.guid AS component_guid,
+    o.transaction_id,
     o.class_name,
     o.obj_id,
     o.data AS obj_data,
@@ -5415,7 +5602,7 @@ CREATE VIEW reclada.v_object_display AS
     obj.attributes,
     obj.status
    FROM reclada.object obj
-  WHERE ((obj.class = ( SELECT reclada_object.get_guid_for_class('ObjectDisplay'::text) AS get_guid_for_class)) AND (obj.status = reclada_object.get_active_status_obj_id()));
+  WHERE ((obj.class IN ( SELECT reclada_object.get_guid_for_class('ObjectDisplay'::text) AS get_guid_for_class)) AND (obj.status = reclada_object.get_active_status_obj_id()));
 
 
 --
@@ -5448,7 +5635,7 @@ CREATE MATERIALIZED VIEW reclada.v_object_unifields AS
                     vc.obj_id,
                     (vc.attributes ->> 'copyField'::text) AS copy_field
                    FROM reclada.v_class_lite vc
-                  WHERE ((vc.attributes -> 'dupChecking'::text) IS NOT NULL)) a) b
+                  WHERE (((vc.attributes -> 'dupChecking'::text) IS NOT NULL) AND (vc.status = reclada_object.get_active_status_obj_id()))) a) b
   WITH NO DATA;
 
 
@@ -5520,6 +5707,7 @@ d as (
             attrs 
         FROM reclada.v_active_object obj 
             where #@#@#where#@#@#
+                ORDER BY #@#@#orderby#@#@#
                 OFFSET #@#@#offset#@#@#
                 LIMIT #@#@#limit#@#@#
 ),
@@ -5587,7 +5775,7 @@ res as
 -- Data for Name: component; Type: TABLE DATA; Schema: dev; Owner: -
 --
 
-COPY dev.component (name, repository, commit_hash, guid) FROM stdin;
+COPY dev.component (name, repository, commit_hash, guid, parent_component_name) FROM stdin;
 \.
 
 
@@ -5740,56 +5928,12 @@ COPY reclada.field (id, path, json_type) FROM stdin;
 --
 
 COPY reclada.object (id, status, attributes, transaction_id, created_time, created_by, class, guid, parent_guid) FROM stdin;
-22	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"caption": "active", "revision": "090c2cee-db0f-4637-9524-fb15e9c7362b"}	9	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	14af3113-18b5-4da8-af57-bdf37a6693aa	3748b1f7-b674-47ca-9ded-d011b16bbf7b	\N
-18	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"name": "defaultDataSet", "revision": "a04d127e-5ea0-4683-8eff-2ea8d1ba5f24", "dataSources": []}	10	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	be193cf5-3156-4df4-8c9b-58b09524ce2f	10c400ff-a328-450d-ae07-ce7d427d961c	\N
-40	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["status", "type"], "class": "Task", "event": "create", "channelName": "task_created"}	17	2021-09-22 14:53:03.155494+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	4e79a0e3-6cf6-42b0-bc0e-f4222530d316	\N
-41	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["status", "type"], "class": "Task", "event": "update", "channelName": "task_updated"}	18	2021-09-22 14:53:03.155494+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	8a4f92ef-0e48-4387-9e93-688525ba8697	\N
-42	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["type"], "class": "Task", "event": "delete", "channelName": "task_deleted"}	19	2021-09-22 14:53:03.155494+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	5f1b0908-8ea2-44f8-a380-7d9aee07ea99	\N
-13	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 7, "dateTime": "2021-09-22 14:50:30.246626+00"}	38	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	23a3251b-6269-456f-a5b7-09ce1b0df3e3	\N
-23	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 12, "dateTime": "2021-09-22 14:50:50.411942+00"}	47	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	b77c3f09-59eb-4aa0-bc83-208d32d9855d	\N
-19	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 10, "dateTime": "2021-09-22 14:50:50.411942+00"}	48	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	0b3c19cb-85f6-4481-bd91-30d004197cac	\N
-47	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["status", "type"], "class": "Job", "event": "create", "channelName": "job_created"}	24	2021-09-22 14:53:03.95338+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	45f586df-e867-4024-a92c-81d26ada1a16	\N
-48	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["status", "type"], "class": "Job", "event": "update", "channelName": "job_updated"}	25	2021-09-22 14:53:03.95338+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	cca09dc6-2eb4-4d41-99c6-063d8763f789	\N
-49	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"attrs": ["type"], "class": "Job", "event": "delete", "channelName": "job_deleted"}	26	2021-09-22 14:53:03.95338+00	16d789c1-1b4e-4815-b70c-4ef060e90884	54f657db-bc6a-4a37-8fb6-8566aee49b33	b58aa7bb-c002-4c55-85a3-8ba8b167c92b	\N
-55	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "extension": ".xlsx"}	35	2021-09-22 14:53:04.924895+00	16d789c1-1b4e-4815-b70c-4ef060e90884	e291db3a-4942-441f-a320-079c9eb5e3bb	8831f967-a71b-4721-ab78-caefab138d37	\N
-11	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 6, "dateTime": "2021-09-22 14:50:30.154503+00"}	39	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	fcb96cad-9879-4668-8da0-cd705175dc90	\N
-9	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 5, "dateTime": "2021-09-22 14:50:30.063341+00"}	40	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	49a01e01-8663-437e-b261-d77800518497	\N
-7	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 4, "dateTime": "2021-09-22 14:50:29.958841+00"}	41	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	559af2a2-371c-432f-92a7-e567da60565d	\N
-5	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 3, "dateTime": "2021-09-22 14:50:29.866858+00"}	42	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	195b2a06-4b6e-4e7c-a610-58fc09f646c8	\N
-3	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 2, "dateTime": "2021-09-22 14:50:29.712093+00"}	43	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	6035277c-e142-4a27-ae34-4800cee8c89c	\N
-1	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 1, "dateTime": "2021-09-22 14:50:29.624416+00"}	44	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	aacd64a4-7585-456f-8546-37da218b5481	\N
-21	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 11, "dateTime": "2021-09-22 14:50:50.411942+00"}	45	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	090c2cee-db0f-4637-9524-fb15e9c7362b	\N
-25	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 13, "dateTime": "2021-09-22 14:50:50.411942+00"}	46	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	de7cfae5-c8c3-4ecc-b147-1427eb792f82	\N
-17	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 9, "dateTime": "2021-09-22 14:50:30.427941+00"}	49	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	a04d127e-5ea0-4683-8eff-2ea8d1ba5f24	\N
-15	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 8, "dateTime": "2021-09-22 14:50:30.338803+00"}	50	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	cc1ced42-1354-49ea-ba65-5a6562547618	\N
-27	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 1, "user": "", "branch": "", "old_num": 14, "dateTime": "2021-09-22 14:50:50.411942+00"}	51	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	92d414ce-56aa-4c4a-87f1-5027b0156ba9	\N
-28	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"login": "dev", "revision": "92d414ce-56aa-4c4a-87f1-5027b0156ba9"}	52	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	77f7d007-960f-4236-84fa-feadf3267bcf	16d789c1-1b4e-4815-b70c-4ef060e90884	\N
-24	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"caption": "archive", "revision": "b77c3f09-59eb-4aa0-bc83-208d32d9855d"}	53	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	14af3113-18b5-4da8-af57-bdf37a6693aa	9dc0a032-90d6-4638-956e-9cd64cd2900c	\N
-86	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"card": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"]}, "list": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"]}, "table": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"], "{GUID}:string": {"width": 250, "caption": "GUID", "displayCSS": "GUID"}, "{status}:string": {"width": 250, "caption": "Status", "displayCSS": "status"}, "{createdTime}:string": {"width": 250, "caption": "Created time", "displayCSS": "createdTime"}, "{transactionID}:number": {"width": 250, "caption": "Transaction", "displayCSS": "transactionID"}, "{attributes,tags}:array": {"items": {"class": "e12e729b-ac44-45bc-8271-9f0c6d4fa27b", "behavior": "preview", "displayCSS": "link"}, "width": 250, "caption": "Tags", "displayCSS": "arrayLink"}, "{attributes,name}:string": {"width": 250, "caption": "File name", "behavior": "preview", "displayCSS": "name"}, "{attributes,checksum}:string": {"width": 250, "caption": "Checksum", "displayCSS": "checksum"}, "{attributes,mimeType}:string": {"width": 250, "caption": "Mime type", "displayCSS": "mimeType"}}, "caption": "Files", "preview": {"orderRow": [{"{attributes,name}:string": "ASC"}, {"{attributes,mimeType}:string": "DESC"}], "orderColumn": ["{attributes,name}:string", "{attributes,mimeType}:string", "{attributes,tags}:array", "{status}:string", "{createdTime}:string", "{transactionID}:number"]}, "classGUID": "c7fc0455-0572-40d7-987f-583cc2c9630c"}	85	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0ed53027-e432-4ef8-a669-b90dab42353a	fb19dd42-f2a2-4e34-90ea-a6e5f5ea6dff	\N
-87	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"num": 2, "user": "", "branch": "", "dateTime": "2021-12-28 14:18:07.480088+00"}	86	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	0f317fbd-8861-4d68-82ce-de7241d7db0f	1da6ba10-b175-4e1d-8cdd-668d52387c08	\N
-62	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "anyOf": [{"required": ["transactionID"]}, {"required": ["class"]}, {"required": ["filter"]}], "properties": {"class": {"type": "string"}, "limit": {"anyOf": [{"enum": ["ALL"], "type": "string"}, {"type": "integer"}]}, "filter": {"type": "object"}, "offset": {"type": "integer"}, "orderBy": {"type": "array", "items": {"type": "object", "required": ["field"], "properties": {"field": {"type": "string"}, "order": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "transactionID": {"type": "integer"}}}, "function": "reclada_object.list"}	61	2021-11-08 11:01:49.274513+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	d87ad26e-a522-4907-a41a-a82a916fdcf9	\N
-88	9dc0a032-90d6-4638-956e-9cd64cd2900c	{"schema": {"type": "object", "anyOf": [{"required": ["transactionID", "class"]}, {"required": ["class"]}, {"required": ["filter", "class"]}], "properties": {"class": {"type": "string"}, "limit": {"anyOf": [{"enum": ["ALL"], "type": "string"}, {"type": "integer"}]}, "filter": {"type": "object"}, "offset": {"type": "integer"}, "orderBy": {"type": "array", "items": {"type": "object", "required": ["field"], "properties": {"field": {"type": "string"}, "order": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "transactionID": {"type": "integer"}}}, "function": "reclada_object.list", "revision": "1da6ba10-b175-4e1d-8cdd-668d52387c08"}	61	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	d87ad26e-a522-4907-a41a-a82a916fdcf9	\N
-74	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"$defs": {"displayType": {"type": "object", "required": ["orderColumn", "orderRow"], "properties": {"orderRow": {"type": "array", "items": {"type": "object", "patternProperties": {"^{.*}$": {"enum": ["ASC", "DESC"], "type": "string"}}}}, "orderColumn": {"type": "array", "items": {"type": "string"}}}}}, "required": ["classGUID", "caption"], "properties": {"card": {"$ref": "#/$defs/displayType"}, "flat": {"type": "bool"}, "list": {"$ref": "#/$defs/displayType"}, "table": {"$ref": "#/$defs/displayType"}, "caption": {"type": "string"}, "preview": {"$ref": "#/$defs/displayType"}, "classGUID": {"type": "string"}}}, "version": "1", "forClass": "ObjectDisplay", "parentList": []}	73	2021-12-23 09:40:36.185045+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	0ed53027-e432-4ef8-a669-b90dab42353a	\N
-2	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["forClass", "schema"], "properties": {"schema": {"type": "object"}, "forClass": {"type": "string"}, "parentList": {"type": "array", "items": {"type": "string"}}}}, "version": 1, "forClass": "jsonschema", "revision": "aacd64a4-7585-456f-8546-37da218b5481", "parentList": []}	32	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	5362d59b-82a1-4c7c-8ec3-07c256009fb0	\N
-61	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"id": "expr", "type": "object", "required": ["value", "operator"], "properties": {"value": {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "null"}, {"type": "number"}, {"$ref": "expr"}, {"type": "boolean"}, {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "number"}]}}]}, "minItems": 1}, "operator": {"type": "string"}}}, "function": "reclada_object.get_query_condition_filter"}	60	2021-11-08 11:01:49.274513+00	16d789c1-1b4e-4815-b70c-4ef060e90884	d90dd69c-fc00-4573-b747-c04f39c20b25	4ecbf6f5-7eea-4dbd-9f46-e0535f7fb299	\N
-59	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["checksum", "name", "mimeType"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}, "checksum": {"type": "string"}, "mimeType": {"type": "string"}}}, "version": "1", "forClass": "File", "isCascade": true, "parentList": [], "dupBehavior": "Replace", "dupChecking": [{"uniFields": ["uri"], "isMandatory": true}, {"uniFields": ["checksum"], "isMandatory": true}]}	58	2021-10-04 08:06:30.979167+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	c7fc0455-0572-40d7-987f-583cc2c9630c	\N
+22	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"caption": "active"}	9	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	14af3113-18b5-4da8-af57-bdf37a6693aa	3748b1f7-b674-47ca-9ded-d011b16bbf7b	\N
+24	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"caption": "archive"}	53	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	14af3113-18b5-4da8-af57-bdf37a6693aa	9dc0a032-90d6-4638-956e-9cd64cd2900c	\N
+2	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["forClass", "schema"], "properties": {"schema": {"type": "object"}, "forClass": {"type": "string"}, "parentList": {"type": "array", "items": {"type": "string"}}}}, "version": 1, "forClass": "jsonschema", "parentList": []}	32	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	5362d59b-82a1-4c7c-8ec3-07c256009fb0	\N
 50	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["subject", "type", "object"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "type": {"type": "string", "enum ": ["params"]}, "object": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "disable": {"type": "boolean", "default": false}, "subject": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}}}, "version": "1", "forClass": "Relationship", "parentList": []}	27	2021-09-22 14:53:04.158111+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	2d054574-8f7a-4a9a-a3b3-0400ad9d0489	\N
-85	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": [{}, "name"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}}}, "version": "1", "forClass": "DBAsset", "parentList": ["83cc2a18-ee18-44b8-ab73-689dadb7c0d0"]}	84	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	c72ad73a-9e85-4277-9a3a-1d2d28d7a84f	83cc2a18-ee18-44b8-ab73-689dadb7c0d0
-84	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": [{}, "name"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}}}, "version": "1", "forClass": "Asset", "parentList": ["92a95f66-e28e-4ebc-9f33-3568fc5a281e"]}	83	2021-12-28 14:18:07.480088+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	83cc2a18-ee18-44b8-ab73-689dadb7c0d0	92a95f66-e28e-4ebc-9f33-3568fc5a281e
-57	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["tranID", "name"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "tranID": {"type": "number"}, "disable": {"type": "boolean", "default": false}}}, "version": "1", "forClass": "ImportInfo", "parentList": []}	56	2021-09-24 09:46:22.790044+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	6f5245bd-1eec-4be0-8a28-681758155e33	\N
-14	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}, "dataSources": {"type": "array", "items": {"type": "string"}}}}, "version": 1, "forClass": "DataSet", "revision": "23a3251b-6269-456f-a5b7-09ce1b0df3e3", "parentList": []}	55	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	be193cf5-3156-4df4-8c9b-58b09524ce2f	\N
-26	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["login"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "login": {"type": "string"}, "disable": {"type": "boolean", "default": false}}}, "version": 1, "forClass": "User", "revision": "de7cfae5-c8c3-4ecc-b147-1427eb792f82", "parentList": []}	54	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	77f7d007-960f-4236-84fa-feadf3267bcf	\N
-31	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["Environment"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "Lambda": {"type": "string"}, "disable": {"type": "boolean", "default": false}, "Environment": {"type": "string"}}}, "version": "1", "forClass": "Context", "parentList": []}	37	2021-09-22 14:52:29.56296+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	ea01e538-fa4d-49de-ad05-dad73a5dbaca	\N
-16	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["channelName", "event", "class"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "attrs": {"type": "array", "items": {"type": "string"}}, "class": {"type": "string"}, "event": {"enum": ["create", "update", "list", "delete"], "type": "string"}, "disable": {"type": "boolean", "default": false}, "channelName": {"type": "string"}}}, "version": 1, "forClass": "Message", "revision": "cc1ced42-1354-49ea-ba65-5a6562547618", "parentList": []}	33	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	54f657db-bc6a-4a37-8fb6-8566aee49b33	\N
-4	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": [], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}}}, "version": 1, "forClass": "RecladaObject", "revision": "6035277c-e142-4a27-ae34-4800cee8c89c", "parentList": []}	31	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	ab9ab26c-8902-43dd-9f1a-743b14a89825	\N
-12	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["accessKeyId", "secretAccessKey", "bucketName"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}, "bucketName": {"type": "string"}, "regionName": {"type": "string"}, "accessKeyId": {"type": "string"}, "endpointURL": {"type": "string"}, "secretAccessKey": {"type": "string"}}}, "version": 1, "forClass": "S3Config", "revision": "fcb96cad-9879-4668-8da0-cd705175dc90", "parentList": []}	15	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	67f37293-2dd6-469c-bc2d-923533991f77	\N
-6	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}}}, "version": 1, "forClass": "tag", "revision": "195b2a06-4b6e-4e7c-a610-58fc09f646c8", "parentList": []}	14	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	e12e729b-ac44-45bc-8271-9f0c6d4fa27b	\N
-8	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["name"], "properties": {"uri": {"type": "string"}, "name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}}}, "version": 1, "forClass": "DataSource", "revision": "559af2a2-371c-432f-92a7-e567da60565d", "parentList": []}	13	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	92a95f66-e28e-4ebc-9f33-3568fc5a281e	\N
-20	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["caption"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "caption": {"type": "string"}, "disable": {"type": "boolean", "default": false}}}, "version": 1, "forClass": "ObjectStatus", "revision": "0b3c19cb-85f6-4481-bd91-30d004197cac", "parentList": []}	11	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	14af3113-18b5-4da8-af57-bdf37a6693aa	\N
-29	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["dateTime"], "properties": {"num": {"type": "number"}, "tags": {"type": "array", "items": {"type": "string"}}, "user": {"type": "string"}, "branch": {"type": "string"}, "disable": {"type": "boolean", "default": false}, "dateTime": {"type": "string"}}}, "version": 1, "forClass": "revision", "parentList": []}	4	2021-09-22 14:51:54.773219+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	0f317fbd-8861-4d68-82ce-de7241d7db0f	\N
-60	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["schema", "function"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "schema": {"type": "object"}, "disable": {"type": "boolean", "default": false}, "function": {"type": "string"}}}, "version": "1", "forClass": "DTOJsonSchema", "parentList": ["ab9ab26c-8902-43dd-9f1a-743b14a89825"]}	59	2021-11-08 11:01:49.274513+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	d90dd69c-fc00-4573-b747-c04f39c20b25	ab9ab26c-8902-43dd-9f1a-743b14a89825
-89	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["repository", "name", "commitHash"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}, "commitHash": {"type": "string"}, "repository": {"type": "string"}}}, "version": "1", "forClass": "Component", "parentList": ["ab9ab26c-8902-43dd-9f1a-743b14a89825"]}	87	2022-02-11 07:11:40.86783+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	ff5f9d8b-5a0f-4083-a6cb-bd36cdd1bfdd	\N
-93	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["name", "fields"], "properties": {"name": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "fields": {"type": "array", "items": {"type": "string"}, "minContains": 1}, "method": {"type": "string", "enum ": ["btree", "hash", "gist", "gin"]}, "disable": {"type": "boolean", "default": false}, "wherePredicate": {"type": "string"}}}, "version": "1", "forClass": "Index", "parentList": ["ab9ab26c-8902-43dd-9f1a-743b14a89825"]}	91	2022-02-11 07:11:40.86783+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	6ce91094-ff2d-41c4-92e4-47ca4f384b0b	\N
+4	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": [], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}}}, "version": 1, "forClass": "RecladaObject", "parentList": []}	31	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	ab9ab26c-8902-43dd-9f1a-743b14a89825	\N
+20	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["caption"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "caption": {"type": "string"}, "disable": {"type": "boolean", "default": false}}}, "version": 1, "forClass": "ObjectStatus", "parentList": []}	11	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	14af3113-18b5-4da8-af57-bdf37a6693aa	\N
 \.
 
 
@@ -5828,34 +5972,8 @@ COPY reclada.unique_object (id, id_field) FROM stdin;
 --
 
 COPY reclada.unique_object_reclada_object (id, id_unique_object, id_reclada_object) FROM stdin;
-1	10	62
-2	7	61
-3	9	18
 4	6	24
 5	6	22
-15	4	55
-16	2	49
-17	2	48
-18	2	47
-19	2	42
-20	2	41
-21	2	40
-22	5	87
-23	11	28
-25	8	27
-26	8	25
-27	8	23
-28	8	21
-29	8	19
-30	8	17
-31	8	15
-32	8	13
-33	8	11
-34	8	9
-35	8	7
-36	8	5
-37	8	3
-38	8	1
 \.
 
 
@@ -5928,6 +6046,14 @@ SELECT pg_catalog.setval('reclada.unique_object_reclada_object_id_seq', 121, tru
 
 ALTER TABLE ONLY dev.component_object
     ADD CONSTRAINT component_object_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: meta_data meta_data_id_key; Type: CONSTRAINT; Schema: dev; Owner: -
+--
+
+ALTER TABLE ONLY dev.meta_data
+    ADD CONSTRAINT meta_data_id_key UNIQUE (id);
 
 
 --
@@ -6046,13 +6172,6 @@ CREATE INDEX guid_index ON reclada.object USING hash (guid);
 --
 
 CREATE INDEX height_index_v47 ON reclada.object USING btree (((attributes -> 'height'::text))) WHERE ((attributes -> 'height'::text) IS NOT NULL);
-
-
---
--- Name: job_status_index; Type: INDEX; Schema: reclada; Owner: -
---
-
-CREATE INDEX job_status_index ON reclada.object USING btree (((attributes ->> 'status'::text))) WHERE ((attributes ->> 'status'::text) IS NOT NULL);
 
 
 --

@@ -1,7 +1,18 @@
-from json.decoder import JSONDecodeError
-from update_db import get_version_from_commit, get_version_from_db,clone_db,install_components,clear_db_from_components
-from update_db import run_file, psql_str,rmdir,run_test,run_cmd_scalar,downgrade_test,run_object_create,pg_dump,db_name
+from update_db import get_version_from_commit
+from update_db import get_version_from_db
+from update_db import install_components
+from update_db import clear_db_from_components
+from update_db import run_file
+from update_db import psql_str
+from update_db import rmdir
+from update_db import run_test
+from update_db import run_cmd_scalar
+from update_db import downgrade_test
+from update_db import pg_dump
+from update_db import db_name
+from update_db import install_component_db
 
+from json.decoder import JSONDecodeError
 import time
 import os
 import datetime
@@ -16,6 +27,7 @@ def upgrade():
 
     run_file('up.sql')
 
+
 if __name__ == "__main__":
     print(f'Current database: {db_name}')
     time.sleep(2)
@@ -25,7 +37,7 @@ if __name__ == "__main__":
     down_test = downgrade_test
 
     downgrade_dump = 'downgrade_dump.sql'
-    current_dump = path = os.path.join('db','update','install_db.sql')
+    current_dump   = 'current_dump.sql'
 
     commit_ver = get_version_from_commit()
     try:
@@ -37,20 +49,8 @@ if __name__ == "__main__":
     if install_db:
         os.system('python install_db.py')
         if down_test:
-            if run_object_create:
-                input('run_object_create must be false for downgrade_test')
-                down_test = False
-            else:
-                print('trying to find dump of current version...')
-                clone_db()
-                os.chdir('..')
-                if os.path.isfile(current_dump):
-                    print('success!')
-                else:
-                    print('dump not found...')
-                    print('pg_dump for current version...')
-                    current_dump = 'current_dump.sql'
-                    pg_dump(current_dump,t)
+            print('pg_dump for current version...')
+            pg_dump(current_dump,t)
     else:
         print('install_db.py skipped, database has actual version')
         down_test = False
@@ -91,7 +91,9 @@ if __name__ == "__main__":
                             sc = set()
                             sd = set()
                         suffix = ", true);\n"
-                        for prefix in ["SELECT pg_catalog.setval('dev.ver_id_seq',", "SELECT pg_catalog.setval('reclada."]:
+                        for prefix in [ "SELECT pg_catalog.setval('dev.ver_id_seq',",
+                                        "SELECT pg_catalog.setval('reclada.",
+                                        "SELECT pg_catalog.setval('dev.component_object_id_seq'"]:
                             if (ldd[i].startswith(prefix)
                                 and lcd[j].startswith(prefix)
                                 and ldd[i].endswith(suffix)
@@ -137,7 +139,6 @@ if __name__ == "__main__":
             
         os.remove(downgrade_dump)
         os.remove(current_dump)
-        rmdir('db')
         os.system('python install_db.py')
         upgrade()
     else:
@@ -145,7 +146,6 @@ if __name__ == "__main__":
     input("Press Enter to update jsonschemas and install_db.sql . . .")
 
     if install_db:
-        print('clear db from components...')
         clear_db_from_components()
         print('pg_dump...')
         pg_dump('install_db.sql',t)
@@ -168,6 +168,7 @@ if __name__ == "__main__":
             with open(f'{for_class}.json','a') as f:
                 f.write(attrs)
         os.chdir('..')
+        install_component_db() 
     else:
         print('skipped . . .')
         print('If evrything okay - run this script again before commit to update jsonschemas and install_db.sql')
@@ -175,5 +176,10 @@ if __name__ == "__main__":
     input("Press Enter to install components . . .")
     install_components()
 
-    input("Press Enter to run testing . . .")    
+    input("Press Enter to run testing clean db . . .")    
+    run_test()
+
+    input("Press Enter to run testing upgraded db . . .")
+    os.system('python install_db.py')
+    upgrade()
     run_test()

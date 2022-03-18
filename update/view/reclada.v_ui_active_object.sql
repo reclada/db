@@ -10,6 +10,7 @@ d as (
             attrs 
         FROM reclada.v_active_object obj 
             where #@#@#where#@#@#
+                ORDER BY #@#@#orderby#@#@#
                 OFFSET #@#@#offset#@#@#
                 LIMIT #@#@#limit#@#@#
 ),
