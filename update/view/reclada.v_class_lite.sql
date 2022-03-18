@@ -42,7 +42,9 @@ tmp AS
 ),
 default_field AS
 (
-    SELECT   reclada.jsonb_object_agg(default_jsonb) AS default_value,
+    SELECT   format('{"attributes": %s}',
+                    reclada.jsonb_object_agg(default_jsonb))::jsonb
+             AS default_value,
              obj_id
         FROM tmp
         GROUP BY obj_id

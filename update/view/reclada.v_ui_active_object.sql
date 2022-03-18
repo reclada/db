@@ -4,7 +4,7 @@ AS
 select 
 'with recursive 
 d as ( 
-    select  reclada.jsonb_merge(data, format(''{"attributes": %s}'',default_value)::jsonb) AS data,
+    select  reclada.jsonb_merge(data, default_value) AS data,
             obj_id,
             created_time,
             attrs
