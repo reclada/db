@@ -447,6 +447,10 @@ if __name__ == "__main__":
             os.chdir('update')
             if commit_v == cur_ver_db + 1:
                 print(f'commit: {commit}\tcommit_version: {commit_v}')
+                os.chdir('..')
+                os.chdir('..')
+                shutil.copyfile('update_config.json', os.path.join('db','update','update_config.json'))
+                os.chdir(os.path.join('db','update'))
                 os.system('python create_up.sql.py')
                 run_file('up.sql',DB_URI)
                 cur_ver_db+=1
@@ -455,8 +459,9 @@ if __name__ == "__main__":
             if cur_ver_db == config_version:
                 break
 
+    os.chdir('..')
+    rmdir('db')
+    
     if cur_ver_db >= 48: # Components do not exist before 48
         install_components() #upgrade components
     
-    os.chdir('..')
-    rmdir('db')
