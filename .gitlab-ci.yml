@@ -33,6 +33,7 @@ prepare_db:
     # - echo LAST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) >> prepare.env
     #- echo ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
     #- export ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
+    - echo $ENV
     - echo ENV=$ENV >> prepare.env
     - export ENV=$ENV >> prepare.env
     - echo $ENV # check the var
@@ -84,7 +85,7 @@ deploy-dynamic-env:
   - if: $CI_COMMIT_MESSAGE =~ /^delenv/
     when: never    
   - if: $CI_COMMIT_REF_NAME == "test_parent_child"
-    when: always
+    when: manual
   - if: $CI_COMMIT_REF_NAME == "master"
     when: never
   - if: $CI_COMMIT_REF_NAME == "test"
