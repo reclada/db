@@ -430,19 +430,26 @@ BEGIN
                 'SELECT to_jsonb(array_agg(t.data))
                     FROM 
                     (
-                        SELECT obj.data
-                            FROM '
+                        SELECT '
+                        || CASE
+                            WHEN ver = '2'
+                                THEN 'obj.data '
+                            ELSE 'reclada.jsonb_merge(data, default_value) AS data
+                                 '
+                        END
+                            ||
+                            'FROM '
                             || _from
                             || ' 
                             ORDER BY #@#@#orderby#@#@#'
-                            || case 
-                                when ver = '2' 
-                                    then ''
-                                else
+                            || CASE
+                                WHEN ver = '2'
+                                    THEN ''
+                                ELSE
                                 '
                                 OFFSET #@#@#offset#@#@#
                                 LIMIT #@#@#limit#@#@#'
-                            end
+                            END
                             || '
                     ) AS t';
     _exec_text := REPLACE(_exec_text, '#@#@#orderby#@#@#'  , order_by          );
@@ -526,6 +533,7 @@ BEGIN
             end if;
         end if;
 
+
         _exec_text := '
             SELECT  COUNT(1),
                     TO_CHAR(
@@ -572,6 +580,7 @@ BEGIN
     END IF;
 
     RETURN res;
+
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

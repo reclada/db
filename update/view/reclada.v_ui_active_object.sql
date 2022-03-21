@@ -4,10 +4,10 @@ AS
 select 
 'with recursive 
 d as ( 
-    select  data, 
+    select  reclada.jsonb_merge(data, default_value) AS data,
             obj_id,
             created_time,
-            attrs 
+            attrs
         FROM reclada.v_active_object obj 
             where #@#@#where#@#@#
                 ORDER BY #@#@#orderby#@#@#
