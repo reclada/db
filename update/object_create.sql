@@ -747,3 +747,35 @@ SELECT reclada_object.create_subclass('{
 
 --} 16 ObjectDisplay
 
+--{ 17 Trigger
+-- SELECT reclada_object.create_subclass('{
+--     "GUID":"db05bc71-4f3c-4276-9b97-c9e83f21c813",
+--     "class": "RecladaObject",
+--     "attributes": {
+--         "newClass": "Trigger",
+--         "properties": {
+--             "name": {"type": "string"},
+--             "class" : {
+--                 "type": "array",
+--                 "items": {"type": "string"} 
+--             },
+
+--         },
+--         "required": ["login"]
+--     }
+-- }'::jsonb);
+--{ 17 Trigger
+
+--{ 18 View
+SELECT reclada_object.create_subclass('{
+        "class": "RecladaObject",
+        "attributes": {
+            "newClass": "View",
+            "properties": {
+                "name": {"type": "string"},
+                "query": {"type": "string"}
+            },
+            "required": ["name","query"]
+        }
+    }'::jsonb);
+--} 18 View

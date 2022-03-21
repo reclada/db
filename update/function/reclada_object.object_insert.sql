@@ -133,6 +133,14 @@ BEGIN
         _exec_text := REPLACE(_exec_text, '#@#@#where#@#@#'  , _where );
         EXECUTE _exec_text;
 
+    ELSIF _class_name = 'View' then
+
+        _exec_text := 'DROP VIEW IF EXISTS reclada.#@#@#name#@#@#;
+            CREATE VIEW reclada.#@#@#name#@#@# as #@#@#query#@#@#;';
+        _exec_text := REPLACE(_exec_text, '#@#@#name#@#@#'   , attributes->>'name'                      );
+        _exec_text := REPLACE(_exec_text, '#@#@#query#@#@#' , attributes->>'query' );
+
+        EXECUTE _exec_text;
     END IF;
 END;
 $$ LANGUAGE 'plpgsql' VOLATILE;

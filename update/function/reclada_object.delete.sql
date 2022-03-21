@@ -89,10 +89,18 @@ BEGIN
     INTO data;
 
 
-    SELECT string_agg('DROP INDEX reclada.'||(attrs->>'name')||';',' ')
-        FROM reclada.v_object o
-        WHERE o.id IN (SELECT unnest(list_id))
-            AND o.class_name = 'Index'
+    SELECT string_agg(t.q,' ')
+        FROM (
+            SELECT 'DROP INDEX reclada.'||(attrs->>'name')||';' AS q
+                FROM reclada.v_object o
+                WHERE o.id IN (SELECT unnest(list_id))
+                    AND o.class_name = 'Index'
+            UNION
+            SELECT 'DROP VIEW reclada.'||(attrs->>'name')||';' AS q
+                FROM reclada.v_object o
+                WHERE o.id IN (SELECT unnest(list_id))
+                    AND o.class_name = 'View'
+        ) t
         into _exec_text;
     
     if _exec_text is not null then
