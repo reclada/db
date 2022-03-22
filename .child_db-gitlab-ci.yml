@@ -21,13 +21,15 @@ prepare_db:
     - echo LAMBDA_REGION = "eu-west-1" >> prepare.env
 
     - echo "$CI_PROJECT_DIR"
-    - echo CI_PROJECT_DIR=$CI_PROJECT_DIR >> prepare.env
-    - export CI_PROJECT_DIR=$CI_PROJECT_DIR >> prepare.env
-    - echo "$CI_PROJECT_DIR"
 
     - export -p
     #debug
     - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  needs:
+    - project: developers/db
+      job: prepare_webui
+      ref: test_parent_child
+      artifacts: false
   artifacts:
     reports:
       dotenv: prepare.env
@@ -66,4 +68,4 @@ deploy-dynamic-env:
   tags:
     - k8s-devops
   rules:
-    - when: always
+    - when: manual
