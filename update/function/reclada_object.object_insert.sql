@@ -137,8 +137,52 @@ BEGIN
 
         _exec_text := 'DROP VIEW IF EXISTS reclada.#@#@#name#@#@#;
             CREATE VIEW reclada.#@#@#name#@#@# as #@#@#query#@#@#;';
-        _exec_text := REPLACE(_exec_text, '#@#@#name#@#@#'   , attributes->>'name'                      );
+        _exec_text := REPLACE(_exec_text, '#@#@#name#@#@#'   , attributes->>'name' );
         _exec_text := REPLACE(_exec_text, '#@#@#query#@#@#' , attributes->>'query' );
+
+        EXECUTE _exec_text;
+
+    ELSIF _class_name = 'Function' then
+
+        _exec_text := 'DROP FUNCTION IF EXISTS reclada.#@#@#name#@#@#;
+            CREATE FUNCTION reclada.#@#@#name#@#@#
+            (
+                #@#@#parameters#@#@#
+            )
+            RETURNS #@#@#returns#@#@# AS '||chr(36)||chr(36)||'
+            DECLARE
+                #@#@#declare#@#@#
+            BEGIN   
+                #@#@#body#@#@#
+            END;
+            '||chr(36)||chr(36)||' LANGUAGE ''plpgsql'' VOLATILE;';
+
+        _exec_text := REPLACE(_exec_text, '#@#@#name#@#@#'      , attributes->>'name'   );
+        _exec_text := REPLACE(_exec_text, '#@#@#returns#@#@#'   , attributes->>'returns');
+        _exec_text := REPLACE(_exec_text, '#@#@#body#@#@#'      , attributes->>'body'   );
+
+        _exec_text := REPLACE(
+                _exec_text, '#@#@#parameters#@#@#', 
+                (SELECT  STRING_AGG(
+                            (el.value->>'name')
+                                || ' '
+                                || (el.value->>'type'),
+                            ',' || chr(10)
+                        )
+                    FROM jsonb_array_elements(attributes->'parameters') el) 
+            );
+
+        _exec_text := REPLACE(
+                _exec_text, '#@#@#declare#@#@#', 
+                (SELECT  STRING_AGG(
+                            (el.value->>'name')
+                                || ' '
+                                || (el.value->>'type')
+                                || ';', 
+                            chr(10)
+                        )
+                    FROM jsonb_array_elements(attributes->'declare') el )
+            );
 
         EXECUTE _exec_text;
     END IF;

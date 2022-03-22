@@ -100,6 +100,11 @@ BEGIN
                 FROM reclada.v_object o
                 WHERE o.id IN (SELECT unnest(list_id))
                     AND o.class_name = 'View'
+            UNION
+            SELECT 'DROP FUNCTION reclada.'||(attrs->>'name')||';' AS q
+                FROM reclada.v_object o
+                WHERE o.id IN (SELECT unnest(list_id))
+                    AND o.class_name = 'Function'
         ) t
         into _exec_text;
     

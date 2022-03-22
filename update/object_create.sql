@@ -747,25 +747,7 @@ SELECT reclada_object.create_subclass('{
 
 --} 16 ObjectDisplay
 
---{ 17 Trigger
---  SELECT reclada_object.create_subclass('{
---      "GUID":"db05bc71-4f3c-4276-9b97-c9e83f21c813",
---      "class": "RecladaObject",
---      "attributes": {
---          "newClass": "Trigger",
---          "properties": {
---              "name": {"type": "string"},
---              "class" : {
---                  "type": "array",
---                  "items": {"type": "string"} 
---              },
---          },
---          "required": ["login"]
---      }
---  }'::jsonb);
---{ 17 Trigger
-
---{ 18 View
+--{ 17 View
 SELECT reclada_object.create_subclass('{
         "GUID":"db09dcaa-fc90-4760-af68-f855cbe9c2b0",
         "class": "RecladaObject",
@@ -778,4 +760,82 @@ SELECT reclada_object.create_subclass('{
             "required": ["name","query"]
         }
     }'::jsonb);
---} 18 View
+--} 17 View
+
+--{ 18 Function
+SELECT reclada_object.create_subclass('{
+        "GUID":"db0d8ccd-a06e-46c3-9836-a8b4b68f3cd4",
+        "class": "RecladaObject",
+        "attributes": {
+            "newClass": "Function",
+            "$defs": {
+                "declare":{
+                    "type":"array",
+                    "items": {
+                        "type": "object",
+                        "properties":{
+                            "name":{"type": "string"},
+                            "type":{
+                                "type": "string",
+                                "enum": [
+                                    "uuid" ,
+                                    "jsonb",
+                                    "text" ,
+                                    "bigint"
+                                ]
+                            }
+                        },
+                        "required": ["name","type"]
+                    }
+                }
+            },
+            "properties": {
+                "name": {"type": "string"},
+                "parameters": { "$ref": "#/$defs/declare" },
+                "returns": {
+                    "type": "string",
+                    "enum": [
+                        "void",
+                        "uuid" ,
+                        "jsonb",
+                        "text" ,
+                        "bigint"
+                    ]
+                },
+                "declare": { "$ref": "#/$defs/declare" },
+                "body": {"type": "string"}
+            },
+            "required": ["name","returns","body"]
+        }
+    }'::jsonb);
+--} 18 Function
+
+
+--{ 19 Trigger
+SELECT reclada_object.create_subclass('{
+    "GUID":"db05bc71-4f3c-4276-9b97-c9e83f21c813",
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "Trigger",
+        "properties": {
+            "name": {"type": "string"},
+            "action": {
+                "type": "string",
+                "enum": [
+                    "insert",
+                    "delete"
+                ]
+            },
+            "for_class": {
+                "type": "array",
+                "items": {"type": "string"}
+            },
+            "function":{
+                "type": "string",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"
+            }
+        },
+        "required": ["name","action"]
+    }
+ }'::jsonb);
+--{ 19 Trigger

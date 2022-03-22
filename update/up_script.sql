@@ -6,3 +6,4 @@
 
 \i 'function/reclada_object.object_insert.sql'
 \i 'function/reclada_object.delete.sql'
+\i 'function/reclada_object.create.sql'
