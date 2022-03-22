@@ -19,6 +19,13 @@ prepare_db:
     - echo DBNAME = "${ENV}_reclada_k8s" >> prepare.env 
     - echo LAMBDA_NAME = "s3_get_presigned_url_${ENV}" >> prepare.env
     - echo LAMBDA_REGION = "eu-west-1" >> prepare.env
+
+    - echo "$CI_PROJECT_DIR"
+    - echo CI_PROJECT_DIR=$CI_PROJECT_DIR >> prepare.env
+    - export CI_PROJECT_DIR=$CI_PROJECT_DIR >> prepare.env
+    - echo "$CI_PROJECT_DIR"
+
+    - export -p
     #debug
     - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
   artifacts:
