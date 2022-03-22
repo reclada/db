@@ -9,7 +9,7 @@ stages:
 
 variables:
  ENV:
-   value: "reclada-par-chi-test" # this would be the default value
+   value: "parchitest" # this would be the default value
    description: "This variable makes cakes delicious" # makes this variable appear on the Run Pipeline 
  WEBUI_VERSION:
    value: "test_parent_child" # this would be the default value
@@ -59,10 +59,10 @@ deploy-dynamic-env:
     - echo "Create database for dynamic env"
 
     - cp $CI_PROJECT_DIR/update/update_config_template.json $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$DB_VERSION\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_VERSION\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_VERSION\",|g" $CI_PROJECT_DIR/update/update_config.json
-    #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_VERSION\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$DB_BRANCH\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_BRANCH\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_BRANCH\",|g" $CI_PROJECT_DIR/update/update_config.json
+    #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
