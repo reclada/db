@@ -21,11 +21,6 @@ prepare_db:
     - echo LAMBDA_REGION = "eu-west-1" >> prepare.env
     #debug
     - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-  needs:
-    - project: developers/db
-      job: prepare_webui
-      ref: test_parent_child
-      artifacts: false
   artifacts:
     reports:
       dotenv: prepare.env
