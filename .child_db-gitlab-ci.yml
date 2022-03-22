@@ -39,16 +39,16 @@ deploy-dynamic-env:
     - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
     
     - cp $CI_PROJECT_DIR/db/update/update_config_template.json $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
+    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$DB_VERSION\",|g" $CI_PROJECT_DIR/db/update/update_config.json
+    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_VERSION\",|g" $CI_PROJECT_DIR/db/update/update_config.json
+    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_VERSION\",|g" $CI_PROJECT_DIR/db/update/update_config.json
     #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
     - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/db/update/update_config.json
     - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/db/update/update_config.json
     - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/db/update/update_config.json
     - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/db/update/update_config.json
     - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"eu-west-1\",|g" $CI_PROJECT_DIR/db/update/update_config.json
+    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/db/update/update_config.json
     - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/db/update/update_config.json
 
     - cat $CI_PROJECT_DIR/db/update/update_config.json
