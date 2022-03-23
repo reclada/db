@@ -276,7 +276,7 @@ delete-db-dynamic-env:
   script:
     - echo "Uninstall db"
     - echo $CI_COMMIT_MESSAGE
-    - psql -h dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com -p 5432 -U reclada -d postgres -c "DROP DATABASE $ENV_reclada_k8s;" || true
+    - psql -h dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com -p 5432 -U reclada -d postgres -c "DROP DATABASE ${ENV}_reclada_k8s;" || true
   needs:
     - job: delete-terraform-dynamic-env
     - job: prepare_db
