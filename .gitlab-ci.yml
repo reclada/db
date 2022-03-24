@@ -104,8 +104,6 @@ trigger_runtime:
         ref: '$RUNTIME_VERSION'
         file: '.child_runtime-gitlab-ci.yml' 
     strategy: depend
-  needs:
-    - job: deploy_db
   rules:
     - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
       when: never
