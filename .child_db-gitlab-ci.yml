@@ -29,11 +29,11 @@ prepare_db:
   tags:
     - k8s-devops
 
-deploy-dynamic-env:
+deploy_db:
   stage: deploy
   image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
   script:
-    - echo "Create database for dynamic env"
+    - echo "Create database for the environment"
 
     - cd $CI_PROJECT_DIR/
     - mkdir cloned_db && cd cloned_db/
