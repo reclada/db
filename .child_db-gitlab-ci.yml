@@ -36,29 +36,30 @@ deploy-dynamic-env:
     - echo "Create database for dynamic env"
 
     - cd $CI_PROJECT_DIR/
+    - mkdir cloned_db && cd cloned_db/
     - git clone -b $DB_BRANCH https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
     
-    - cp $CI_PROJECT_DIR/db/update/update_config_template.json $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$DB_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
+    - cp $CI_PROJECT_DIR/cloned_db/update/update_config_template.json $CI_PROJECT_DIR/cloned_db/update/update_config.json
+    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$DB_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
+    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
+    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
     #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/db/update/update_config.json
+    - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
+    - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
+    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
+    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
+    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
+    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
+    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/cloned_db/update/update_config.json
 
-    - cat $CI_PROJECT_DIR/db/update/update_config.json
+    - cat $CI_PROJECT_DIR/cloned_db/update/update_config.json
 
-    - sed -i "s|gitlab.reclada.com|gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com|g" $CI_PROJECT_DIR/db/update/update_db.py
-    - cat $CI_PROJECT_DIR/db/update/update_db.py
+    - sed -i "s|gitlab.reclada.com|gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com|g" $CI_PROJECT_DIR/cloned_db/update/update_db.py
+    - cat $CI_PROJECT_DIR/cloned_db/update/update_db.py
 
     - python --version
     - psql -V
-    - cd $CI_PROJECT_DIR/db/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/db/update/update_db.py || python $CI_PROJECT_DIR/db/update/install_db.py
+    - cd $CI_PROJECT_DIR/cloned_db/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/cloned_db/update/update_db.py || python $CI_PROJECT_DIR/cloned_db/update/install_db.py
   needs:
     - job: prepare_db
       artifacts: true
