@@ -36,7 +36,7 @@ deploy-dynamic-env:
     - echo "Create database for dynamic env"
 
     - cd $CI_PROJECT_DIR/
-    - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git || true
+    - git clone -b $DB_BRANCH https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
     
     - cp $CI_PROJECT_DIR/db/update/update_config_template.json $CI_PROJECT_DIR/db/update/update_config.json
     - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$DB_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
