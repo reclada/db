@@ -1,7 +1,7 @@
 stages:
   - prepare
-  - triggers
   - deploy
+  - triggers
   - clean
   - clean_db
   - autotest
