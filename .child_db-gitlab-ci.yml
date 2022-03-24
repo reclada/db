@@ -66,4 +66,4 @@ deploy-dynamic-env:
   tags:
     - k8s-devops
   rules:
-    - when: manual
+    - when: always
