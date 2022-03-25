@@ -413,7 +413,7 @@ def get_version_from_commit(commit = '', file_name = 'up_script.sql')->int:
         os.chdir('..')
     return commit_v
 
-def run_test():
+def run_test(branch_QAAutotests:str):
     clone('QAAutotests', 'https://github.com/reclada/QAAutotests.git', branch_QAAutotests)
     os.system(f'pip install -r requirements.txt')
     os.system(f'pytest '
