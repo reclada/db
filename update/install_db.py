@@ -56,14 +56,16 @@ def db_install(db_helper:DBHelper = DBHelper()):
 if __name__ == "__main__":
 
     if len(sys.argv) > 1:
-        db_helper = DBHelper(db_uri = sys.argv[1])
+        arg1 = sys.argv[1]
+        db_helper = DBHelper(db_uri = arg1)
     else:
         db_helper = DBHelper() # read update_config.json
+        arg1 = ''
 
     db_helper.recreate_db()
     need_update, use_dump = db_install(db_helper)
 
     if need_update:
-        os.system('python update_db.py')
+        os.system(f'python update_db.py {arg1}')
 
     db_helper.install_components()
