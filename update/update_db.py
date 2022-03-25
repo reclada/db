@@ -461,7 +461,6 @@ if __name__ == "__main__":
 
     os.chdir('..')
     rmdir('db')
-
     if cur_ver_db >= 48: # Components do not exist before 48
         db_helper.install_components() #upgrade components
     
