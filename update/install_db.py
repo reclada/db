@@ -32,7 +32,7 @@ def db_install(db_helper:DBHelper = DBHelper()):
         if max_dump_commit > 0:
             use_dump = True
             os.chdir('update')
-            db_helper.run_file('install_db.sql')
+            db_helper.run_file('install_db.sql') # exec install_db.py
             db_helper.install_component_db()
             os.chdir('..')
 

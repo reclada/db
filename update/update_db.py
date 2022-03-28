@@ -211,7 +211,7 @@ class DBHelper:
             os.chdir(PurePath(directory))
 
         for file_name in files:
-            with open(file_name) as f:
+            with open(file_name, encoding='utf8') as f:
                 obj_cr = f.read()
 
             for key, value in parametres.items():
@@ -357,7 +357,7 @@ def get_repo_hash(path:str):
 
 def get_cmd_install_component_db()->str:
     url = get_current_remote_url()
-    with open("object_create.sql") as f:
+    with open("object_create.sql", encoding='utf8') as f:
         object_create = f.read()
 
     return f""" SELECT reclada.raise_notice('Begin install component db...');
