@@ -1,34 +1,25 @@
-from update_db import run_cmd_scalar
-from update_db import clone_db
-from update_db import get_commit_history
-from update_db import install_components
+import sys
+from update_db import DBHelper
 from update_db import get_version_from_commit
 from update_db import rmdir
-from update_db import run_file
-from update_db import recreate_db
-from update_db import quick_install
-from update_db import version
-from update_db import config_version
-from update_db import json_schema_install
-from update_db import install_component_db
 
 
 import os
 import os.path
 
-reclada_user_name = 'reclada'
+RECLADA_USER_NAME = 'reclada'
 
 
-def db_install():
+def db_install(db_helper:DBHelper = DBHelper()):
 
-    json_schema_install()
-    clone_db()
+    db_helper.json_schema_install()
+    db_helper.clone_db()
     
-    short_install = os.path.isfile(os.path.join('update','install_db.sql')) and quick_install
+    short_install = os.path.isfile(os.path.join('update','install_db.sql')) and db_helper.quick_install
     use_dump = False
     if short_install:
-        h = get_commit_history()
-        max_dump_commit = min(config_version,len(h))-1
+        h = db_helper.get_commit_history()
+        max_dump_commit = min(db_helper.config_version,len(h))-1
         while(max_dump_commit > 0):
             c = h[max_dump_commit]
             commit_ver = get_version_from_commit(c)
@@ -41,19 +32,19 @@ def db_install():
         if max_dump_commit > 0:
             use_dump = True
             os.chdir('update')
-            run_file('install_db.sql')
-            install_component_db()
+            db_helper.run_file('install_db.sql') # exec install_db.py
+            db_helper.install_component_db()
             os.chdir('..')
 
-        need_update = not((max_dump_commit == config_version - 1) 
-            or (version == 'latest' and max_dump_commit == len(h)-1))
+        need_update = not((max_dump_commit == db_helper.config_version - 1) 
+            or (db_helper.config_version == 'latest' and max_dump_commit == len(h)-1))
 
     else:
         os.chdir('..')
         os.chdir('db/src')
-        run_file('scheme.sql')
-        run_file('functions.sql')
-        run_file('data.sql')
+        db_helper.run_file('scheme.sql')
+        db_helper.run_file('functions.sql')
+        db_helper.run_file('data.sql')
         os.chdir('..')
         need_update = True
     
@@ -63,11 +54,18 @@ def db_install():
 
 
 if __name__ == "__main__":
-    
-    recreate_db()
-    need_update, use_dump = db_install()
+
+    if len(sys.argv) > 1:
+        arg1 = sys.argv[1]
+        db_helper = DBHelper(db_uri = arg1)
+    else:
+        db_helper = DBHelper() # read update_config.json
+        arg1 = ''
+
+    db_helper.recreate_db()
+    need_update, use_dump = db_install(db_helper)
 
     if need_update:
-        os.system('python update_db.py')
+        os.system(f'python update_db.py {arg1}')
 
-    install_components()
+    db_helper.install_components()
