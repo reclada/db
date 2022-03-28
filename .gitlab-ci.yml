@@ -34,8 +34,6 @@ prepare_db:
     # - echo LAST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) >> prepare.env
     #- echo ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
     #- export ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
-    - echo
-    
     - echo $ENV
     - echo ENV=$ENV >> prepare.env
     - echo NAMESPACE = reclada-$ENV >> prepare.env
@@ -241,7 +239,7 @@ delete-terraform-dynamic-env:
   image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/aws-build:v1.0.0-0
   script:
     - echo "Uninstall lambda/S3"
-    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
+    - git clone -b $CI_COMMIT_REF_NAME https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
     - cd $CI_PROJECT_DIR/reclada-runtime/devops/terraform/
     - sed -i "s|PGPASSWORD|$PG_PASSWORD|g" $CI_PROJECT_DIR/reclada-runtime/devops/terraform/variables.tf
     - sed -i "s|ENVPREFIX|$ENV|g" $CI_PROJECT_DIR/reclada-runtime/devops/terraform/variables.tf
