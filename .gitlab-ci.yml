@@ -34,8 +34,8 @@ prepare_db:
     # - echo LAST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) >> prepare.env
     #- echo ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
     #- export ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
-    - echo $ENV
     - echo ENV=$ENV >> prepare.env
+    - export ENV=$ENV >> prepare.env
     - echo NAMESPACE = reclada-$ENV >> prepare.env
     - echo DBNAME = "${ENV}_reclada_k8s" >> prepare.env 
     - echo LAMBDA_NAME = "s3_get_presigned_url_${ENV}" >> prepare.env
@@ -47,7 +47,7 @@ prepare_db:
       dotenv: prepare.env
   rules:   
     - if: $CI_PIPELINE_SOURCE == "web"
-      when: always 
+      when: always
   tags:
     - k8s-devops
 
@@ -57,27 +57,31 @@ deploy_db:
   script:
     - echo "Create database for the environment"
 
-    - cp $CI_PROJECT_DIR/update/update_config_template.json $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_VERSION\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_VERSION\",|g" $CI_PROJECT_DIR/update/update_config.json
-    #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - cd $CI_PROJECT_DIR/
+    - mkdir cloned_db && cd cloned_db/
+    - git clone -b $CI_COMMIT_REF_NAME https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
+    
+    - cp $CI_PROJECT_DIR/cloned_db/db/update/update_config_template.json $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
+    - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
 
-    - cat $CI_PROJECT_DIR/update/update_config.json
+    - cat $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
 
-    - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_db.py
-    - cat $CI_PROJECT_DIR/update/update_db.py
+    - sed -i "s|gitlab.reclada.com|gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com|g" $CI_PROJECT_DIR/cloned_db/db/update/update_db.py
+    - cat $CI_PROJECT_DIR/cloned_db/db/update/update_db.py
 
     - python --version
     - psql -V
-    - cd $CI_PROJECT_DIR/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
+    - cd $CI_PROJECT_DIR/cloned_db/db/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/cloned_db/db/update/update_db.py || python $CI_PROJECT_DIR/cloned_db/db/update/install_db.py
   needs:
     - job: prepare_db
       artifacts: true
@@ -239,7 +243,8 @@ delete-terraform-dynamic-env:
   image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/aws-build:v1.0.0-0
   script:
     - echo "Uninstall lambda/S3"
-    - git clone -b $CI_COMMIT_REF_NAME https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
+    - cd $CI_PROJECT_DIR/
+    - git clone -b $RUNTIME_VERSION https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
     - cd $CI_PROJECT_DIR/reclada-runtime/devops/terraform/
     - sed -i "s|PGPASSWORD|$PG_PASSWORD|g" $CI_PROJECT_DIR/reclada-runtime/devops/terraform/variables.tf
     - sed -i "s|ENVPREFIX|$ENV|g" $CI_PROJECT_DIR/reclada-runtime/devops/terraform/variables.tf
