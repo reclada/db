@@ -270,6 +270,30 @@ delete-terraform-dynamic-env:
   tags:
     - k8s-devops
 
+delete-k8s-dynamic-env:
+  stage: clean
+  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/helm-kubectl:v1.0.0-0
+  script:
+    - echo "Uninstall helm charts and k8s namespcase"
+    - helm uninstall webui -n $NAMESPACE || true
+    - helm uninstall postgrest -n $NAMESPACE || true
+    - helm uninstall sshfs -n $NAMESPACE
+    - helm uninstall coordinator -n $NAMESPACE
+    - kubectl delete ns $NAMESPACE
+  needs:
+    - job: prepare_db
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "false"
+      when: never
+    - if: $CI_COMMIT_REF_NAME == "master"
+      when: never
+  tags:
+    - k8s-devops
+
+
 delete-db-dynamic-env:
   stage: clean_db
   image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
