@@ -195,7 +195,7 @@ class DBHelper:
             if installer['type'] == 'psql_script':
                 self.psql_script_installer(installer.setdefault('directory',''), installer['files'], parametres)
             else:
-                raise Exception(f'installer type: "{installer["type"]}" invalid')
+                raise Exception(f'installer type: "{installer["type"]}" invalid (component: {name})')
         
             cmd = "SELECT dev.finish_install_component();"
             res = self.run_cmd_scalar(cmd)
