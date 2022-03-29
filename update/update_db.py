@@ -219,7 +219,7 @@ class DBHelper:
                 obj_cr = obj_cr.replace(f'#@#{key}#@#', value)
 
             file_name_patched = f'{file_name}_patched.sql'
-            with open(file_name_patched,'w') as f:
+            with open(file_name_patched,'w',encoding='utf8') as f:
                 f.write(obj_cr)
 
             self.run_file(file_name_patched)
