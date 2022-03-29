@@ -8,6 +8,7 @@ import uuid
 import shutil
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+MAX_VERSION = 999999999
 
 class DBHelper:
 
@@ -42,7 +43,7 @@ class DBHelper:
             self.downgrade_test = j["downgrade_test"]
 
         if self.config_version == 'latest':
-            self.config_version = 999999999
+            self.config_version = MAX_VERSION
         else:
             self.config_version = int(self.config_version)
 

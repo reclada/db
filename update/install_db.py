@@ -2,6 +2,7 @@ import sys
 from update_db import DBHelper
 from update_db import get_version_from_commit
 from update_db import rmdir
+from update_db import MAX_VERSION
 
 
 import os
@@ -16,7 +17,6 @@ def db_install(db_helper:DBHelper = DBHelper()):
     db_helper.clone_db()
     
     short_install = os.path.isfile(os.path.join('update','install_db.sql')) and db_helper.quick_install
-    use_dump = False
     if short_install:
         h = db_helper.get_commit_history()
         max_dump_commit = min(db_helper.config_version,len(h))-1
@@ -30,14 +30,13 @@ def db_install(db_helper:DBHelper = DBHelper()):
                 max_dump_commit -= 1
         
         if max_dump_commit > 0:
-            use_dump = True
             os.chdir('update')
             db_helper.run_file('install_db.sql') # exec install_db.py
             db_helper.install_component_db()
             os.chdir('..')
 
         need_update = not((max_dump_commit == db_helper.config_version - 1) 
-            or (db_helper.config_version == 'latest' and max_dump_commit == len(h)-1))
+            or (db_helper.config_version == MAX_VERSION and max_dump_commit == len(h)-1))
 
     else:
         os.chdir('..')
@@ -50,7 +49,7 @@ def db_install(db_helper:DBHelper = DBHelper()):
     
     os.chdir('..')
     rmdir('db')
-    return need_update, use_dump
+    return need_update
 
 
 if __name__ == "__main__":
@@ -63,9 +62,9 @@ if __name__ == "__main__":
         arg1 = ''
 
     db_helper.recreate_db()
-    need_update, use_dump = db_install(db_helper)
+    need_update = db_install(db_helper)
 
     if need_update:
-        os.system(f'python update_db.py {arg1}')
+        raise Exception('Required version are not installed!')
 
     db_helper.install_components()
