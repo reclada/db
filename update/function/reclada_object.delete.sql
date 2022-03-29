@@ -28,6 +28,15 @@ DECLARE
     _for_class            text;
     _exec_text            text;
     _attrs                jsonb;
+    _list_id_json         jsonb;
+    _id_from_list         bigint;
+    _trigger_guid         uuid;
+    _function_guid        uuid;
+    _function_name        text;
+    _query                text;
+    _class_name_from_list_id text;
+    _guid_for_check       uuid;
+    _text_for_trigger_error text;
 BEGIN
 
     v_obj_id := data->>'GUID';
@@ -76,6 +85,51 @@ BEGIN
                 SELECT t.id FROM t
             )
         INTO list_id;
+    SELECT vc.obj_id
+    FROM reclada.v_class vc
+        WHERE vc.for_class = 'DBTrigger'
+    INTO _trigger_guid;
+    FOR _id_from_list IN 
+        select unnest(list_id)
+    LOOP
+        SELECT vao.class_name
+            FROM reclada.v_object vao
+                WHERE vao.id = _id_from_list
+            INTO _class_name_from_list_id;
+        IF _class_name_from_list_id = 'DBTriggerFunction' THEN
+            SELECT vva.obj_id
+                FROM reclada.v_object vva
+                    WHERE vva.id = _id_from_list
+                INTO _guid_for_check;
+            SELECT string_agg(tn.trigger_name, ', ')
+                FROM (
+                    SELECT (vaa.attrs ->> 'name') as trigger_name
+                        FROM reclada.v_active_object vaa
+                            WHERE vaa.class_name = 'DBTrigger'
+                            AND (vaa.attrs ->> 'function')::uuid = _guid_for_check
+                ) tn
+                INTO _text_for_trigger_error;
+            IF _text_for_trigger_error IS NOT NULL THEN
+                RAISE EXCEPTION 'Could not delete DBTriggerFunction with existing reference to DBTrigger: (%)',_text_for_trigger_error;  
+            END IF;
+        END IF;
+        FOR _function_guid IN  	
+            SELECT vo.data #>> '{attributes,function}' as function_guid
+                FROM reclada.v_active_object vo
+                    WHERE (vo.class)::uuid = _trigger_guid
+                        AND vo.data #>> '{attributes, action}' = 'delete'
+                        AND _class_name_from_list_id IN (select jsonb_array_elements_text(vo.data #> '{attributes, forClasses}'))
+        LOOP
+            SELECT voo.data #>> '{attributes, name}'
+                FROM reclada.v_active_object voo
+                    WHERE (voo.data ->> 'GUID')::uuid = _function_guid
+                INTO _function_name;
+            IF _function_name IS NOT NULL THEN
+                _query := ('SELECT reclada.' || _function_name || '(' || _id_from_list || ');');
+                EXECUTE _query;
+            END IF;
+        END LOOP;  
+    END LOOP;
 
     SELECT array_to_json
     (
@@ -91,13 +145,16 @@ BEGIN
 
     SELECT string_agg(t.q,' ')
         FROM (
-            SELECT 'DROP '|| o.class_name ||' reclada.'||(attrs->>'name')||';' AS q
+            SELECT 'DROP '
+                        || CASE o.class_name WHEN 'DBTriggerFunction' THEN 'Function' ELSE o.class_name END 
+                        ||' reclada.'
+                        ||(attrs->>'name')
+                        ||';' AS q
                 FROM reclada.v_object o
                 WHERE o.id IN (SELECT unnest(list_id))
-                    AND o.class_name in ('Index','View','Function')
+                    AND o.class_name in ('Index','View','Function', 'DBTriggerFunction')
         ) t
-        into _exec_text;
-    
+        into _exec_text;    
     if _exec_text is not null then
         EXECUTE _exec_text;
     end if;

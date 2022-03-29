@@ -31,6 +31,11 @@ DECLARE
     _uri                text ;
     _dataset2ds_type    text = 'defaultDataSet to DataSource';
     _f_name             text = 'reclada_object.object_insert';
+    _trigger_guid       uuid;
+    _function_name      text;
+    _function_guid      uuid;
+    _query              text;
+    _current_id         bigint;               
 BEGIN
     IF _class_name in ('DataSource','File') THEN
 
@@ -142,7 +147,7 @@ BEGIN
 
         EXECUTE _exec_text;
 
-    ELSIF _class_name = 'Function' then
+    ELSIF _class_name IN ('Function', 'DBTriggerFunction') then
 
         _exec_text := 'DROP FUNCTION IF EXISTS reclada.#@#@#name#@#@#;
             CREATE FUNCTION reclada.#@#@#name#@#@#
@@ -186,5 +191,31 @@ BEGIN
 
         EXECUTE _exec_text;
     END IF;
+    SELECT vc.obj_id
+        FROM reclada.v_class vc
+            WHERE vc.for_class = 'DBTrigger'
+        INTO _trigger_guid;
+
+    SELECT vab.id 
+        FROM reclada.v_active_object vab
+            WHERE vab.obj_id = _obj_id
+        INTO _current_id;
+    
+    FOR _function_guid IN  	
+        SELECT vo.data #>> '{attributes,function}' as function_guid
+            FROM reclada.v_active_object vo 
+                WHERE (vo.class)::uuid = _trigger_guid
+                    AND vo.data #>> '{attributes, action}' = 'insert'
+                    AND _class_name IN (select jsonb_array_elements_text(vo.data #> '{attributes, forClasses}'))
+    LOOP
+        SELECT voo.data #>> '{attributes, name}'
+            FROM reclada.v_active_object voo
+                WHERE (voo.data ->> 'GUID')::uuid = _function_guid
+            INTO _function_name;
+        IF _function_name IS NOT NULL THEN
+            _query := ('SELECT reclada.' || _function_name || '(' || _current_id || ');');
+            EXECUTE _query;
+        END IF;
+    END LOOP;
 END;
 $$ LANGUAGE 'plpgsql' VOLATILE;
