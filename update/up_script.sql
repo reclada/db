@@ -57,6 +57,7 @@ DROP VIEW IF EXISTS reclada.v_object_display;
 \i 'view/reclada.v_parent_field.sql'
 \i 'view/reclada.v_object_unifields.sql'
 --REC 624}
+\i 'view/reclada.v_get_duplicates_query.sql'
 
 --{REC 633
 \i 'function/reclada_object.create.sql'

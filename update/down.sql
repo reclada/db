@@ -189,3 +189,4 @@ ANALYZE reclada.v_object_unifields;
 --{function/reclada_object.update}
 --REC 633}
 
+--{view/reclada.v_get_duplicates_query}
