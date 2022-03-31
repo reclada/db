@@ -4,7 +4,7 @@ AS
 select 
 'with recursive 
 d as ( 
-    select  reclada.jsonb_merge(data, default_value) AS data,
+    SELECT  reclada.jsonb_merge(obj.data, obj.default_value) AS data,
             obj_id,
             created_time,
             attrs

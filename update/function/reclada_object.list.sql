@@ -434,7 +434,7 @@ BEGIN
                         || CASE
                             WHEN ver = '2'
                                 THEN 'obj.data '
-                            ELSE 'reclada.jsonb_merge(data, default_value) AS data
+                            ELSE 'reclada.jsonb_merge(obj.data, obj.default_value) AS data
                                  '
                         END
                             ||

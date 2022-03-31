@@ -5,8 +5,6 @@
 */
 
 --{REC 624
-
-
 CREATE AGGREGATE reclada.jsonb_object_agg(jsonb) (
   SFUNC = 'jsonb_concat',
   STYPE = jsonb,
@@ -16,8 +14,6 @@ CREATE AGGREGATE reclada.jsonb_object_agg(jsonb) (
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada.jsonb_merge.sql'
 \i 'function/reclada_object.list.sql'
-
-
 
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 DROP VIEW IF EXISTS reclada.v_parent_field;
@@ -61,3 +57,8 @@ DROP VIEW IF EXISTS reclada.v_object_display;
 \i 'view/reclada.v_parent_field.sql'
 \i 'view/reclada.v_object_unifields.sql'
 --REC 624}
+
+--{REC 633
+\i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.update.sql'
+--REC 633}

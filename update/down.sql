@@ -5,8 +5,6 @@
 --{function/reclada.jsonb_merge}
 --{function/reclada_object.list}
 
-
-
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 DROP VIEW IF EXISTS reclada.v_parent_field;
 DROP VIEW IF EXISTS reclada.v_class;
@@ -185,4 +183,9 @@ AS
         ) b
 ;
 ANALYZE reclada.v_object_unifields;
+
+--{REC 633
+--{function/reclada_object.create}
+--{function/reclada_object.update}
+--REC 633}
 

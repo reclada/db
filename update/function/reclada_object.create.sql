@@ -335,7 +335,7 @@ BEGIN
             (
                 array
                 (
-                    SELECT o.data 
+                    SELECT reclada.jsonb_merge(o.data, o.default_value) AS data
                     FROM reclada.v_active_object o
                     WHERE o.obj_id = ANY (affected)
                 )

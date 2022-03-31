@@ -81,7 +81,7 @@ BEGIN
     (
         array
         (
-            SELECT o.data
+            SELECT reclada.jsonb_merge(o.data, o.default_value) AS data
             FROM reclada.v_object o
             WHERE o.id IN (SELECT unnest(list_id))
         )
