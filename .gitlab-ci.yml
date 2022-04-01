@@ -22,11 +22,21 @@ variables:
  DESTROY:  
    value: "false" # this would be the default value
    description: "If true - complete cleanup" # makes this variable appear on the Run Pipeline
+ RECLADA_REGISTRY:
+   value: "false" # this would be the default value
+   description: "If true - images pulls from gitlab registry" # makes this variable appear on the Run Pipeline
 
 prepare_db:
   stage: prepare
   image: bitnami/git
   script:
+    - > # choosing the Registry for all images
+     if [ "${RECLADA_REGISTRY}" == "false" ]; then
+       echo "REPO_URL=588200329560.dkr.ecr.eu-west-1.amazonaws.com" >> prepare.env
+     else
+       echo "REPO_URL=registry.reclada.com/developers/${CI_PROJECT_TITLE}" >> prepare.env
+     fi
+
     - echo $CI_OPEN_MERGE_REQUESTS
     - echo "DEV_RDS=dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
     - echo "TEST_RDS=test-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
@@ -53,7 +63,7 @@ prepare_db:
 
 deploy_db:
   stage: deploy
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
+  image: $REPO_URL/db-installer:0.1
   script:
     - echo "Create database for the environment"
 
@@ -152,7 +162,7 @@ trigger_webui:
 
 deploy-autotest-env:
   stage: deploy
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
+  image: $REPO_URL/db-installer:0.1
   script:
     - echo "Run update database in autotest env"
     
@@ -191,7 +201,7 @@ deploy-autotest-env:
 
 test-autotest-env:
   stage: autotest
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/pytest:04
+  image: $REPO_URL/pytest:04
   script:
     - echo "Run some tests for autotest env"
 
@@ -240,11 +250,13 @@ test-autotest-env:
 
 delete-terraform-dynamic-env:
   stage: clean
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/aws-build:v1.0.0-0
+  image: $REPO_URL/aws-build:v1.0.0-0
   script:
     - echo "Uninstall lambda/S3"
+
     - cd $CI_PROJECT_DIR/
     - git clone -b $RUNTIME_VERSION https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
+
     - cd $CI_PROJECT_DIR/reclada-runtime/devops/terraform/
     - sed -i "s|PGPASSWORD|$PG_PASSWORD|g" $CI_PROJECT_DIR/reclada-runtime/devops/terraform/variables.tf
     - sed -i "s|ENVPREFIX|$ENV|g" $CI_PROJECT_DIR/reclada-runtime/devops/terraform/variables.tf
@@ -277,7 +289,7 @@ delete-terraform-dynamic-env:
 
 delete-k8s-dynamic-env:
   stage: clean
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/helm-kubectl:v1.0.0-0
+  image: $REPO_URL/helm-kubectl:v1.0.0-0
   script:
     - echo "Uninstall helm charts and k8s namespcase"
     - helm uninstall webui -n $NAMESPACE || true
@@ -301,7 +313,7 @@ delete-k8s-dynamic-env:
 
 delete-db-dynamic-env:
   stage: clean_db
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
+  image: $REPO_URL/db-installer:0.1
   script:
     - echo "Uninstall db"
     - echo $CI_COMMIT_MESSAGE
