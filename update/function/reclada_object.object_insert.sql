@@ -9,7 +9,7 @@
  *  obj_id     - GUID of object
  *  attributes - attributes of added object
  */
- DROP FUNCTION IF EXISTS reclada_object.object_insert;
+DROP FUNCTION IF EXISTS reclada_object.object_insert;
 CREATE OR REPLACE FUNCTION reclada_object.object_insert
 (
     _class_name text,
@@ -21,7 +21,6 @@ DECLARE
     _exec_text          text ;
     _where              text ;
     _fields             text ;
-
     _pipeline_lite      jsonb;
     _task               jsonb;
     _dataset_guid       uuid ;
@@ -35,7 +34,8 @@ DECLARE
     _function_name      text;
     _function_guid      uuid;
     _query              text;
-    _current_id         bigint;               
+    _current_id         bigint;
+    _current_id_array   bigint[];               
 BEGIN
     IF _class_name in ('DataSource','File') THEN
 
@@ -191,36 +191,14 @@ BEGIN
 
         EXECUTE _exec_text;
     END IF;
-    SELECT vc.obj_id
-        FROM reclada.v_class vc
-            WHERE vc.for_class = 'DBTrigger'
-        INTO _trigger_guid;
-
     SELECT vab.id 
         FROM reclada.v_active_object vab
             WHERE vab.obj_id = _obj_id
         INTO _current_id;
     
-    SELECT string_agg(sbq.subquery, '')
-	    FROM ( 
-            SELECT  'SELECT reclada.' 
-                    || vtf.function_name 
-                    || '(' 
-                    || _current_id 
-                    || ');'
-                    || chr(10) AS subquery
-                FROM reclada.v_trigger vt
-                    JOIN reclada.v_db_trigger_function vtf
-                    ON vt.function_guid = vtf.function_guid
-                        WHERE vt.trigger_type = 'insert'
-                            AND _class_name IN (SELECT jsonb_array_elements_text(vt.for_classes))
-            ) sbq
-        INTO _query;
-
-    IF _query IS NOT NULL THEN
-        raise notice '(%)', _query;
-        EXECUTE _query;
-    END IF;
+    _current_id_array := ARRAY[_current_id];
+    
+    PERFORM reclada_object.perform_trigger_function(_current_id_array, 'insert');
 
 END;
 $$ LANGUAGE 'plpgsql' VOLATILE;

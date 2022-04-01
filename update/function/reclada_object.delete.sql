@@ -112,30 +112,16 @@ BEGIN
             IF _text_for_trigger_error IS NOT NULL THEN
                 RAISE EXCEPTION 'Could not delete DBTriggerFunction with existing reference to DBTrigger: (%)',_text_for_trigger_error;  
             END IF;
-        END IF;
-        FOR _function_guid IN  	
-            SELECT vo.data #>> '{attributes,function}' as function_guid
-                FROM reclada.v_active_object vo
-                    WHERE (vo.class)::uuid = _trigger_guid
-                        AND vo.data #>> '{attributes, action}' = 'delete'
-                        AND _class_name_from_list_id IN (select jsonb_array_elements_text(vo.data #> '{attributes, forClasses}'))
-        LOOP
-            SELECT voo.data #>> '{attributes, name}'
-                FROM reclada.v_active_object voo
-                    WHERE (voo.data ->> 'GUID')::uuid = _function_guid
-                INTO _function_name;
-            IF _function_name IS NOT NULL THEN
-                _query := ('SELECT reclada.' || _function_name || '(' || _id_from_list || ');');
-                EXECUTE _query;
-            END IF;
-        END LOOP;  
+        END IF; 
     END LOOP;
+
+    PERFORM reclada_object.perform_trigger_function(list_id, 'delete');
 
     SELECT array_to_json
     (
         array
         (
-            SELECT o.data
+            SELECT o.data 
             FROM reclada.v_object o
             WHERE o.id IN (SELECT unnest(list_id))
         )

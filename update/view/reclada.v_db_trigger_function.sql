@@ -1,4 +1,4 @@
-drop VIEW if EXISTS reclada.v_db_trigger_function;
+DROP VIEW if EXISTS reclada.v_db_trigger_function;
 CREATE OR REPLACE VIEW reclada.v_db_trigger_function
 AS
     SELECT  vo.obj_id as function_guid,
