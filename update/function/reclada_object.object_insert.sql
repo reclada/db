@@ -201,21 +201,26 @@ BEGIN
             WHERE vab.obj_id = _obj_id
         INTO _current_id;
     
-    FOR _function_guid IN  	
-        SELECT vo.data #>> '{attributes,function}' as function_guid
-            FROM reclada.v_active_object vo 
-                WHERE (vo.class)::uuid = _trigger_guid
-                    AND vo.data #>> '{attributes, action}' = 'insert'
-                    AND _class_name IN (select jsonb_array_elements_text(vo.data #> '{attributes, forClasses}'))
-    LOOP
-        SELECT voo.data #>> '{attributes, name}'
-            FROM reclada.v_active_object voo
-                WHERE (voo.data ->> 'GUID')::uuid = _function_guid
-            INTO _function_name;
-        IF _function_name IS NOT NULL THEN
-            _query := ('SELECT reclada.' || _function_name || '(' || _current_id || ');');
-            EXECUTE _query;
-        END IF;
-    END LOOP;
+    SELECT string_agg(sbq.subquery, '')
+	    FROM ( 
+            SELECT  'SELECT reclada.' 
+                    || vtf.function_name 
+                    || '(' 
+                    || _current_id 
+                    || ');'
+                    || chr(10) AS subquery
+                FROM reclada.v_trigger vt
+                    JOIN reclada.v_db_trigger_function vtf
+                    ON vt.function_guid = vtf.function_guid
+                        WHERE vt.trigger_type = 'insert'
+                            AND _class_name IN (SELECT jsonb_array_elements_text(vt.for_classes))
+            ) sbq
+        INTO _query;
+
+    IF _query IS NOT NULL THEN
+        raise notice '(%)', _query;
+        EXECUTE _query;
+    END IF;
+
 END;
 $$ LANGUAGE 'plpgsql' VOLATILE;
