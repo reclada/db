@@ -170,5 +170,5 @@ if __name__ == "__main__":
 
     input("Press Enter to run testing upgraded db . . .")
     os.system('python install_db.py')
-    upgrade()
+    upgrade(db_helper)
     run_test(db_helper.branch_QAAutotests)
