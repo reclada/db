@@ -6,6 +6,12 @@ prepare_db:
   stage: prepare
   image: bitnami/git
   script:
+    - > # choosing the Registry for all images
+     if [ "${RECLADA_REGISTRY}" == "false" ]; then
+       echo "REPO_URL=588200329560.dkr.ecr.eu-west-1.amazonaws.com" >> prepare.env
+     else
+       echo "REPO_URL=registry.reclada.com/developers/${CI_PROJECT_TITLE}" >> prepare.env
+     fi
     - echo $CI_OPEN_MERGE_REQUESTS
     - echo "DEV_RDS=dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
     - echo "TEST_RDS=test-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
@@ -31,7 +37,7 @@ prepare_db:
 
 deploy_db:
   stage: deploy
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
+  image: $REPO_URL/db-installer:0.1
   script:
     - echo "Create database for the environment"
 
