@@ -72,3 +72,9 @@ CREATE TABLE reclada.staging(
 );
 
 \i 'trigger/load_staging.sql'
+\i 'function/reclada_object.perform_trigger_function.sql'
+\i 'function/reclada_object.object_insert.sql'
+\i 'function/reclada_object.delete.sql'
+\i 'function/reclada_object.create.sql'
+\i 'view/reclada.v_trigger.sql'
+\i 'view/reclada.v_db_trigger_function.sql'

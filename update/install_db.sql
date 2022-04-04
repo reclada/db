@@ -4,7 +4,7 @@
 --
 
 -- Dumped from database version 13.3
--- Dumped by pg_dump version 13.3
+-- Dumped by pg_dump version 14.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2270,6 +2270,11 @@ BEGIN
                     WHERE o.obj_id = ANY (affected)
                 )
             )::jsonb;
+
+    if res = '{}'::jsonb and _component_guid is not null then 
+        res = '{"message": "Installing component"}'::jsonb;
+    end if;
+
     notify_res := array_to_json
             (
                 array
@@ -2581,6 +2586,15 @@ DECLARE
     _for_class            text;
     _exec_text            text;
     _attrs                jsonb;
+    _list_id_json         jsonb;
+    _id_from_list         bigint;
+    _trigger_guid         uuid;
+    _function_guid        uuid;
+    _function_name        text;
+    _query                text;
+    _class_name_from_list_id text;
+    _guid_for_check       uuid;
+    _text_for_trigger_error text;
 BEGIN
 
     v_obj_id := data->>'GUID';
@@ -2629,6 +2643,51 @@ BEGIN
                 SELECT t.id FROM t
             )
         INTO list_id;
+    SELECT vc.obj_id
+    FROM reclada.v_class vc
+        WHERE vc.for_class = 'DBTrigger'
+    INTO _trigger_guid;
+    FOR _id_from_list IN 
+        select unnest(list_id)
+    LOOP
+        SELECT vao.class_name
+            FROM reclada.v_object vao
+                WHERE vao.id = _id_from_list
+            INTO _class_name_from_list_id;
+        IF _class_name_from_list_id = 'DBTriggerFunction' THEN
+            SELECT vva.obj_id
+                FROM reclada.v_object vva
+                    WHERE vva.id = _id_from_list
+                INTO _guid_for_check;
+            SELECT string_agg(tn.trigger_name, ', ')
+                FROM (
+                    SELECT (vaa.attrs ->> 'name') as trigger_name
+                        FROM reclada.v_active_object vaa
+                            WHERE vaa.class_name = 'DBTrigger'
+                            AND (vaa.attrs ->> 'function')::uuid = _guid_for_check
+                ) tn
+                INTO _text_for_trigger_error;
+            IF _text_for_trigger_error IS NOT NULL THEN
+                RAISE EXCEPTION 'Could not delete DBTriggerFunction with existing reference to DBTrigger: (%)',_text_for_trigger_error;  
+            END IF;
+        END IF;
+        FOR _function_guid IN  	
+            SELECT vo.data #>> '{attributes,function}' as function_guid
+                FROM reclada.v_active_object vo
+                    WHERE (vo.class)::uuid = _trigger_guid
+                        AND vo.data #>> '{attributes, action}' = 'delete'
+                        AND _class_name_from_list_id IN (select jsonb_array_elements_text(vo.data #> '{attributes, forClasses}'))
+        LOOP
+            SELECT voo.data #>> '{attributes, name}'
+                FROM reclada.v_active_object voo
+                    WHERE (voo.data ->> 'GUID')::uuid = _function_guid
+                INTO _function_name;
+            IF _function_name IS NOT NULL THEN
+                _query := ('SELECT reclada.' || _function_name || '(' || _id_from_list || ');');
+                EXECUTE _query;
+            END IF;
+        END LOOP;  
+    END LOOP;
 
     SELECT array_to_json
     (
@@ -2642,12 +2701,18 @@ BEGIN
     INTO data;
 
 
-    SELECT string_agg('DROP INDEX reclada.'||(attrs->>'name')||';',' ')
-        FROM reclada.v_object o
-        WHERE o.id IN (SELECT unnest(list_id))
-            AND o.class_name = 'Index'
-        into _exec_text;
-    
+    SELECT string_agg(t.q,' ')
+        FROM (
+            SELECT 'DROP '
+                        || CASE o.class_name WHEN 'DBTriggerFunction' THEN 'Function' ELSE o.class_name END 
+                        ||' reclada.'
+                        ||(attrs->>'name')
+                        ||';' AS q
+                FROM reclada.v_object o
+                WHERE o.id IN (SELECT unnest(list_id))
+                    AND o.class_name in ('Index','View','Function', 'DBTriggerFunction')
+        ) t
+        into _exec_text;    
     if _exec_text is not null then
         EXECUTE _exec_text;
     end if;
@@ -3940,6 +4005,11 @@ DECLARE
     _uri                text ;
     _dataset2ds_type    text = 'defaultDataSet to DataSource';
     _f_name             text = 'reclada_object.object_insert';
+    _trigger_guid       uuid;
+    _function_name      text;
+    _function_guid      uuid;
+    _query              text;
+    _current_id         bigint;               
 BEGIN
     IF _class_name in ('DataSource','File') THEN
 
@@ -4042,7 +4112,85 @@ BEGIN
         _exec_text := REPLACE(_exec_text, '#@#@#where#@#@#'  , _where );
         EXECUTE _exec_text;
 
+    ELSIF _class_name = 'View' then
+
+        _exec_text := 'DROP VIEW IF EXISTS reclada.#@#@#name#@#@#;
+            CREATE VIEW reclada.#@#@#name#@#@# as #@#@#query#@#@#;';
+        _exec_text := REPLACE(_exec_text, '#@#@#name#@#@#'   , attributes->>'name' );
+        _exec_text := REPLACE(_exec_text, '#@#@#query#@#@#' , attributes->>'query' );
+
+        EXECUTE _exec_text;
+
+    ELSIF _class_name IN ('Function', 'DBTriggerFunction') then
+
+        _exec_text := 'DROP FUNCTION IF EXISTS reclada.#@#@#name#@#@#;
+            CREATE FUNCTION reclada.#@#@#name#@#@#
+            (
+                #@#@#parameters#@#@#
+            )
+            RETURNS #@#@#returns#@#@# AS '||chr(36)||chr(36)||'
+            DECLARE
+                #@#@#declare#@#@#
+            BEGIN   
+                #@#@#body#@#@#
+            END;
+            '||chr(36)||chr(36)||' LANGUAGE ''plpgsql'' VOLATILE;';
+
+        _exec_text := REPLACE(_exec_text, '#@#@#name#@#@#'      , attributes->>'name'   );
+        _exec_text := REPLACE(_exec_text, '#@#@#returns#@#@#'   , attributes->>'returns');
+        _exec_text := REPLACE(_exec_text, '#@#@#body#@#@#'      , attributes->>'body'   );
+
+        _exec_text := REPLACE(
+                _exec_text, '#@#@#parameters#@#@#', 
+                (SELECT  STRING_AGG(
+                            (el.value->>'name')
+                                || ' '
+                                || (el.value->>'type'),
+                            ',' || chr(10)
+                        )
+                    FROM jsonb_array_elements(attributes->'parameters') el) 
+            );
+
+        _exec_text := REPLACE(
+                _exec_text, '#@#@#declare#@#@#', 
+                (SELECT  STRING_AGG(
+                            (el.value->>'name')
+                                || ' '
+                                || (el.value->>'type')
+                                || ';', 
+                            chr(10)
+                        )
+                    FROM jsonb_array_elements(attributes->'declare') el )
+            );
+
+        EXECUTE _exec_text;
     END IF;
+    SELECT vc.obj_id
+        FROM reclada.v_class vc
+            WHERE vc.for_class = 'DBTrigger'
+        INTO _trigger_guid;
+
+    SELECT vab.id 
+        FROM reclada.v_active_object vab
+            WHERE vab.obj_id = _obj_id
+        INTO _current_id;
+    
+    FOR _function_guid IN  	
+        SELECT vo.data #>> '{attributes,function}' as function_guid
+            FROM reclada.v_active_object vo 
+                WHERE (vo.class)::uuid = _trigger_guid
+                    AND vo.data #>> '{attributes, action}' = 'insert'
+                    AND _class_name IN (select jsonb_array_elements_text(vo.data #> '{attributes, forClasses}'))
+    LOOP
+        SELECT voo.data #>> '{attributes, name}'
+            FROM reclada.v_active_object voo
+                WHERE (voo.data ->> 'GUID')::uuid = _function_guid
+            INTO _function_name;
+        IF _function_name IS NOT NULL THEN
+            _query := ('SELECT reclada.' || _function_name || '(' || _current_id || ');');
+            EXECUTE _query;
+        END IF;
+    END LOOP;
 END;
 $$;
 

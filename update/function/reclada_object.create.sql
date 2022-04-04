@@ -340,6 +340,11 @@ BEGIN
                     WHERE o.obj_id = ANY (affected)
                 )
             )::jsonb;
+
+    if res = '{}'::jsonb and _component_guid is not null then 
+        res = '{"message": "Installing component"}'::jsonb;
+    end if;
+
     notify_res := array_to_json
             (
                 array
