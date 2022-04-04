@@ -286,24 +286,24 @@ BEGIN
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
         (order_by_jsonb = 'null'::jsonb) OR
-        (order_by_jsonb = '[]'::jsonb)) then
+        (order_by_jsonb = '[]'::jsonb)) THEN
         
-        select (vod.table #> '{orderRow}') as orderRow
-        	from reclada.v_object_display vod
-        	where vod.class_guid = (reclada_object.get_schema(_class)#>>'{GUID}')::uuid
-        	into _order_row;
-        if _order_row is not null then     
-        	select '[' || string_agg(('{"field": "' || obf.field || '", ' || '"order": ' || obf.order_by || '}'), ', ') || ']'
-			from(
- 	 			 select je.value as order_by, 
- 	 			 		split_part(je.key, ':', 1) as field
- 	 			 	from jsonb_array_elements(_order_row) jae
- 	 			 	cross join jsonb_each(jae.value) je
- 	 		) obf
-				into order_by_jsonb;
-    	ELSE
-        	order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
-        end if;
+        SELECT (vod.table #> '{orderRow}') AS orderRow
+            FROM reclada.v_object_display vod
+            WHERE vod.class_guid = (reclada_object.get_schema (_class)#>>'{GUID}')::uuid
+            INTO _order_row;
+        IF _order_row IS NOT NULL THEN     
+            SELECT jsonb_agg (jsonb_build_object ('field', obf.field, 'order', obf.order_by))
+                FROM(
+                    SELECT  je.value AS order_by, 
+                            split_part (je.key, ':', 1) AS field
+                        FROM jsonb_array_elements (_order_row) jae
+                        CROSS JOIN jsonb_each (jae.value) je
+                    ) obf
+                INTO order_by_jsonb;
+        ELSE
+            order_by_jsonb := '[{"field": "id", "order": "ASC"}]'::jsonb;
+        END IF;
     END IF;
     SELECT string_agg(
         format(

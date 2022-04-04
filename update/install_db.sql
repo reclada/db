@@ -1479,9 +1479,23 @@ $$;
 CREATE FUNCTION reclada.load_staging() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    _data_agg jsonb;
+    _batch_size bigint := 1000;
 BEGIN
-    PERFORM reclada_object.create(NEW.data);
+    FOR _data_agg IN (select jsonb_agg(vrn.data)	  
+                        from (
+                            select data,
+                                ROUND((ROW_NUMBER()OVER()-1)/_batch_size) AS rn
+                                from NEW_TABLE
+                        ) vrn
+                        group by vrn.rn
+                     ) 
+    LOOP 
+        PERFORM reclada_object.create(_data_agg);
+    END LOOP;
     RETURN NEW;
+    TRUNCATE TABLE NEW_TABLE;
 END
 $$;
 
@@ -3261,24 +3275,24 @@ BEGIN
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
         (order_by_jsonb = 'null'::jsonb) OR
-        (order_by_jsonb = '[]'::jsonb)) then
+        (order_by_jsonb = '[]'::jsonb)) THEN
         
-        select (vod.table #> '{orderRow}') as orderRow
-        	from reclada.v_object_display vod
-        	where vod.class_guid = (reclada_object.get_schema(_class)#>>'{GUID}')::uuid
-        	into _order_row;
-        if _order_row is not null then     
-        	select '[' || string_agg(('{"field": "' || obf.field || '", ' || '"order": ' || obf.order_by || '}'), ', ') || ']'
-			from(
- 	 			 select je.value as order_by, 
- 	 			 		split_part(je.key, ':', 1) as field
- 	 			 	from jsonb_array_elements(_order_row) jae
- 	 			 	cross join jsonb_each(jae.value) je
- 	 		) obf
-				into order_by_jsonb;
-    	ELSE
-        	order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
-        end if;
+        SELECT (vod.table #> '{orderRow}') AS orderRow
+            FROM reclada.v_object_display vod
+            WHERE vod.class_guid = (reclada_object.get_schema (_class)#>>'{GUID}')::uuid
+            INTO _order_row;
+        IF _order_row IS NOT NULL THEN     
+            SELECT jsonb_agg (jsonb_build_object ('field', obf.field, 'order', obf.order_by))
+                FROM(
+                    SELECT  je.value AS order_by, 
+                            split_part (je.key, ':', 1) AS field
+                        FROM jsonb_array_elements (_order_row) jae
+                        CROSS JOIN jsonb_each (jae.value) je
+                    ) obf
+                INTO order_by_jsonb;
+        ELSE
+            order_by_jsonb := '[{"field": "id", "order": "ASC"}]'::jsonb;
+        END IF;
     END IF;
     SELECT string_agg(
         format(
@@ -4800,12 +4814,12 @@ ALTER TABLE reclada.object ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: staging; Type: VIEW; Schema: reclada; Owner: -
+-- Name: staging; Type: TABLE; Schema: reclada; Owner: -
 --
 
-CREATE VIEW reclada.staging AS
- SELECT '{}'::jsonb AS data
-  WHERE false;
+CREATE TABLE reclada.staging (
+    data jsonb NOT NULL
+);
 
 
 --
@@ -5823,14 +5837,6 @@ COPY dev.component_object (id, status, data) FROM stdin;
 
 
 --
--- Data for Name: meta_data; Type: TABLE DATA; Schema: dev; Owner: -
---
-
-COPY dev.meta_data (id, ver, data) FROM stdin;
-\.
-
-
---
 -- Data for Name: t_dbg; Type: TABLE DATA; Schema: dev; Owner: -
 --
 
@@ -5964,12 +5970,6 @@ COPY reclada.field (id, path, json_type) FROM stdin;
 51	attributes,method	string
 154	attributes,object	string
 155	attributes,subject	string
-321	attributes,Environment	string
-322	attributes,Region	string
-323	attributes,Lambda	string
-572	attributes,status	string
-573	attributes,task	string
-574	attributes,environment	string
 \.
 
 
@@ -5984,6 +5984,14 @@ COPY reclada.object (id, status, attributes, transaction_id, created_time, creat
 50	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["subject", "type", "object"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "type": {"type": "string", "enum ": ["params"]}, "object": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}, "disable": {"type": "boolean", "default": false}, "subject": {"type": "string", "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"}}}, "version": "1", "forClass": "Relationship", "parentList": []}	27	2021-09-22 14:53:04.158111+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	2d054574-8f7a-4a9a-a3b3-0400ad9d0489	\N
 4	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": [], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "disable": {"type": "boolean", "default": false}}}, "version": 1, "forClass": "RecladaObject", "parentList": []}	31	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	ab9ab26c-8902-43dd-9f1a-743b14a89825	\N
 20	3748b1f7-b674-47ca-9ded-d011b16bbf7b	{"schema": {"type": "object", "required": ["caption"], "properties": {"tags": {"type": "array", "items": {"type": "string"}}, "caption": {"type": "string"}, "disable": {"type": "boolean", "default": false}}}, "version": 1, "forClass": "ObjectStatus", "parentList": []}	11	2021-09-22 14:50:50.411942+00	16d789c1-1b4e-4815-b70c-4ef060e90884	5362d59b-82a1-4c7c-8ec3-07c256009fb0	14af3113-18b5-4da8-af57-bdf37a6693aa	\N
+\.
+
+
+--
+-- Data for Name: staging; Type: TABLE DATA; Schema: reclada; Owner: -
+--
+
+COPY reclada.staging (data) FROM stdin;
 \.
 
 
@@ -6159,6 +6167,13 @@ ALTER TABLE ONLY reclada.unique_object_reclada_object
 
 
 --
+-- Name: checksum_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX checksum_index_ ON reclada.object USING hash (((attributes ->> 'checksum'::text))) WHERE ((attributes ->> 'checksum'::text) IS NOT NULL);
+
+
+--
 -- Name: class_index; Type: INDEX; Schema: reclada; Owner: -
 --
 
@@ -6180,6 +6195,13 @@ CREATE INDEX column_index_v47 ON reclada.object USING btree (((attributes -> 'co
 
 
 --
+-- Name: document_fileguid_index; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX document_fileguid_index ON reclada.object USING btree (((attributes ->> 'fileGUID'::text))) WHERE ((attributes ->> 'fileGUID'::text) IS NOT NULL);
+
+
+--
 -- Name: environment_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
@@ -6191,6 +6213,13 @@ CREATE INDEX environment_index_v47 ON reclada.object USING hash (((attributes ->
 --
 
 CREATE INDEX event_index_v47 ON reclada.object USING hash (((attributes -> 'event'::text))) WHERE ((attributes -> 'event'::text) IS NOT NULL);
+
+
+--
+-- Name: fields_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX fields_index_ ON reclada.object USING gin (((attributes -> 'fields'::text))) WHERE ((attributes -> 'fields'::text) IS NOT NULL);
 
 
 --
@@ -6247,6 +6276,13 @@ CREATE INDEX parent_guid_index ON reclada.object USING hash (parent_guid) WHERE 
 --
 
 CREATE INDEX relationship_type_subject_object_index ON reclada.object USING btree (((attributes ->> 'type'::text)), (((attributes ->> 'subject'::text))::uuid), status, (((attributes ->> 'object'::text))::uuid)) WHERE (((attributes ->> 'subject'::text) IS NOT NULL) AND ((attributes ->> 'object'::text) IS NOT NULL));
+
+
+--
+-- Name: revision_index; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX revision_index ON reclada.object USING btree (((attributes ->> 'revision'::text))) WHERE ((attributes ->> 'revision'::text) IS NOT NULL);
 
 
 --
@@ -6320,6 +6356,13 @@ CREATE INDEX triggers_index_v47 ON reclada.object USING gin (((attributes -> 'tr
 
 
 --
+-- Name: uri_index_; Type: INDEX; Schema: reclada; Owner: -
+--
+
+CREATE INDEX uri_index_ ON reclada.object USING hash (((attributes ->> 'uri'::text))) WHERE ((attributes ->> 'uri'::text) IS NOT NULL);
+
+
+--
 -- Name: width_index_v47; Type: INDEX; Schema: reclada; Owner: -
 --
 
@@ -6330,7 +6373,7 @@ CREATE INDEX width_index_v47 ON reclada.object USING btree (((attributes -> 'wid
 -- Name: staging load_staging; Type: TRIGGER; Schema: reclada; Owner: -
 --
 
-CREATE TRIGGER load_staging INSTEAD OF INSERT ON reclada.staging FOR EACH ROW EXECUTE FUNCTION reclada.load_staging();
+CREATE TRIGGER load_staging AFTER INSERT ON reclada.staging REFERENCING NEW TABLE AS new_table FOR EACH STATEMENT EXECUTE FUNCTION reclada.load_staging();
 
 
 --

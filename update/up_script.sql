@@ -14,6 +14,7 @@ CREATE AGGREGATE reclada.jsonb_object_agg(jsonb) (
 \i 'function/reclada_object.get_query_condition_filter.sql'
 \i 'function/reclada.jsonb_merge.sql'
 \i 'function/reclada_object.list.sql'
+\i 'function/reclada.load_staging.sql'
 
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
 DROP VIEW IF EXISTS reclada.v_parent_field;
@@ -63,3 +64,11 @@ DROP VIEW IF EXISTS reclada.v_object_display;
 \i 'function/reclada_object.create.sql'
 \i 'function/reclada_object.update.sql'
 --REC 633}
+
+DROP VIEW reclada.staging;
+
+CREATE TABLE reclada.staging(
+    data    jsonb   NOT NULL  
+);
+
+\i 'trigger/load_staging.sql'
