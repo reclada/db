@@ -1,142 +1,80 @@
--- version = 49
+-- version = 50
 /*
     you can use "\i 'function/reclada_object.get_schema.sql'"
     to run text script of functions
 */
 
-alter table dev.component add parent_component_name text;
-
-create table dev.meta_data(
-    id bigint
-        NOT NULL
-        GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1)
-        UNIQUE ,
-    ver bigint,
-    data jsonb
+--{REC 624
+CREATE AGGREGATE reclada.jsonb_object_agg(jsonb) (
+  SFUNC = 'jsonb_concat',
+  STYPE = jsonb,
+  INITCOND = '{}'
 );
 
+\i 'function/reclada_object.get_query_condition_filter.sql'
+\i 'function/reclada.jsonb_merge.sql'
 \i 'function/reclada_object.list.sql'
+\i 'function/reclada.load_staging.sql'
 
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_unifields;
+DROP VIEW IF EXISTS reclada.v_parent_field;
+DROP VIEW IF EXISTS reclada.v_class;
+DROP VIEW IF EXISTS reclada.v_import_info;
+DROP VIEW IF EXISTS reclada.v_revision;
+DROP VIEW IF EXISTS reclada.v_task;
+DROP VIEW IF EXISTS reclada.v_ui_active_object;
+DROP VIEW IF EXISTS reclada.v_dto_json_schema;
+DROP VIEW IF EXISTS reclada.v_component_object;
+DROP VIEW IF EXISTS reclada.v_component;
+DROP VIEW IF EXISTS reclada.v_relationship;
+DROP VIEW IF EXISTS reclada.v_active_object;
+DROP VIEW IF EXISTS reclada.v_object;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_user;
+DROP MATERIALIZED VIEW IF EXISTS reclada.v_object_status;
+DROP VIEW IF EXISTS reclada.v_object_display;
 
-\i 'function/dev.begin_install_component.sql'
-\i 'function/dev.finish_install_component.sql'
-\i 'function/dev.downgrade_version.sql'
-\i 'function/reclada_object.create_subclass.sql'
-\i 'function/reclada_object.create_relationship.sql'
-\i 'function/dev.downgrade_component.sql'
-\i 'function/reclada_object.update.sql'
+\i 'function/reclada_object.get_jsonschema_guid.sql'
+\i 'view/reclada.v_class_lite.sql'
+\i 'function/reclada_object.get_guid_for_class.sql'
+\i 'view/reclada.v_object_status.sql'
 
+\i 'function/reclada_object.delete.sql'
 \i 'view/reclada.v_object_display.sql'
-drop VIEW reclada.v_component_object;
-drop VIEW reclada.v_component;
+\i 'function/reclada_object.need_flat.sql'
+
+\i 'view/reclada.v_user.sql'
+\i 'view/reclada.v_object.sql'
+\i 'view/reclada.v_active_object.sql'
+\i 'view/reclada.v_relationship.sql'
 \i 'view/reclada.v_component.sql'
 \i 'view/reclada.v_component_object.sql'
-
-
-select reclada_object.create_relationship
-                    (
-                        'data of reclada-component',
-                        db.guid,
-                        o.guid,
-                        '{}'::jsonb,
-                        db.guid
-                    )
-    from reclada.object o
-    cross join (
-        select guid 
-            from reclada.v_component 
-                where name = 'db' 
-                limit 1
-    ) db
-        where 
-        (
-            o.class in (select reclada_object.get_GUID_for_class('jsonschema'))
-            and o.attributes->>'forClass' in (  'tag', -- 1
-                                                'DataSource', -- 2
-                                                'S3Config', -- 3
-                                                'DataSet', -- 4
-                                                'Message', -- 5
-                                                'Index', -- 6
-                                                'Component', -- 7
-                                                'Context', -- 8
-                                                'DTOJsonSchema', -- 9
-                                                'File', -- 10
-                                                'User', -- 11
-                                                'ImportInfo', -- 12
-                                                'Asset', -- 13
-                                                'DBAsset', -- 14
-                                                'revision', -- 15
-                                                'ObjectDisplay' -- 16
-                                            )
-                                            
-        ) or (
-            o.class in (select reclada_object.get_GUID_for_class('DataSet'))
-            and o.attributes->>'name' = 'defaultDataSet'
-        ) or (
-            o.class in (select reclada_object.get_GUID_for_class('User'))
-            and o.attributes->>'login' = 'dev'
-        ) or (
-            o.class in (select reclada_object.get_GUID_for_class('DTOJsonSchema'))
-            and o.attributes->>'function' in ('reclada_object.list','reclada_object.get_query_condition_filter')
-        ) or (
-            o.class in (select reclada_object.get_GUID_for_class('ObjectDisplay'))
-        ) or (
-            o.class in (select reclada_object.get_GUID_for_class('Message'))
-            and o.guid not in (
-                            '0a05ffb8-c25d-400d-b3fb-59ac0fcef8a0',
-                            '0a0abcd6-5a7c-4126-8541-ca719622e51f',
-                            '0a01f056-e9c1-4c1f-b7eb-94e34827ff85',
-                            '0a0f2b7d-cb6e-4097-86a9-218ced87f896',
-                            '0a04bcd3-ecb3-4f76-b1aa-5068f38bb303',
-                            '0a0c1e85-ac9a-4d65-8bc8-e0c40f3a6c6c'
-                        )
-        );
-
-
-insert into dev.meta_data(ver,data)
-    select  49, 
-            jsonb_build_object( 'id'     , o.id ,
-                                'tran_id', u.transaction_id
-                            ) as v
-        from reclada.v_component_object o
-        join reclada.object u
-            on u.id = o.id
-        join 
-        (
-            SELECT transaction_id ,attrs->>'name' component_name
-                FROM reclada.v_object 
-                    where class_name = 'Component' 
-        ) t
-            on t.component_name = o.component_name;
-
-
-update reclada.object u
-    set transaction_id = t.transaction_id
-    from reclada.v_component_object o
-    join 
-    (
-        SELECT transaction_id ,attrs->>'name' component_name
-            FROM reclada.v_object 
-                where class_name = 'Component' 
-    ) t
-        on t.component_name = o.component_name
-        where u.id = o.id;
-    
-
-
-
-\i 'function/reclada_object.update.sql'
-\i 'function/reclada_object.create.sql'
-\i 'function/reclada_object.merge.sql'
-\i 'view/reclada.v_object_unifields.sql'
-
-ALTER SEQUENCE IF EXISTS reclada.object_id_seq CACHE 10;
-
------------
+\i 'view/reclada.v_dto_json_schema.sql'
 \i 'view/reclada.v_ui_active_object.sql'
-\i 'view/reclada.v_component_object.sql'
+\i 'view/reclada.v_task.sql'
+\i 'view/reclada.v_revision.sql'
+\i 'view/reclada.v_import_info.sql'
+\i 'view/reclada.v_class.sql'
+\i 'view/reclada.v_parent_field.sql'
+\i 'view/reclada.v_object_unifields.sql'
+--REC 624}
+\i 'view/reclada.v_get_duplicates_query.sql'
 
-\i 'function/reclada_object.create_job.sql'
-\i 'function/api.storage_generate_presigned_post.sql'
-\i 'function/dev.begin_install_component.sql'
-\i 'function/dev.finish_install_component.sql'
+--{REC 633
+\i 'function/reclada_object.create.sql'
+\i 'function/reclada_object.update.sql'
+--REC 633}
+
+DROP VIEW reclada.staging;
+
+CREATE TABLE reclada.staging(
+    data    jsonb   NOT NULL  
+);
+
+\i 'trigger/load_staging.sql'
+\i 'function/reclada_object.perform_trigger_function.sql'
+\i 'function/reclada_object.object_insert.sql'
+\i 'function/reclada_object.delete.sql'
+\i 'function/reclada_object.create.sql'
+\i 'view/reclada.v_trigger.sql'
+\i 'view/reclada.v_db_trigger_function.sql'
