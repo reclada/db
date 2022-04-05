@@ -273,7 +273,7 @@ DECLARE
 BEGIN
 
     perform reclada.validate_json(data, _f_name);
-
+    raise notice '%',data;
     if ver = '1' then
         tran_id := (data->>'transactionID')::bigint;
         _class := data->>'class';
@@ -293,7 +293,15 @@ BEGIN
             WHERE vod.class_guid = (reclada_object.get_schema (_class)#>>'{GUID}')::uuid
             INTO _order_row;
         IF _order_row IS NOT NULL THEN     
-            SELECT jsonb_agg (jsonb_build_object ('field', obf.field, 'order', obf.order_by))
+            SELECT jsonb_agg (
+                        jsonb_build_object(
+                                            'field',    replace(
+                                                            replace(obf.field::text,'{',''),
+                                                                '}',''
+                                                        ), 
+                                            'order', obf.order_by
+                                        )
+                            )
                 FROM(
                     SELECT  je.value AS order_by, 
                             split_part (je.key, ':', 1) AS field
