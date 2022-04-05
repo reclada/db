@@ -19,3 +19,4 @@ update/current_dump.sql
 update/downgrade_dump.sql
 update/darft.sql
 configuration.json
+dev.session.sql

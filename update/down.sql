@@ -16,6 +16,8 @@ DROP VIEW IF EXISTS reclada.v_dto_json_schema;
 DROP VIEW IF EXISTS reclada.v_component_object;
 DROP VIEW IF EXISTS reclada.v_component;
 DROP VIEW IF EXISTS reclada.v_relationship;
+DROP VIEW IF EXISTS reclada.v_db_trigger_function;
+DROP VIEW IF EXISTS reclada.v_trigger;
 DROP VIEW IF EXISTS reclada.v_active_object;
 DROP VIEW IF EXISTS reclada.v_object;
 DROP MATERIALIZED VIEW IF EXISTS reclada.v_class_lite;
