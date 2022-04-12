@@ -1,0 +1,71 @@
+stages:
+  - prepare
+  - deploy
+
+prepare_db:
+  stage: prepare
+  image: bitnami/git
+  script:
+    - > # choosing the Registry for all images
+     if [ "${RECLADA_REGISTRY}" == "false" ]; then
+       echo "REPO_URL=588200329560.dkr.ecr.eu-west-1.amazonaws.com" >> prepare.env
+     else
+       echo "REPO_URL=registry.reclada.com/developers/${CI_PROJECT_TITLE}" >> prepare.env
+     fi
+    - echo $CI_OPEN_MERGE_REQUESTS
+    - echo "DEV_RDS=dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
+    - echo "TEST_RDS=test-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
+    - echo "PROD_RDS=prod-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
+    - echo ENV=$ENV >> prepare.env
+    - echo NAMESPACE = reclada-$ENV >> prepare.env
+    - echo DBNAME = "${ENV}_reclada_k8s" >> prepare.env 
+    - echo LAMBDA_NAME = "s3_get_presigned_url_${ENV}" >> prepare.env
+    - echo LAMBDA_REGION = "eu-west-1" >> prepare.env
+    #debug
+    - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  artifacts:
+    reports:
+      dotenv: prepare.env
+  rules:
+    - when: always 
+  tags:
+    - k8s-devops
+
+deploy_db:
+  stage: deploy
+  image: $REPO_URL/db-installer:0.1
+  script:
+    - echo "Create database for the environment"
+
+    - cd $CI_PROJECT_DIR/
+    - mkdir cloned_db && cd cloned_db/
+    - git clone -b $DB_BRANCH https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
+    
+    - cp $CI_PROJECT_DIR/cloned_db/db/update/update_config_template.json $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$DB_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
+    - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+
+    - cat $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+
+    - sed -i "s|gitlab.reclada.com|gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com|g" $CI_PROJECT_DIR/cloned_db/db/update/update_db.py
+    - cat $CI_PROJECT_DIR/cloned_db/db/update/update_db.py
+
+    - python --version
+    - psql -V
+    - cd $CI_PROJECT_DIR/cloned_db/db/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/cloned_db/db/update/update_db.py || python $CI_PROJECT_DIR/cloned_db/db/update/install_db.py
+  needs:
+    - job: prepare_db
+      artifacts: true
+  tags:
+    - k8s-devops
+  rules:
+    - when: always
