@@ -463,10 +463,18 @@ BEGIN
                             on d.id_unique_object = uo.id
                         JOIN reclada.field f
                             on f.id = ANY (uo.id_field)
-                        UNION
-                    SELECT pattern||'':''||CASE WHEN pattern=''transactionID'' THEN ''number'' ELSE ''string'' END,
-                        CASE WHEN pattern=''transactionID'' THEN ''number'' ELSE ''string'' END 
+                    UNION
+                    SELECT  pattern||'':''|| t.v,
+                            t.v
                     FROM reclada.v_filter_mapping vfm
+                    CROSS JOIN LATERAL 
+                    (
+                        SELECT  CASE 
+                                    WHEN vfm.pattern=''{transactionID}'' 
+                                        THEN ''number'' 
+                                    ELSE ''string'' 
+                                END as v
+                    ) t
                 ),
                 on_data as 
                 (
@@ -519,7 +527,7 @@ BEGIN
                         where #@#@#where#@#@#';
 
         _exec_text := REPLACE(_exec_text, '#@#@#where#@#@#', query_conditions  );
-        raise notice '%',_exec_text;
+        -- raise notice '%',_exec_text;
         EXECUTE _exec_text
             INTO number_of_objects, last_change;
         
