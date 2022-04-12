@@ -36,6 +36,7 @@ AS
                 reclada.v_class_lite vc
             WHERE
                 attributes ->'dupChecking' is not null
+                AND vc.status = reclada_object.get_active_status_obj_id()
             ) a
         ) b
 ;

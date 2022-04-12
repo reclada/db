@@ -1,11 +1,12 @@
 DROP FUNCTION IF EXISTS reclada_object.create_relationship;
 CREATE OR REPLACE FUNCTION reclada_object.create_relationship
 (
-    _rel_type   text,
-    _obj_GUID   uuid,
-    _subj_GUID  uuid,
-    _extra_attrs    jsonb DEFAULT '{}'::jsonb,
-    _parent_guid    uuid  default null
+    _rel_type    text,
+    _obj_GUID    uuid,
+    _subj_GUID   uuid,
+    _extra_attrs jsonb  DEFAULT '{}'::jsonb,
+    _parent_guid uuid   DEFAULT null,
+    _tran_id     bigint DEFAULT reclada.get_transaction_id()
 )
 RETURNS jsonb AS $$
 DECLARE
@@ -27,12 +28,14 @@ BEGIN
     IF (_rel_cnt = 0) THEN
         _obj := format('{
             "class": "Relationship",
+            "transactionID": %s,
             "attributes": {
                     "type": "%s",
                     "object": "%s",
                     "subject": "%s"
                 }
             }',
+            _tran_id :: text,
             _rel_type,
             _obj_GUID,
             _subj_GUID)::jsonb;
