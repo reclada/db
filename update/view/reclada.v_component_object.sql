@@ -1,8 +1,10 @@
 drop VIEW if EXISTS reclada.v_component_object;
 CREATE OR REPLACE VIEW reclada.v_component_object
 AS
-    SELECT  c.name component_name, 
+    SELECT  o.id,
+            c.name component_name, 
             c.guid component_guid, 
+            o.transaction_id,
             o.class_name, 
             o.obj_id,
             o.data obj_data,

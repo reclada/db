@@ -16,7 +16,7 @@ DECLARE
 BEGIN
     SELECT attrs->>'Environment'
         FROM reclada.v_active_object
-        WHERE class_name = 'Context'
+        WHERE class_name = 'RuntimeContext'
         ORDER BY created_time DESC
         LIMIT 1
         INTO _environment;
