@@ -1,25 +1,32 @@
 {
-    "forClass": "Task",
-    "parentList": [],
+    "forClass": "Index",
+    "parentList": [
+        "ab9ab26c-8902-43dd-9f1a-743b14a89825"
+    ],
     "schema": {
         "properties": {
-            "command": {
-                "type": "string"
-            },
             "disable": {
                 "default": false,
                 "type": "boolean"
             },
-            "inputParameters": {
-                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
-                "type": "string"
-            },
-            "outputParameters": {
+            "fields": {
                 "items": {
-                    "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}",
                     "type": "string"
                 },
+                "minContains": 1,
                 "type": "array"
+            },
+            "method": {
+                "enum ": [
+                    "btree",
+                    "hash",
+                    "gist",
+                    "gin"
+                ],
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
             },
             "tags": {
                 "items": {
@@ -27,13 +34,13 @@
                 },
                 "type": "array"
             },
-            "type": {
+            "wherePredicate": {
                 "type": "string"
             }
         },
         "required": [
-            "command",
-            "type"
+            "name",
+            "fields"
         ],
         "type": "object"
     },

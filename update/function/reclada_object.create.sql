@@ -1,18 +1,3 @@
-/*
- * Function reclada_object.create creates one or bunch of objects with specified fields.
- * A jsonb with user_info AND a jsonb or an array of jsonb objects are required.
- * A jsonb object with the following parameters is required to create one object.
- * An array of jsonb objects with the following parameters is required to create a bunch of objects.
- * Required parameters:
- *  class - the class of objects
- *  attributes - the attributes of objects
- * Optional parameters:
- *  GUID - the identifier of the object
- *  transactionID - object's transaction number. One transactionID is used to create a bunch of objects.
- *  branch - object's branch
- */
-
-DROP FUNCTION IF EXISTS reclada_object.create;
 CREATE OR REPLACE FUNCTION reclada_object.create
 (
     data_jsonb jsonb, 
@@ -44,57 +29,119 @@ DECLARE
     _new_parent_guid       uuid;
     _rel_type       text := 'GUID changed for dupBehavior';
     _guid_list      text;
+    _component_guid uuid;
+    _row_count              int;
+    _f_name         text = 'reclada_object.create';
 BEGIN
 
     IF (jsonb_typeof(data_jsonb) != 'array') THEN
         data_jsonb := '[]'::jsonb || data_jsonb;
     END IF;
+
+    SELECT guid 
+        FROM dev.component 
+        INTO _component_guid;
+
     /*TODO: check if some objects have revision AND others do not */
     branch:= data_jsonb->0->'branch';
 
     FOR _data IN SELECT jsonb_array_elements(data_jsonb) 
     LOOP
+
+        if _component_guid is not null then
+            _attrs      := _data-> 'attributes';
+            _obj_guid   := _data->>'GUID'      ;    
+            select obj_id, for_class 
+                from reclada.v_class 
+                    where _data->>'class' in (obj_id::text, for_class)
+                    ORDER BY version DESC 
+                    LIMIT 1
+                into _class_uuid, _class_name;
+
+            perform reclada.raise_exception('You should use reclada_object.create_subclass for new jsonschema.',_f_name)
+                where _class_name = 'jsonschema';
+
+            update dev.component_object
+                set status = 'ok'
+                    where status = 'need to check'
+                        and _obj_guid::text      = data->>'GUID'
+                        and _attrs               = data-> 'attributes'
+                        and _class_uuid::text    = data->>'class'
+                        and coalesce(_data->>'parentGUID','null') = coalesce(data->>'parentGUID','null') 
+                        ------
+                        and _obj_guid is not null;
+                        ------
+
+            GET DIAGNOSTICS _row_count := ROW_COUNT;
+            if _row_count > 1 then
+                perform reclada.raise_exception('Can not match component objects',_f_name);
+            elsif _row_count = 1 then
+                continue;
+            end if;
+
+            update dev.component_object
+                set status = 'update',
+                    data   = _data
+                    where status = 'need to check' 
+                        and _obj_guid::text = data->>'GUID'
+                        ------
+                        and _obj_guid is not null;
+                        ------
+
+            GET DIAGNOSTICS _row_count := ROW_COUNT;
+            if _row_count > 1 then
+                perform reclada.raise_exception('Can not match component objects',_f_name);
+            elsif _row_count = 1 then
+                continue;
+            end if;
+            
+            with t as
+            (
+                select min(id) as id
+                    from dev.component_object
+                        where status = 'need to check'
+                            and _attrs               = data-> 'attributes'
+                            and _class_uuid::text    = data->>'class'
+                            and coalesce(_data->>'parentGUID','null') = coalesce(data->>'parentGUID','null')
+                            ------
+                            and _obj_guid is null
+                            ------
+            )
+                update dev.component_object u
+                    set status = 'ok'
+                        from t
+                            where u.id = t.id;
+                    
+            GET DIAGNOSTICS _row_count := ROW_COUNT;
+            if _row_count > 1 then
+                perform reclada.raise_exception('Can not match component objects',_f_name);
+            elsif _row_count = 1 then
+                continue;
+            end if;
+            
+            insert into dev.component_object( data, status  )
+                select _data, 'create';
+            continue;
+            
+        end if;
+
+        SELECT  valid_schema, 
+                attributes,
+                class_name,
+                class_guid 
+            FROM reclada.validate_json_schema(_data)
+            INTO    schema      , 
+                    _attrs      ,
+                    _class_name ,
+                    _class_uuid ;
+
         skip_insert := false;
-        _class_name := _data->>'class';
-
-        IF (_class_name IS NULL) THEN
-            RAISE EXCEPTION 'The reclada object class is not specified';
-        END IF;
-        _class_uuid := reclada.try_cast_uuid(_class_name);
-
-        _attrs := _data->'attributes';
-        IF (_attrs IS NULL) THEN
-            RAISE EXCEPTION 'The reclada object must have attributes';
-        END IF;
 
         tran_id := (_data->>'transactionID')::bigint;
         IF tran_id IS NULL THEN
             tran_id := reclada.get_transaction_id();
         END IF;
 
-        IF _class_uuid IS NULL THEN
-            SELECT reclada_object.get_schema(_class_name) 
-            INTO schema;
-            _class_uuid := (schema->>'GUID')::uuid;
-        ELSE
-            SELECT v.data, v.for_class
-            FROM reclada.v_class v
-            WHERE _class_uuid = v.obj_id
-            INTO schema, _class_name;
-        END IF;
-        IF (schema IS NULL) THEN
-            RAISE EXCEPTION 'No json schema available for %', _class_name;
-        END IF;
-
-        IF (NOT(public.validate_json_schema(schema->'attributes'->'schema', _attrs))) THEN
-            RAISE EXCEPTION 'JSON invalid: 
-                %, 
-                schema: 
-                %', 
-                _attrs,
-                schema#>>'{attributes,schema}';
-        END IF;
-        
         IF _data->>'id' IS NOT NULL THEN
             RAISE EXCEPTION '%','Field "id" not allow!!!';
         END IF;
@@ -213,11 +260,20 @@ BEGIN
                             -- DO nothing
                         WHEN 'Merge' THEN
                             PERFORM reclada_object.create_relationship(
-                                _rel_type,
-                                _obj_guid,
-                                (new_data->>'GUID')::uuid,
-                                '{"dupBehavior": "Merge"}'::jsonb);
-                            SELECT reclada_object.update(reclada_object.merge(new_data - 'class', data,schema->'attributes'->'schema') || format('{"GUID": "%s"}', _obj_guid)::jsonb || format('{"transactionID": %s}', tran_id)::jsonb)
+                                    _rel_type,
+                                    _obj_guid,
+                                    (new_data->>'GUID')::uuid,
+                                    '{"dupBehavior": "Merge"}'::jsonb
+                                );
+                            SELECT reclada_object.update(
+                                    reclada_object.merge(
+                                            new_data - 'class', 
+                                            data,
+                                            schema
+                                        ) 
+                                        || format('{"GUID": "%s"}', _obj_guid)::jsonb 
+                                        || format('{"transactionID": %s}', tran_id)::jsonb
+                                )
                             FROM reclada.v_active_object
                             WHERE obj_id = _obj_guid
                                 INTO res;
@@ -228,31 +284,27 @@ BEGIN
             END IF;
         END IF;
         
-        IF (NOT skip_insert) THEN
-            _obj_guid := (_data->>'GUID')::uuid;
+        IF (NOT skip_insert) THEN           
+            _obj_guid := _data->>'GUID';
             IF EXISTS (
-                SELECT 1
-                FROM reclada.object 
-                WHERE GUID = _obj_guid
+                SELECT FROM reclada.object 
+                    WHERE guid = _obj_guid
             ) THEN
-                RAISE EXCEPTION 'GUID: % is duplicate', _obj_guid;
+                perform reclada.raise_exception ('GUID: '||_obj_guid::text||' is duplicate',_f_name);
             END IF;
-            --raise notice 'schema: %',schema;
+
+            _obj_guid := coalesce(_obj_guid, public.uuid_generate_v4());
 
             INSERT INTO reclada.object(GUID,class,attributes,transaction_id, parent_guid)
-                SELECT  CASE
-                            WHEN _obj_guid IS NULL
-                                THEN public.uuid_generate_v4()
-                            ELSE _obj_guid
-                        END AS GUID,
+                SELECT  _obj_guid AS GUID,
                         _class_uuid, 
                         _attrs,
                         tran_id,
-                        _parent_guid
-            RETURNING GUID INTO _obj_guid;
+                        _parent_guid;
+
             affected := array_append( affected, _obj_guid);
             inserted := array_append( inserted, _obj_guid);
-            PERFORM reclada_object.datasource_insert
+            PERFORM reclada_object.object_insert
                 (
                     _class_name,
                     _obj_guid,
