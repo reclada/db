@@ -330,7 +330,7 @@ delete-db-dynamic-env:
     - k8s-devops
 
 push_to_github:
-  stage: deploy
+  stage: push_to_github
   image: bitnami/git
   script:
 
