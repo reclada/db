@@ -335,11 +335,16 @@ BEGIN
             (
                 array
                 (
-                    SELECT o.data 
+                    SELECT reclada.jsonb_merge(o.data, o.default_value) AS data
                     FROM reclada.v_active_object o
                     WHERE o.obj_id = ANY (affected)
                 )
             )::jsonb;
+
+    if res = '{}'::jsonb and _component_guid is not null then 
+        res = '{"message": "Installing component"}'::jsonb;
+    end if;
+
     notify_res := array_to_json
             (
                 array
