@@ -1,6 +1,6 @@
-from update_db import install_components
+from update_db import DBHelper
 
 
 if __name__ == "__main__":
 
-    install_components()
+    DBHelper().install_components()
