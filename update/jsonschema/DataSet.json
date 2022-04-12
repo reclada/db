@@ -10,6 +10,10 @@
                 },
                 "type": "array"
             },
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "name": {
                 "type": "string"
             },

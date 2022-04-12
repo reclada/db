@@ -4,6 +4,10 @@
     "revision": "195b2a06-4b6e-4e7c-a610-58fc09f646c8",
     "schema": {
         "properties": {
+            "disable": {
+                "default": false,
+                "type": "boolean"
+            },
             "name": {
                 "type": "string"
             },

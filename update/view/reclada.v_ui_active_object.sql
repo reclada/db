@@ -5,9 +5,13 @@ select
 'with recursive 
 d as ( 
     select  data, 
-            obj_id
+            obj_id,
+            created_time,
+            attrs 
         FROM reclada.v_active_object obj 
             where #@#@#where#@#@#
+                OFFSET #@#@#offset#@#@#
+                LIMIT #@#@#limit#@#@#
 ),
 t as
 (
@@ -19,7 +23,7 @@ t as
         from d 
         JOIN LATERAL jsonb_each(d.data) je
             on true
-        where jsonb_typeof(je.value) != ''null''
+        -- where jsonb_typeof(je.value) != ''null''
     union
     SELECT 
             d.key ||'',''|| je.key as key ,
@@ -38,7 +42,7 @@ t as
         ) d
         JOIN LATERAL jsonb_each(d.data) je
             on true
-        where jsonb_typeof(je.value) != ''null''
+        -- where jsonb_typeof(je.value) != ''null''
 ),
 res as
 (
@@ -46,7 +50,8 @@ res as
             rr.data,
             rr.display_key,
             o.attrs,
-            o.created_time
+            o.created_time,
+            o.id
         from
         (
             select  t.obj_id,
@@ -56,7 +61,7 @@ res as
                         t.value
                     ) as data,
                     array_agg(
-                        ''{''||t.key||''}:''||t.typ 
+                        t.key||''#@#@#separator#@#@#''||t.typ 
                     ) as display_key
                 from t 
                     where t.typ != ''object''

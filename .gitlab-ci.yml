@@ -1,138 +1,165 @@
 stages:
   - prepare
-  - runtime
-  - build
-  - test
   - deploy
-  - runtime
-  - scinlp
-  - webui
+  - triggers
   - clean
   - clean_db
-  - clean_branches
   - autotest
-  - clean
-  - clean_db
-  - clean_branches
-  - push-to-github
+  - push_to_github
+
+variables:
+ ENV:
+   value: "parchitest" # this would be the default value
+   description: "Custom Prefix for environment" # makes this variable appear on the Run Pipeline 
+ WEBUI_VERSION:
+   value: "test_parent_child" # this would be the default value
+   description: "Version of Web-UI component" # makes this variable appear on the Run Pipeline    
+ RUNTIME_VERSION:
+   value: "test_parent_child" # this would be the default value
+   description: "Version of Reclada Runtime component" # makes this variable appear on the Run Pipeline 
+ SCINLP_VERSION:
+   value: "test_parent_child" # this would be the default value
+   description: "Version of Scinlp component" # makes this variable appear on the Run Pipeline 
+ DESTROY:  
+   value: "false" # this would be the default value
+   description: "If true - complete cleanup" # makes this variable appear on the Run Pipeline
+ RECLADA_REGISTRY:
+   value: "false" # this would be the default value
+   description: "If true - images pulls from gitlab registry" # makes this variable appear on the Run Pipeline
 
 prepare_db:
   stage: prepare
   image: bitnami/git
   script:
+    - > # choosing the Registry for all images
+     if [ "${RECLADA_REGISTRY}" == "false" ]; then
+       echo "REPO_URL=588200329560.dkr.ecr.eu-west-1.amazonaws.com" >> prepare.env
+     else
+       echo "REPO_URL=registry.reclada.com/developers/${CI_PROJECT_TITLE}" >> prepare.env
+     fi
+
     - echo $CI_OPEN_MERGE_REQUESTS
     - echo "DEV_RDS=dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
     - echo "TEST_RDS=test-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
     - echo "PROD_RDS=prod-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
-    # - echo LAST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) >> prepare.env
-    - echo ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
-    - export ENV=$(echo $CI_COMMIT_REF_NAME | tr -dc '[:alnum:]\n\r' | tr '[:upper:]' '[:lower:]') >> prepare.env
+    - echo ENV=$ENV >> prepare.env
     - echo NAMESPACE = reclada-$ENV >> prepare.env
     - echo DBNAME = "${ENV}_reclada_k8s" >> prepare.env 
     - echo LAMBDA_NAME = "s3_get_presigned_url_${ENV}" >> prepare.env
-    - echo TEST_PARAMETERS_WEB_BASE_URL = "${ENV}.reclada.com" >> prepare.env
+    - echo LAMBDA_REGION = "eu-west-1" >> prepare.env
     #debug
     - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
   artifacts:
     reports:
       dotenv: prepare.env
-  rules:
-    - if: $CI_COMMIT_REF_NAME == "main"
+  rules:   
+    - if: $CI_PIPELINE_SOURCE == "web"
       when: always
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main" && $CI_COMMIT_MESSAGE !~ /^delenv/
-      when: always
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test" && $CI_COMMIT_MESSAGE !~ /^delenv/
-      when: always
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
-      when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ 
-      when: always
-    - if: $CI_COMMIT_REF_NAME == "test"
-      when: never
   tags:
     - k8s-devops
 
-prepare_runtime:
-  stage: runtime
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/curljq:01
-  script:
-    - curl --version
-    - jq --version
-    - echo $RUNTIME_REPO_TOKEN
-    - echo $CI_COMMIT_REF_NAME
-    #Create db with the same name prefix as current branch
-    - curl --request POST --header "PRIVATE-TOKEN:$RUNTIME_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/36/repository/branches?branch=$CI_COMMIT_REF_NAME&ref=main" | jq
-    # Check pipeline sussess for current branch in runtime repository 
-    - sleep 60
-    - while [ $response != "success" ] && [ $response != "failed" ]; do sleep 5 ; echo "WATING FOR PIPELINE" ; response=$(curl --header "PRIVATE-TOKEN:$RUNTIME_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/36/pipelines?per_page=1&page=1" | jq -r '.[].status') ; echo $response ; done ;
-
-  needs:
-    - job: prepare_db
-      artifacts: true
-  rules:
-    - if: $CI_COMMIT_MESSAGE =~ /^delenv/
-      when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
-      when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ && $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
-      when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
-      when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE !~ /^delenv/ && $CI_MERGE_REQUEST_ID !~ /^./ 
-      when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
-      when: never
-    - if: $CI_COMMIT_REF_NAME == "test"
-      when: never
-  tags:
-    - k8s-devops
-   
-deploy-dynamic-env:
+deploy_db:
   stage: deploy
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
+  image: $REPO_URL/db-installer:0.1
   script:
-    - echo "Create database for dynamic env"
+    - echo "Create database for the environment"
 
-    - cp $CI_PROJECT_DIR/update/update_config_template.json $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - cd $CI_PROJECT_DIR/
+    - mkdir cloned_db && cd cloned_db/
+    - git clone -b $CI_COMMIT_REF_NAME https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
+    
+    - cp $CI_PROJECT_DIR/cloned_db/db/update/update_config_template.json $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
+    - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
 
-    - cat $CI_PROJECT_DIR/update/update_config.json
+    - cat $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
 
-    - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_db.py
-    - cat $CI_PROJECT_DIR/update/update_db.py
+    - sed -i "s|gitlab.reclada.com|gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com|g" $CI_PROJECT_DIR/cloned_db/db/update/update_db.py
+    - cat $CI_PROJECT_DIR/cloned_db/db/update/update_db.py
 
     - python --version
     - psql -V
-    - cd $CI_PROJECT_DIR/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
+    - cd $CI_PROJECT_DIR/cloned_db/db/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/cloned_db/db/update/update_db.py || python $CI_PROJECT_DIR/cloned_db/db/update/install_db.py
   needs:
     - job: prepare_db
       artifacts: true
   tags:
     - k8s-devops
   rules:
-  - if: $CI_COMMIT_MESSAGE =~ /^delenv/
-    when: never
-  - if: $CI_MERGE_REQUEST_ID =~ /^./ 
-    when: never
-  - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
-    when: never
-  - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
-    when: always
-  - if: $CI_COMMIT_REF_NAME == "main"
-    when: never
-  - if: $CI_COMMIT_REF_NAME == "test"
-    when: never
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "false"
+      when: always
+    - if: $CI_COMMIT_REF_NAME == "master"
+      when: never
+    - if: $CI_COMMIT_REF_NAME == "test"
+      when: never
 
+trigger_runtime:
+  stage: triggers
+  variables:
+    ENV: $ENV
+    RUNTIME_BRANCH: $RUNTIME_VERSION
+  trigger:
+    include:
+      - project: 'developers/reclada-runtime'
+        ref: '$RUNTIME_VERSION'
+        file: '.child_runtime-gitlab-ci.yml' 
+    strategy: depend
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "false"
+      when: always 
+
+trigger_scinlp:
+  stage: triggers
+  variables:
+    ENV: $ENV
+    SCINLP_BRANCH: $SCINLP_VERSION
+  trigger:
+    include:
+      - project: 'developers/scinlp'
+        ref: '$SCINLP_VERSION'
+        file: '.child_scinlp-gitlab-ci.yml' 
+    strategy: depend
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "false"
+      when: always
+
+trigger_webui:
+  stage: triggers
+  variables:
+    ENV: $ENV
+    WEBUI_BRANCH: $WEBUI_VERSION
+  trigger:
+    include:
+      - project: 'developers/webui'
+        ref: '$WEBUI_VERSION'
+        file: '.child_webui-gitlab-ci.yml' 
+    strategy: depend
+  needs:
+    - job: trigger_runtime
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "false"
+      when: always
 
 deploy-autotest-env:
   stage: deploy
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
+  image: $REPO_URL/db-installer:0.1
   script:
     - echo "Run update database in autotest env"
     
@@ -143,6 +170,7 @@ deploy-autotest-env:
     - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${TEST_RDS}:5432/autotest_reclada_k8s\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"s3_get_presigned_url_autotest\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/update/update_config.json
     - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
 
     - cat $CI_PROJECT_DIR/update/update_config.json
@@ -159,22 +187,18 @@ deploy-autotest-env:
   tags:
       - k8s-devops
   rules:
-    - if: $CI_COMMIT_MESSAGE =~ /^delenv/
-      when: never
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: always
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
+    - if: $CI_PIPELINE_SOURCE == "web"
       when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
-      when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
 
 test-autotest-env:
   stage: autotest
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/pytest:04
+  image: $REPO_URL/pytest:04
   script:
     - echo "Run some tests for autotest env"
 
@@ -212,95 +236,24 @@ test-autotest-env:
   tags:
       - k8s-devops
   rules:
-    - if: $CI_COMMIT_MESSAGE =~ /^delenv/
-      when: never
     - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
       when: always
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
+    - if: $CI_PIPELINE_SOURCE == "web"
       when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
-      when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
     - if: $CI_COMMIT_REF_NAME == "test"
       when: never
-    
-deploy-prod-env:
-  stage: deploy
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
-  script:
-    - echo "Run update database in prod env"
-
-    - cp $CI_PROJECT_DIR/update/update_config_template.json $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"main\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"server\" :.*|\"server\" :\ \"$PROD_RDS\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db\" :.*|\"db\" :\ \"prod_reclada_k8s\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${PROD_RDS}:5432/prod_reclada_k8s\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"s3_get_presigned_url_prod\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
-
-    - cat $CI_PROJECT_DIR/update/update_config.json
-
-    - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_db.py
-    - cat $CI_PROJECT_DIR/update/update_db.py
-
-    - python --version
-    - psql -V
-    - cd $CI_PROJECT_DIR/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
-  needs:
-    - job: prepare_db
-      artifacts: true
-  tags:
-      - k8s-devops
-  rules:
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
-      when: never
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
-      when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
-      when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
-      when: never
-    - if: $CI_COMMIT_REF_NAME == "main"
-      when: always
-    - if: $CI_COMMIT_REF_NAME == "test"
-      when: never
-
-delete-db-dynamic-env:
-  stage: clean_db
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/db-installer:0.1
-  script:
-    - echo "Uninstall db"
-    - echo $CI_COMMIT_MESSAGE
-    - psql -h dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com -p 5432 -U reclada -d postgres -c "DROP DATABASE $ENV_reclada_k8s;" || true
-  needs:
-    - job: delete-terraform-dynamic-env
-    - job: prepare_db
-      artifacts: true
-  rules:
-    # - if: $CI_COMMIT_MESSAGE =~ /^delenv/
-    #   when: always
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ 
-      when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
-      when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE =~ /^delenv/
-      when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
-      when: never
-    - if: $CI_COMMIT_REF_NAME == "test"
-      when: never
-  tags:
-    - k8s-devops
-
 
 delete-terraform-dynamic-env:
   stage: clean
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/aws-build:v1.0.0-0
+  image: $REPO_URL/aws-build:v1.0.0-0
   script:
     - echo "Uninstall lambda/S3"
-    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
+
+    - cd $CI_PROJECT_DIR/
+    - git clone -b $RUNTIME_VERSION https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
+
     - cd $CI_PROJECT_DIR/reclada-runtime/devops/terraform/
     - sed -i "s|PGPASSWORD|$PG_PASSWORD|g" $CI_PROJECT_DIR/reclada-runtime/devops/terraform/variables.tf
     - sed -i "s|ENVPREFIX|$ENV|g" $CI_PROJECT_DIR/reclada-runtime/devops/terraform/variables.tf
@@ -322,84 +275,90 @@ delete-terraform-dynamic-env:
     - job: prepare_db
       artifacts: true
   rules:
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ 
-      when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
-      when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE =~ /^delenv/ && $CI_MERGE_REQUEST_ID !~ /^./ 
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "false"
       when: never
-    - if: $CI_COMMIT_REF_NAME == "test"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
   tags:
     - k8s-devops
 
-    
-delete-branches-dynamic-env:
-  stage: clean_branches
-  image: 588200329560.dkr.ecr.eu-west-1.amazonaws.com/curljq:01
+delete-k8s-dynamic-env:
+  stage: clean
+  image: $REPO_URL/helm-kubectl:v1.0.0-0
   script:
-    - curl --version
-    - jq --version
-    - echo $RUNTIME_REPO_TOKEN
-    - echo $CI_COMMIT_REF_NAME
-  #Clean branch in reclada-runtime repository
-    - curl --request DELETE --header "PRIVATE-TOKEN:$RUNTIME_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/36/repository/branches/${CI_COMMIT_REF_NAME//\//%2F}" | jq
-  #Clean branch in scinlp repository
-    - curl --request DELETE --header "PRIVATE-TOKEN:$SCINLP_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/37/repository/branches/${CI_COMMIT_REF_NAME//\//%2F}" | jq
-  #Clean branch in db repository
-    - curl --request DELETE --header "PRIVATE-TOKEN:$DB_REPO_TOKEN" "https://gitlab.reclada.com/api/v4/projects/34/repository/branches/${CI_COMMIT_REF_NAME//\//%2F}" | jq
+    - echo "Uninstall helm charts and k8s namespcase"
+    - helm uninstall webui -n $NAMESPACE || true
+    - helm uninstall postgrest -n $NAMESPACE || true
+    - helm uninstall sshfs -n $NAMESPACE
+    - helm uninstall coordinator -n $NAMESPACE
+    - kubectl delete ns $NAMESPACE
   needs:
-    - job: delete-terraform-dynamic-env
-    - job: delete-db-dynamic-env
     - job: prepare_db
       artifacts: true
   rules:
-    # - if: $CI_COMMIT_MESSAGE =~ /^delenv/
-    #   when: always
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ 
-      when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/ 
-      when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/ && $CI_COMMIT_MESSAGE =~ /^delenv/
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
       when: always
-    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "false"
       when: never
-    - if: $CI_COMMIT_REF_NAME == "test"
+    - if: $CI_COMMIT_REF_NAME == "master"
       when: never
   tags:
     - k8s-devops
 
 
-push-to-github:
-  stage: push-to-github
+delete-db-dynamic-env:
+  stage: clean_db
+  image: $REPO_URL/db-installer:0.1
+  script:
+    - echo "Uninstall db"
+    - echo $CI_COMMIT_MESSAGE
+    - psql -h dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com -p 5432 -U reclada -d postgres -c "DROP DATABASE ${ENV}_reclada_k8s;" || true
+  needs:
+    - job: delete-terraform-dynamic-env
+    - job: prepare_db
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "false"
+      when: never
+    - if: $CI_COMMIT_REF_NAME == "master"
+      when: never
+  tags:
+    - k8s-devops
+
+push_to_github:
+  stage: push_to_github
   image: bitnami/git
   script:
+
     - echo "Run push to github"
+    - mkdir cloned_repo
+    - cd cloned_repo
+    - git clone -b $CI_COMMIT_BRANCH "${CI_REPOSITORY_URL}"
+    - cd $CI_PROJECT_NAME
+    - git config --global user.email "Gitlab@reclada.com"
+    - git config --global user.name "Gitlab runner"
     - git remote set-url origin https://gitlab:${MY_GITHUB_TOKEN}@github.com/reclada/${CI_PROJECT_NAME}.git
     - rm -rf .gitlab-ci.yml
     - rm -rf devops/
-    - git config --global user.email "Gitlab@reclada.com"
-    - git config --global user.name "Gitlab runner"
+
     - git add .
-    - git commit -am "${CI_COMMIT_MESSAGE}"
-    - git remote --verbose
-    - git push origin HEAD:$CI_COMMIT_REF_NAME --force
-  needs:
-    - job: prepare_db
+    - >
+      if [[ -z "$(git status --porcelain)" ]] ; then
+        echo "Nothing to commit. Finished"
+      else
+        echo "Committing and pushing changes..."
+        git commit -a -m "${CI_COMMIT_MESSAGE}"
+        git push
+      fi
+
   tags:
       - k8s-devops
   rules:
-    - if: $CI_COMMIT_REF_NAME == "main"
-      when: always
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "test"
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "true"
       when: never
-    - if: $CI_MERGE_REQUEST_ID =~ /^./ && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
-      when: never
-    - if: $CI_COMMIT_REF_NAME !~ /^dynamic/
-      when: never
-    - if: $CI_COMMIT_REF_NAME =~ /^dynamic/
-      when: never
-    - if: $CI_COMMIT_REF_NAME == "test"
-      when: never
+    - if: $CI_PIPELINE_SOURCE == "web" && $DESTROY == "false"
+      when: manual

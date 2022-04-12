@@ -25,6 +25,7 @@ DECLARE
     list_id             bigint[];
     _for_class           text;
     _uniFields_index_name          text;
+    _attrs              jsonb;
 BEGIN
 
     v_obj_id := data->>'GUID';
@@ -49,7 +50,7 @@ BEGIN
             SET status = reclada_object.get_archive_status_obj_id()
             FROM reclada.object o
                 LEFT JOIN
-                (   SELECT obj_id FROM reclada_object.get_GUID_for_class(_class_name)
+                (   SELECT obj_id FROM reclada_object.get_guid_for_class(_class_name)
                     UNION SELECT _class_uuid WHERE _class_uuid IS NOT NULL
                 ) c ON o.class = c.obj_id
                 WHERE u.id = o.id AND
@@ -93,7 +94,10 @@ BEGIN
         RAISE EXCEPTION 'Could not delete object, no such GUID';
     END IF;
 
-    PERFORM reclada_object.refresh_mv(COALESCE(_class_name_from_uuid, _class_name));
+    PERFORM reclada_object.refresh_mv(class_name)
+    FROM reclada.v_object vo
+    WHERE class_name IN ('jsonschema','User','ObjectStatus')
+        AND id = ANY(list_id);
 
     PERFORM reclada_notification.send_object_notification('delete', data);
 
