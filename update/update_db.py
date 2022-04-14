@@ -55,7 +55,7 @@ class DBHelper:
         clone('db', 'db', self.branch_db)
 
     def get_commit_history(self, need_comment:bool = False):
-        checkout(to = self.branch_db, config = self)
+        checkout(self.branch_db)
         
         res = os.popen(f'git log --pretty=format:"%H" --first-parent fbcc09e9f4f5b03f0f952b95df8b481ec83b6685..').readlines()
         for i in range(len(res)):
@@ -367,9 +367,7 @@ def get_cmd_install_component_db()->str:
                 SELECT dev.finish_install_component();"""
 
 
-def checkout(to:str = None, config:DBHelper=DBHelper()):
-    if to == None:
-        to = config.branch_db
+def checkout(to:str = None):
     cmd = f'git status'
     r = os.popen(cmd).read()
     if r.find('nothing to commit, working tree clean')<0:
