@@ -67,19 +67,19 @@ deploy_db:
     - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/components.git
     
     - echo "Create database for the environment"
-    - cp $CI_PROJECT_DIR/db/update/update_config_template.json $CI_PROJECT_DIR/db/update/update_config.json
       # here can be changes for db update config
       
     - cp $CI_PROJECT_DIR/reclada-runtime/configuration_default.json $CI_PROJECT_DIR/reclada-runtime/configuration.json
     - sed -i "s|\"LAMBDA_NAME\":.*|\"LAMBDA_NAME\":\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
     - sed -i "s|\"LAMBDA_REGION\":.*|\"LAMBDA_REGION\":\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json 
+    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+
         #   - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
         #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
         #   - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
         #   - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
         #   - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
         #   - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
-        #   - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
     - echo "Run the installation script"
     - cd $CI_PROJECT_DIR/components/
     - python installer.py $ENV    
