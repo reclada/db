@@ -9,22 +9,22 @@ stages:
 
 variables:
  ENV:
-   value: "parchitest" # this would be the default value
-   description: "Custom Prefix for environment" # makes this variable appear on the Run Pipeline 
+   value: "parchitest" # default value
+   description: "You need to have *ENV*_reclada_k8s.json in Configurations repository" 
  WEBUI_VERSION:
-   value: "test_parent_child" # this would be the default value
-   description: "Version of Web-UI component" # makes this variable appear on the Run Pipeline    
+   value: "test_parent_child" # default value
+   description: "Version of Web-UI component"
  RUNTIME_VERSION:
-   value: "test_parent_child" # this would be the default value
-   description: "Version of Reclada Runtime component" # makes this variable appear on the Run Pipeline 
+   value: "test_parent_child" # default value
+   description: "Version of Reclada Runtime component" 
  SCINLP_VERSION:
-   value: "test_parent_child" # this would be the default value
-   description: "Version of Scinlp component" # makes this variable appear on the Run Pipeline 
+   value: "test_parent_child" # default value
+   description: "Version of Scinlp component" 
  DESTROY:  
-   value: "false" # this would be the default value
-   description: "If true - complete cleanup" # makes this variable appear on the Run Pipeline
+   value: "false" # default value
+   description: "If true - complete cleanup" 
  RECLADA_REGISTRY:
-   value: "false" # this would be the default value
+   value: "false" # default value
    description: "If true - images pulls from gitlab registry" # makes this variable appear on the Run Pipeline
 
 prepare_db:
@@ -38,17 +38,11 @@ prepare_db:
        echo "REPO_URL=registry.reclada.com/developers/${CI_PROJECT_TITLE}" >> prepare.env
      fi
 
-    - echo $CI_OPEN_MERGE_REQUESTS
-    - echo "DEV_RDS=dev-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
-    - echo "TEST_RDS=test-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
-    - echo "PROD_RDS=prod-reclada-k8s.c9lpgtggzz0d.eu-west-1.rds.amazonaws.com" >> prepare.env
     - echo ENV=$ENV >> prepare.env
     - echo NAMESPACE = reclada-$ENV >> prepare.env
     - echo DBNAME = "${ENV}_reclada_k8s" >> prepare.env 
     - echo LAMBDA_NAME = "s3_get_presigned_url_${ENV}" >> prepare.env
     - echo LAMBDA_REGION = "eu-west-1" >> prepare.env
-    #debug
-    - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
   artifacts:
     reports:
       dotenv: prepare.env
@@ -62,33 +56,32 @@ deploy_db:
   stage: deploy
   image: $REPO_URL/db-installer:0.1
   script:
+    - echo "Cloning configurations from all repos"
+    
+    - cd $CI_PROJECT_DIR/
+    - git clone -b $CI_COMMIT_REF_NAME https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
+    - git clone -b $WEBUI_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/webui.git
+    - git clone -b $RUNTIME_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
+    - git clone -b $SCINLP_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/scinlp.git
+    - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/configurations.git
+    - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/components.git
+    
     - echo "Create database for the environment"
 
-    - cd $CI_PROJECT_DIR/
-    - mkdir cloned_db && cd cloned_db/
-    - git clone -b $CI_COMMIT_REF_NAME https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
-    
-    - cp $CI_PROJECT_DIR/cloned_db/db/update/update_config_template.json $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    - sed -i "s|\"branch_runtime\" :.*|\"branch_runtime\" :\ \"$RUNTIME_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    - sed -i "s|\"branch_SciNLP\" :.*|\"branch_SciNLP\" :\ \"$SCINLP_BRANCH\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/db/update/update_config.json
-    - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
+    - cp $CI_PROJECT_DIR/reclada-runtime/configuration_default.json $CI_PROJECT_DIR/reclada-runtime/configuration.json
+    - sed -i "s|\"LAMBDA_NAME\":.*|\"LAMBDA_NAME\":\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+    - sed -i "s|\"LAMBDA_REGION\":.*|\"LAMBDA_REGION\":\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json 
+        #   - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+        #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+        #   - sed -i "s|\"server\" :.*|\"server\" :\ \"$DEV_RDS\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+        #   - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+        #   - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+        #   - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+        #   - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+    - echo "Run the installation script"
+    - cd $CI_PROJECT_DIR/components/
+    - python installer.py $ENV    
 
-    - cat $CI_PROJECT_DIR/cloned_db/db/update/update_config.json
-
-    - sed -i "s|gitlab.reclada.com|gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com|g" $CI_PROJECT_DIR/cloned_db/db/update/update_db.py
-    - cat $CI_PROJECT_DIR/cloned_db/db/update/update_db.py
-
-    - python --version
-    - psql -V
-    - cd $CI_PROJECT_DIR/cloned_db/db/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/cloned_db/db/update/update_db.py || python $CI_PROJECT_DIR/cloned_db/db/update/install_db.py
   needs:
     - job: prepare_db
       artifacts: true
@@ -163,24 +156,20 @@ deploy-autotest-env:
   script:
     - echo "Run update database in autotest env"
     
-    - cp $CI_PROJECT_DIR/update/update_config_template.json $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"server\" :.*|\"server\" :\ \"$TEST_RDS\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db\" :.*|\"db\" :\ \"autotest_reclada_k8s\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${TEST_RDS}:5432/autotest_reclada_k8s\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"LAMBDA_NAME\" :.*|\"LAMBDA_NAME\" :\ \"s3_get_presigned_url_autotest\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"LAMBDA_REGION\" :.*|\"LAMBDA_REGION\" :\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/update/update_config.json
-    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/update/update_config.json
+    - echo "Cloning configurations from all repos"
+    
+    - cd $CI_PROJECT_DIR/
+    - git clone -b $CI_COMMIT_REF_NAME https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
+    - git clone -b $WEBUI_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/webui.git
+    - git clone -b $RUNTIME_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
+    - git clone -b $SCINLP_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/scinlp.git
+    - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/configurations.git
+    - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/components.git
+    
+    - echo "Create database for the environment"
 
-    - cat $CI_PROJECT_DIR/update/update_config.json
-
-    - sed -i "s|gitlab.reclada.com|gitlab-ci-token:$CI_JOB_TOKEN@gitlab.reclada.com|g" $CI_PROJECT_DIR/update/update_db.py
-    - cat $CI_PROJECT_DIR/update/update_db.py
-
-    - python --version
-    - psql -V
-    - cd $CI_PROJECT_DIR/update && psql -t -P pager=off -c "select max(ver) from dev.ver;" $(python -c "from update_db import db_URI;print(db_URI)") && python $CI_PROJECT_DIR/update/update_db.py || python $CI_PROJECT_DIR/update/install_db.py
+    - cd $CI_PROJECT_DIR/components/
+    - python installer.py $ENV
   needs:
     - job: prepare_db
       artifacts: true
@@ -211,8 +200,8 @@ test-autotest-env:
     # - TEST_PARAMETERS_WEB_BASE_URL = base_url_of_application
     # - TEST_PARAMETERS_WEB_USER = user_for_web_and_rest
     # - TEST_PARAMETERS_WEB_PASSWORD = password_for_web_and_rest
-
-    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/QAAutotests.git
+    - cd $CI_PROJECT_DIR/
+    - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/QAAutotests.git
     - cd QAAutotests
 
     - pytest --version
@@ -240,6 +229,10 @@ test-autotest-env:
       when: always
     - if: $CI_PIPELINE_SOURCE == "web"
       when: never
+    - if: $CI_COMMIT_REF_NAME == "master"
+      when: never
+    - if: $CI_COMMIT_REF_NAME == "test"
+      when: never
 
 delete-terraform-dynamic-env:
   stage: clean
@@ -248,7 +241,7 @@ delete-terraform-dynamic-env:
     - echo "Uninstall lambda/S3"
 
     - cd $CI_PROJECT_DIR/
-    - git clone -b $RUNTIME_VERSION https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
+    - git clone -b $RUNTIME_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
 
     - cd $CI_PROJECT_DIR/reclada-runtime/devops/terraform/
     - sed -i "s|PGPASSWORD|$PG_PASSWORD|g" $CI_PROJECT_DIR/reclada-runtime/devops/terraform/variables.tf
