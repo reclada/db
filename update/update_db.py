@@ -55,7 +55,7 @@ class DBHelper:
         clone('db', 'db', self.branch_db)
 
     def get_commit_history(self, need_comment:bool = False):
-        checkout(self.branch_db)
+        checkout(to = self.branch_db, config = self)
         
         res = os.popen(f'git log --pretty=format:"%H" --first-parent fbcc09e9f4f5b03f0f952b95df8b481ec83b6685..').readlines()
         for i in range(len(res)):
