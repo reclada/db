@@ -67,7 +67,9 @@ deploy_db:
     - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/components.git
     
     - echo "Create database for the environment"
-
+    - cp $CI_PROJECT_DIR/db/update/update_config_template.json $CI_PROJECT_DIR/db/update/update_config.json
+      # here can be changes for db update config
+      
     - cp $CI_PROJECT_DIR/reclada-runtime/configuration_default.json $CI_PROJECT_DIR/reclada-runtime/configuration.json
     - sed -i "s|\"LAMBDA_NAME\":.*|\"LAMBDA_NAME\":\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
     - sed -i "s|\"LAMBDA_REGION\":.*|\"LAMBDA_REGION\":\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json 
