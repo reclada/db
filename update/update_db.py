@@ -448,7 +448,8 @@ if __name__ == "__main__":
                 print(f'commit: {commit}\tcommit_version: {commit_v}')
                 os.chdir('..')
                 os.chdir('..')
-                shutil.copyfile('update_config.json', os.path.join('db','update','update_config.json'))
+                if os.path.exists('update_config.json'):
+                    shutil.copyfile('update_config.json', os.path.join('db','update','update_config.json'))
                 os.chdir(os.path.join('db','update'))
                 os.system('python create_up.sql.py')
                 db_helper.run_file('up.sql')

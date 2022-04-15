@@ -1,6 +1,11 @@
-from update_db import get_cmd_install_component_db
+from update_db import get_cmd_install_component_db, CURRENT_DIR
+import os
 
 if __name__ == "__main__":
+
+    if not os.path.exists('up_script.sql'):
+        os.chdir(CURRENT_DIR)
+
     try:
         upgrade_script = ''
         version = -1
@@ -31,3 +36,4 @@ if __name__ == "__main__":
 
     except Exception as e:
         input(str(e))
+
