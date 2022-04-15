@@ -80,6 +80,13 @@ deploy_db:
         #   - sed -i "s|\"db\" :.*|\"db\" :\ \"$DBNAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
         #   - sed -i "s|\"db_user\" :.*|\"db_user\" :\ \"reclada\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
         #   - sed -i "s|\"db_URI\" :.*|\"db_URI\" :\ \"postgresql://reclada:${PGPASSWORD}@${DEV_RDS}:5432/${DBNAME}\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+    
+    - echo "Runtime configuration:"
+    - cat $CI_PROJECT_DIR/reclada-runtime/configuration.json
+
+    - echo "DB configuration:"
+    - cat $CI_PROJECT_DIR/configurations/$ENV.json
+    
     - echo "Run the installation script"
     - cd $CI_PROJECT_DIR/components/
     - python installer.py $ENV    
