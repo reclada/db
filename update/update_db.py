@@ -7,12 +7,12 @@ import urllib.parse
 import uuid
 import shutil
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MAX_VERSION = 999999999
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class DBHelper:
 
-    def __init__(self, path = CURRENT_DIR, db_uri = ''):
+    def __init__(self, path = '', db_uri = ''):
         
         self.branch_db = ''
         self.branch_QAAutotests = ''
@@ -20,7 +20,8 @@ class DBHelper:
         self.config_version = 'latest'
         self.quick_install = True
         self.downgrade_test = True
-
+        if path == '':
+            path = CURRENT_DIR
         os.chdir(path)
         if db_uri != '':
             self.db_uri = db_uri
@@ -455,7 +456,11 @@ if __name__ == "__main__":
 
     
     if len(sys.argv) > 1:
-        db_helper = DBHelper(db_uri = sys.argv[1])
+        db_uri = sys.argv[1]
+        path = ''
+        if len(sys.argv) > 2:
+            path = sys.argv[2]
+        db_helper = DBHelper(db_uri = db_uri, path = path)
     else:
         db_helper = DBHelper() # read update_config.json
 
