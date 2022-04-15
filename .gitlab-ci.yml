@@ -10,7 +10,7 @@ stages:
 variables:
  ENV:
    value: "parchitest" # default value
-   description: "You need to have *ENV*_reclada_k8s.json in Configurations repository" 
+   description: "You need to have *ENV*.json in Configurations repository" 
  WEBUI_VERSION:
    value: "test_parent_child" # default value
    description: "Version of Web-UI component"
@@ -60,7 +60,7 @@ deploy_db:
     
     - cd $CI_PROJECT_DIR/
     - git clone -b $CI_COMMIT_REF_NAME https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
-    - git clone -b $WEBUI_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/webui.git
+   # - git clone -b $WEBUI_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/webui.git
     - git clone -b $RUNTIME_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
     - git clone -b $SCINLP_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/scinlp.git
     - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/configurations.git
@@ -72,7 +72,7 @@ deploy_db:
     - cp $CI_PROJECT_DIR/reclada-runtime/configuration_default.json $CI_PROJECT_DIR/reclada-runtime/configuration.json
     - sed -i "s|\"LAMBDA_NAME\":.*|\"LAMBDA_NAME\":\ \"$LAMBDA_NAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
     - sed -i "s|\"LAMBDA_REGION\":.*|\"LAMBDA_REGION\":\ \"$LAMBDA_REGION\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json 
-    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
+    - sed -i "s|\"ENVIRONMENT_NAME\" :.*|\"ENVIRONMENT_NAME\" :\ \"K8S\"|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
 
         #   - sed -i "s|\"branch_db\" :.*|\"branch_db\" :\ \"$CI_COMMIT_REF_NAME\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
         #   - sed -i "s|\"branch_QAAutotests\" :.*|\"branch_QAAutotests\" :\ \"$QA_BRANCH\",|g" $CI_PROJECT_DIR/reclada-runtime/configuration.json
