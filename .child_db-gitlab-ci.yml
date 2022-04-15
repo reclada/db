@@ -33,10 +33,10 @@ deploy_db:
     
     - cd $CI_PROJECT_DIR/
     - mkdir cloned_repos && cd cloned_repos/
-    - git clone -b $CI_COMMIT_REF_NAME https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
-   # - git clone -b $WEBUI_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/webui.git
-    - git clone -b $RUNTIME_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
-    - git clone -b $SCINLP_VERSION https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/scinlp.git
+    - git clone -b $DB_BRANCH https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/db.git
+   # - git clone -b $WEBUI_BRANCH https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/webui.git
+    - git clone -b $RUNTIME_BRANCH https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/reclada-runtime.git
+    - git clone -b $SCINLP_BRANCH https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/scinlp.git
     - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/configurations.git
     - git clone https://gitlab-deploy-token:${DEPLOY_TOKEN}@gitlab.reclada.com/developers/components.git
     
