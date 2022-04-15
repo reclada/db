@@ -114,7 +114,7 @@ trigger_runtime:
   trigger:
     include:
       - project: 'developers/reclada-runtime'
-        ref: '$RUNTIME_VERSION'
+        ref: '$RUNTIME_BRANCH'
         file: '.child_runtime-gitlab-ci.yml' 
     strategy: depend
   rules:
@@ -131,7 +131,7 @@ trigger_scinlp:
   trigger:
     include:
       - project: 'developers/scinlp'
-        ref: '$SCINLP_VERSION'
+        ref: '$SCINLP_BRANCH'
         file: '.child_scinlp-gitlab-ci.yml' 
     strategy: depend
   rules:
@@ -148,7 +148,7 @@ trigger_webui:
   trigger:
     include:
       - project: 'developers/webui'
-        ref: '$WEBUI_VERSION'
+        ref: '$WEBUI_BRANCH'
         file: '.child_webui-gitlab-ci.yml' 
     strategy: depend
   needs:
