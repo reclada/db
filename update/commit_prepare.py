@@ -2,6 +2,7 @@ from update_db import get_version_from_commit
 from update_db import DBHelper
 from update_db import rmdir
 from update_db import run_test
+from update_db import create_up
 
 from json.decoder import JSONDecodeError
 import time
@@ -11,10 +12,8 @@ import json
 
 
 def upgrade(db_helper: DBHelper):
-    res = os.popen('python create_up.sql.py').read()
-
-    if res != 'Done\n':
-        raise Exception(f'create_up.sql.py error: {res}')
+    
+    create_up()
 
     db_helper.run_file('up.sql')
 

@@ -423,6 +423,33 @@ def run_test(branch_QAAutotests:str):
     os.chdir('..')
     rmdir('QAAutotests')
 
+def create_up():
+    upgrade_script = ''
+    version = -1
+    with open("up_script.sql",encoding = 'utf-8') as f:
+        t = f.readline()
+        version = int(t.replace("-- version =",''))
+        upgrade_script = f.read()
+
+    if version == -1:
+        print("version not found")
+        print('add first line "-- version = <number>" in "up_script.sql"')
+    
+    else:
+        template = ''
+        with open("upgrade_script_template.sql",encoding = 'utf-8') as f:
+            template = f.read()
+
+        up = template.replace('/*#@#@#upgrade_script#@#@#*/',upgrade_script)
+        up = up.replace('/*#@#@#version#@#@#*/',str(version))
+
+        ucs = get_cmd_install_component_db()
+        up = up.replace('/*#@#@#upgrade_component_script#@#@#*/', ucs)
+
+        with open("up.sql",'w', encoding = "utf-8") as f:
+            f.write(up)
+
+        print('Done')
 
 if __name__ == "__main__":
 
@@ -451,7 +478,7 @@ if __name__ == "__main__":
                 if os.path.exists('update_config.json'):
                     shutil.copyfile('update_config.json', os.path.join('db','update','update_config.json'))
                 os.chdir(os.path.join('db','update'))
-                os.system('python create_up.sql.py')
+                create_up()
                 db_helper.run_file('up.sql')
                 cur_ver_db+=1
             os.chdir('..')
