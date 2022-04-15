@@ -273,7 +273,7 @@ DECLARE
 BEGIN
 
     perform reclada.validate_json(data, _f_name);
-
+    raise notice '%',data;
     if ver = '1' then
         tran_id := (data->>'transactionID')::bigint;
         _class := data->>'class';
@@ -286,24 +286,32 @@ BEGIN
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
         (order_by_jsonb = 'null'::jsonb) OR
-        (order_by_jsonb = '[]'::jsonb)) then
+        (order_by_jsonb = '[]'::jsonb)) THEN
         
-        select (vod.table #> '{orderRow}') as orderRow
-        	from reclada.v_object_display vod
-        	where vod.class_guid = (reclada_object.get_schema(_class)#>>'{GUID}')::uuid
-        	into _order_row;
-        if _order_row is not null then     
-        	select '[' || string_agg(('{"field": "' || obf.field || '", ' || '"order": ' || obf.order_by || '}'), ', ') || ']'
-			from(
- 	 			 select je.value as order_by, 
- 	 			 		split_part(je.key, ':', 1) as field
- 	 			 	from jsonb_array_elements(_order_row) jae
- 	 			 	cross join jsonb_each(jae.value) je
- 	 		) obf
-				into order_by_jsonb;
-    	ELSE
-        	order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
-        end if;
+        SELECT (vod.table #> '{orderRow}') AS orderRow
+            FROM reclada.v_object_display vod
+            WHERE vod.class_guid = (reclada_object.get_schema (_class)#>>'{GUID}')::uuid
+            INTO _order_row;
+        IF _order_row IS NOT NULL THEN     
+            SELECT jsonb_agg (
+                        jsonb_build_object(
+                                            'field',    replace(
+                                                            replace(obf.field::text,'{',''),
+                                                                '}',''
+                                                        ), 
+                                            'order', obf.order_by
+                                        )
+                            )
+                FROM(
+                    SELECT  je.value AS order_by, 
+                            split_part (je.key, ':', 1) AS field
+                        FROM jsonb_array_elements (_order_row) jae
+                        CROSS JOIN jsonb_each (jae.value) je
+                    ) obf
+                INTO order_by_jsonb;
+        ELSE
+            order_by_jsonb := '[{"field": "id", "order": "ASC"}]'::jsonb;
+        END IF;
     END IF;
     SELECT string_agg(
         format(
@@ -430,19 +438,26 @@ BEGIN
                 'SELECT to_jsonb(array_agg(t.data))
                     FROM 
                     (
-                        SELECT obj.data
-                            FROM '
+                        SELECT '
+                        || CASE
+                            WHEN ver = '2'
+                                THEN 'obj.data '
+                            ELSE 'reclada.jsonb_merge(obj.data, obj.default_value) AS data
+                                 '
+                        END
+                            ||
+                            'FROM '
                             || _from
                             || ' 
                             ORDER BY #@#@#orderby#@#@#'
-                            || case 
-                                when ver = '2' 
-                                    then ''
-                                else
+                            || CASE
+                                WHEN ver = '2'
+                                    THEN ''
+                                ELSE
                                 '
                                 OFFSET #@#@#offset#@#@#
                                 LIMIT #@#@#limit#@#@#'
-                            end
+                            END
                             || '
                     ) AS t';
     _exec_text := REPLACE(_exec_text, '#@#@#orderby#@#@#'  , order_by          );
@@ -526,6 +541,7 @@ BEGIN
             end if;
         end if;
 
+
         _exec_text := '
             SELECT  COUNT(1),
                     TO_CHAR(
@@ -572,6 +588,7 @@ BEGIN
     END IF;
 
     RETURN res;
+
 
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

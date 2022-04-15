@@ -5,7 +5,7 @@ objects_schemas AS (
     SELECT  obj.id,
             obj.GUID AS obj_id,
             obj.attributes->>'forClass' AS for_class,
-            (attributes->>'version')::bigint AS version,
+            (obj.attributes->>'version')::bigint AS version,
             obj.created_time,
             obj.attributes,
             obj.status
@@ -20,7 +20,7 @@ paths_to_default AS
         FROM objects_schemas o
         CROSS JOIN LATERAL jsonb_each(o.attributes) row_attrs_base
         WHERE jsonb_typeof(row_attrs_base.value) = 'object'
-            AND attributes::text LIKE '%default%'
+            AND o.attributes::text LIKE '%default%'
     UNION ALL
     SELECT   p.path_head || row_attrs_rec.key AS path_head, -- {schema,properties,nested_1,nested_2,nested_3}
              row_attrs_rec.value AS path_tail, ---{"type": "integer", "default": 100}
@@ -31,35 +31,38 @@ paths_to_default AS
 ),
 tmp AS
 (
-    SELECT
-            format('"%s":%s',
-                  (t.path_head[array_position(t.path_head, 'properties') + 1 : ])::text, -- {schema,properties,nested_1,nested_2,nested_3} -> {nested_1,nested_2,nested_3}
-                  t.path_tail->'default'
-            )
+    SELECT   reclada.jsonb_deep_set(
+                '{}'::jsonb,
+                t.path_head[array_position(t.path_head, 'properties') + 1 : ],
+                t.path_tail->'default')
              AS default_jsonb,
-            t.obj_id
+             t.obj_id
         FROM paths_to_default t
         WHERE t.path_tail->'default' IS NOT NULL
 ),
 default_field AS
 (
-    SELECT   format('{%s}', string_agg(default_jsonb, ','))::jsonb AS default_value,
+    SELECT   format('{"attributes": %s}',
+                    reclada.jsonb_object_agg(default_jsonb))::jsonb
+             AS default_value,
              obj_id
         FROM tmp
         GROUP BY obj_id
 )
+
 SELECT
         obj.id,
         obj.obj_id,
-        obj.attributes->>'forClass' AS for_class,
-        (attributes->>'version')::bigint AS version,
+        obj.for_class,
+        obj.version,
         obj.created_time,
         obj.attributes,
         obj.status,
-        default_value
+        def.default_value
     FROM objects_schemas obj
         LEFT JOIN default_field def
         ON def.obj_id = obj.obj_id;
+
 
 ANALYZE reclada.v_class_lite;
 
