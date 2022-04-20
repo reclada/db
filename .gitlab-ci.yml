@@ -338,21 +338,20 @@ push_to_github:
     - git clone -b $CI_COMMIT_BRANCH "${CI_REPOSITORY_URL}"
     - cd $CI_PROJECT_NAME
     - git config --global user.email "Gitlab@reclada.com"
-    - git config --global user.name "Gitlab runner"
+    - git config --global user.name "Gitlab"
     - git remote set-url origin https://gitlab:${MY_GITHUB_TOKEN}@github.com/reclada/${CI_PROJECT_NAME}.git
     - rm -rf .gitlab-ci.yml
-    - rm -rf devops/
-
+    - rm -rf .child_db-gitlab-ci.yml
     - git add .
     - >
       if [[ -z "$(git status --porcelain)" ]] ; then
         echo "Nothing to commit. Finished"
       else
         echo "Committing and pushing changes..."
-        git commit -a -m "${CI_COMMIT_MESSAGE}"
-        git push
+        git commit -am "${CI_COMMIT_MESSAGE}"
+        git remote --verbose
+        git push origin HEAD:$CI_COMMIT_REF_NAME
       fi
-
   tags:
       - k8s-devops
   rules:
