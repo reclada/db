@@ -350,7 +350,7 @@ push_to_github:
         echo "Committing and pushing changes..."
         git commit -am "${CI_COMMIT_MESSAGE}"
         git remote --verbose
-        git push origin HEAD:$CI_COMMIT_REF_NAME
+        git push origin HEAD:$CI_COMMIT_REF_NAME --force
       fi
   tags:
       - k8s-devops
