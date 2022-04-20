@@ -310,12 +310,25 @@ class DBHelper:
 def clone(component_name:str, repository:str, branch:str='', debug_db=False):
     # folder: update
     rmdir(component_name)
+    os.chdir('..') #folder: db
+    os.chdir('..') #folder: repos
 
     if not (os.path.exists(component_name) and os.path.isdir(component_name)):
         os.system(f'git clone {repository}')
         os.chdir(component_name)
         if branch != '':
             res = checkout(branch)
+        # else use default branch
+        os.chdir('..')
+
+    folder_source = component_name
+    path_dest = os.path.join('db','update',component_name)
+
+    shutil.copytree(folder_source, path_dest)
+
+    os.chdir(path_dest)
+    
+    #folder: repos/db/update/component_name
 
 def get_current_remote_url()->str:
     cmd = "git config --get remote.origin.url"
