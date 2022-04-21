@@ -321,13 +321,21 @@ def clone(component_name:str, repository:str, branch:str='', debug_db=False):
         # else use default branch
         os.chdir('..')
 
-    folder_source = component_name
-    path_dest = os.path.join('db','update',component_name)
-
-    shutil.copytree(folder_source, path_dest)
-
-    os.chdir(path_dest)
+    if component_name != 'db':
+        folder_source = component_name
     
+        path_dest = os.path.join('db','update',component_name)
+
+        shutil.copytree(folder_source, path_dest)
+
+        os.chdir(path_dest)
+    else:
+        os.chdir(os.path.join('db','update'))
+        os.system(f'git clone {repository}')
+        os.chdir(component_name)
+        if branch != '':
+            res = checkout(branch)
+
     #folder: repos/db/update/component_name
 
 def get_current_remote_url()->str:

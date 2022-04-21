@@ -20,3 +20,6 @@ update/downgrade_dump.sql
 update/darft.sql
 configuration.json
 dev.session.sql
+autotests/__pycache__/
+autotests/lib/__pycache__/
+autotests/tests/__pycache__/
