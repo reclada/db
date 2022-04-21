@@ -200,11 +200,11 @@ BEGIN
     IF ( _class_name = 'jsonschema' AND jsonb_typeof(_attrs->'dupChecking') = 'array') THEN
         PERFORM reclada_object.refresh_mv('uniFields');
     END IF; 
-                  
-    select v.data 
+
+    SELECT reclada.jsonb_merge(v.data, v.default_value) AS data
         FROM reclada.v_active_object v
             WHERE v.obj_id = _obj_id
-        into _data;
+        INTO _data;
     PERFORM reclada_notification.send_object_notification('update', _data);
     RETURN _data;
 END;

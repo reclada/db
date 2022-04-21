@@ -53,7 +53,7 @@ update tmp set str = drp.v || scr.v
                             from pg_trigger t
                                 join pg_class c on c.oid = t.tgrelid
                                 join pg_namespace n on n.oid = c.relnamespace
-                            where t.tgname = 'datasource_insert_trigger') o)
+                            where t.tgname = obj.nam) o)
                 else 'DROP '||obj.typ|| ' IF EXISTS '|| obj.nam || ' ;' || E'\n'
                 end as v
     )  drp ON TRUE
