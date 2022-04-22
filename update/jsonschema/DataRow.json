@@ -1,6 +1,7 @@
 {
     "forClass": "DataRow",
     "parentField": "table",
+    "parentList": [],
     "schema": {
         "properties": {
             "row": {
