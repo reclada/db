@@ -1,9 +1,9 @@
 DROP FUNCTION IF EXISTS reclada_revision.create;
 CREATE OR REPLACE FUNCTION reclada_revision.create
 (
-    userid varchar, 
-    branch uuid, 
-    obj uuid,
+    userid  varchar, 
+    branch  uuid, 
+    obj     uuid,
     tran_id bigint default reclada.get_transaction_id()
 )
 RETURNS uuid AS $$

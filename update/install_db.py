@@ -1,5 +1,16 @@
-from update_db import clone_db, get_commit_history,run_object_create,install_components, get_version_from_commit, rmdir, run_file, recreate_db 
-from update_db import quick_install,version,config_version, json_schema_install
+from update_db import run_cmd_scalar
+from update_db import clone_db
+from update_db import get_commit_history
+from update_db import install_components
+from update_db import get_version_from_commit
+from update_db import rmdir
+from update_db import run_file
+from update_db import recreate_db
+from update_db import quick_install
+from update_db import version
+from update_db import config_version
+from update_db import json_schema_install
+from update_db import install_component_db
 
 
 import os
@@ -31,6 +42,7 @@ def db_install():
             use_dump = True
             os.chdir('update')
             run_file('install_db.sql')
+            install_component_db()
             os.chdir('..')
 
         need_update = not((max_dump_commit == config_version - 1) 
@@ -58,5 +70,4 @@ if __name__ == "__main__":
     if need_update:
         os.system('python update_db.py')
 
-    if run_object_create:
-        install_components()
+    install_components()
