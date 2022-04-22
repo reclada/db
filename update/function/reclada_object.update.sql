@@ -195,6 +195,9 @@ BEGIN
             ) as tt
                 on tt.id = v.id
 	            WHERE v.obj_id = _obj_id;
+
+    PERFORM reclada.update_unique_object(ARRAY[_obj_id]);
+
     PERFORM reclada_object.datasource_insert
             (
                 _class_name,

@@ -1,4 +1,4 @@
-drop VIEW if EXISTS reclada.v_filter_available_operator;
+--DROP VIEW if EXISTS reclada.v_filter_available_operator;
 CREATE OR REPLACE VIEW reclada.v_filter_available_operator
 AS
     SELECT       ' = ' AS operator  , 'JSONB' AS input_type         , 'BOOL' AS output_type, NULL as inner_operator
@@ -51,7 +51,5 @@ AS
     UNION SELECT ' DOY/BETWEEN '    , NULL                          , NULL      , ' AND ' -- The day of the year (1 - 365/366)
     UNION SELECT ' Q/BETWEEN '      , NULL                          , NULL      , ' AND ' -- The quarter of the year (1 - 4) that the date is in
     UNION SELECT ' W/BETWEEN '      , NULL                          , NULL      , ' AND ' -- week
-
-
 ;
     
