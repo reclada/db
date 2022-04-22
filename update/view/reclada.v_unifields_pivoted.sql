@@ -14,7 +14,7 @@ SELECT
     MAX(CASE WHEN field_number = 6 THEN unifield END) AS f6,
     MAX(CASE WHEN field_number = 7 THEN unifield END) AS f7,
     MAX(CASE WHEN field_number = 8 THEN unifield END) AS f8
-FROM v_object_unifields vou
+FROM reclada.v_object_unifields vou
 WHERE is_mandatory
 GROUP BY class_uuid, uni_number, dup_behavior,is_cascade,copy_field
 ORDER BY class_uuid, uni_number, dup_behavior;
