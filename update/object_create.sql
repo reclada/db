@@ -747,3 +747,132 @@ SELECT reclada_object.create_subclass('{
 
 --} 16 ObjectDisplay
 
+--{ 17 View
+SELECT reclada_object.create_subclass('{
+        "GUID":"db09dcaa-fc90-4760-af68-f855cbe9c2b0",
+        "class": "RecladaObject",
+        "attributes": {
+            "newClass": "View",
+            "properties": {
+                "name": {"type": "string"},
+                "query": {"type": "string"}
+            },
+            "required": ["name","query"]
+        }
+    }'::jsonb);
+--} 17 View
+
+--{ 18 Function
+SELECT reclada_object.create_subclass('{
+        "GUID":"db0d8ccd-a06e-46c3-9836-a8b4b68f3cd4",
+        "class": "RecladaObject",
+        "attributes": {
+            "newClass": "Function",
+            "$defs": {
+                "declare":{
+                    "type":"array",
+                    "items": {
+                        "type": "object",
+                        "properties":{
+                            "name":{"type": "string"},
+                            "type":{
+                                "type": "string",
+                                "enum": [
+                                    "uuid" ,
+                                    "jsonb",
+                                    "text" ,
+                                    "bigint"
+                                ]
+                            }
+                        },
+                        "required": ["name","type"]
+                    }
+                }
+            },
+            "properties": {
+                "name": {"type": "string"},
+                "parameters": { "$ref": "#/$defs/declare" },
+                "returns": {
+                    "type": "string",
+                    "enum": [
+                        "void",
+                        "uuid" ,
+                        "jsonb",
+                        "text" ,
+                        "bigint"
+                    ]
+                },
+                "declare": { "$ref": "#/$defs/declare" },
+                "body": {"type": "string"}
+            },
+            "required": ["name","returns","body"]
+        }
+    }'::jsonb);
+--} 18 Function
+
+--{ 19 DBTriggerFunction
+SELECT reclada_object.create_subclass('{
+        "GUID":"db0635d4-33be-4b5c-8af4-c90038665b7d",
+        "class": "Function",
+        "attributes": {
+            "newClass": "DBTriggerFunction",
+            "properties": {
+                "parameters": {
+                    "type":"array",
+                    "minItems": 1,
+                    "maxItems": 1,
+                    "items": {
+                        "type": "object",
+                        "properties":{
+                            "name":{
+                                "type": "string", 
+                                "enum": ["object_id"]
+                            },
+                            "type":{
+                                "type": "string",
+                                "enum": ["bigint"]
+                            }
+                        },
+                        "required": ["name","type"]
+                    }
+                },
+                "returns": {
+                    "type": "string",
+                    "enum": [
+                        "void"]
+                }
+            },
+            "required": ["parameters"]
+        }
+    }'::jsonb);
+--} 19 DBTriggerFunction
+
+
+--{ 20 Trigger
+SELECT reclada_object.create_subclass('{
+    "GUID":"db05bc71-4f3c-4276-9b97-c9e83f21c813",
+    "class": "RecladaObject",
+    "attributes": {
+        "newClass": "DBTrigger",
+        "properties": {
+            "name": {"type": "string"},
+            "action": {
+                "type": "string",
+                "enum": [
+                    "insert",
+                    "delete"
+                ]
+            },
+            "forClasses": {
+                "type": "array",
+                "items": {"type": "string"}
+            },
+            "function":{
+                "type": "string",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"
+            }
+        },
+        "required": ["name","action","forClasses","function"]
+    }
+ }'::jsonb);
+--} 20 Trigger
