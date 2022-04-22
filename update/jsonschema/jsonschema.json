@@ -1,7 +1,6 @@
 {
     "forClass": "jsonschema",
     "parentList": [],
-    "revision": "aacd64a4-7585-456f-8546-37da218b5481",
     "schema": {
         "properties": {
             "forClass": {

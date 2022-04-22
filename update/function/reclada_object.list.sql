@@ -261,14 +261,15 @@ DECLARE
     number_of_objects   int;
     objects             jsonb;
     res                 jsonb;
-    _exec_text           text;
-    _pre_query           text;
+    _exec_text          text;
+    _pre_query          text;
     _from               text;
     class_uuid          uuid;
     last_change         text;
     tran_id             bigint;
-    _filter             JSONB;
-    _object_display     JSONB;
+    _filter             jsonb;
+    _object_display     jsonb;
+    _order_row          jsonb;
 BEGIN
 
     perform reclada.validate_json(data, _f_name);
@@ -285,8 +286,24 @@ BEGIN
     order_by_jsonb := data->'orderBy';
     IF ((order_by_jsonb IS NULL) OR
         (order_by_jsonb = 'null'::jsonb) OR
-        (order_by_jsonb = '[]'::jsonb)) THEN
-        order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
+        (order_by_jsonb = '[]'::jsonb)) then
+        
+        select (vod.table #> '{orderRow}') as orderRow
+        	from reclada.v_object_display vod
+        	where vod.class_guid = (reclada_object.get_schema(_class)#>>'{GUID}')::uuid
+        	into _order_row;
+        if _order_row is not null then     
+        	select '[' || string_agg(('{"field": "' || obf.field || '", ' || '"order": ' || obf.order_by || '}'), ', ') || ']'
+			from(
+ 	 			 select je.value as order_by, 
+ 	 			 		split_part(je.key, ':', 1) as field
+ 	 			 	from jsonb_array_elements(_order_row) jae
+ 	 			 	cross join jsonb_each(jae.value) je
+ 	 		) obf
+				into order_by_jsonb;
+    	ELSE
+        	order_by_jsonb := '[{"field": "GUID", "order": "ASC"}]'::jsonb;
+        end if;
     END IF;
     SELECT string_agg(
         format(
@@ -398,7 +415,10 @@ BEGIN
     IF ver = '2' THEN
         _pre_query := (select val from reclada.v_ui_active_object);
         _from := 'res AS obj';
-        _pre_query := REPLACE(_pre_query,'#@#@#where#@#@#', query_conditions  );
+        _pre_query := REPLACE(_pre_query, '#@#@#where#@#@#'  , query_conditions);
+        _pre_query := REPLACE(_pre_query, '#@#@#orderby#@#@#', order_by        );
+        order_by :=  REPLACE(order_by, '{', '{"{');
+        order_by :=  REPLACE(order_by, '}', '}"}'); --obj.data#>'{some_field}'  -->  obj.data#>'{"{some_field}"}'
 
     ELSE
         _pre_query := '';
@@ -429,6 +449,7 @@ BEGIN
     _exec_text := REPLACE(_exec_text, '#@#@#offset#@#@#'   , offset_           );
     _exec_text := REPLACE(_exec_text, '#@#@#limit#@#@#'    , limit_            );
     -- RAISE NOTICE 'conds: %', _exec_text;
+
     EXECUTE _exec_text
         INTO objects;
     objects := coalesce(objects,'[]'::jsonb);
