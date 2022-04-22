@@ -1,5 +1,5 @@
-drop VIEW if EXISTS reclada.v_filter_avaliable_operator;
-CREATE OR REPLACE VIEW reclada.v_filter_avaliable_operator
+drop VIEW if EXISTS reclada.v_filter_available_operator;
+CREATE OR REPLACE VIEW reclada.v_filter_available_operator
 AS
     SELECT       ' = ' AS operator  , 'JSONB' AS input_type         , 'BOOL' AS output_type, NULL as inner_operator
     UNION SELECT ' LIKE '           , 'TEXT'                        , 'BOOL'    , NULL    
@@ -19,6 +19,7 @@ AS
     UNION SELECT ' OR '             , 'BOOL'                        , 'BOOL'    , NULL    
     UNION SELECT ' NOT '            , 'BOOL'                        , 'BOOL'    , NULL          
     UNION SELECT ' XOR '            , 'BOOL'                        , 'BOOL'    , NULL      -- XOR
+    UNION SELECT ' OPERATOR(reclada.##) ', 'BOOL'                   , 'BOOL'    , NULL      -- XOR
     UNION SELECT ' IS '             , 'JSONB'                       , 'BOOL'    , NULL    
     UNION SELECT ' IS NOT '         , 'JSONB'                       , 'BOOL'    , NULL     
     UNION SELECT ' IN '             , 'JSONB'                       , 'BOOL'    , ' , '   

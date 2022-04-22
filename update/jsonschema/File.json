@@ -1,5 +1,21 @@
 {
+    "dupBehavior": "Replace",
+    "dupChecking": [
+        {
+            "isMandatory": true,
+            "uniFields": [
+                "uri"
+            ]
+        },
+        {
+            "isMandatory": true,
+            "uniFields": [
+                "checksum"
+            ]
+        }
+    ],
     "forClass": "File",
+    "isCascade": true,
     "schema": {
         "properties": {
             "checksum": {

@@ -22,6 +22,7 @@ DECLARE
     user_info     jsonb;
     result        jsonb;
     _need_flat    bool := false;
+    _f_name TEXT = 'api.reclada_object_update';
 
 BEGIN
 
@@ -33,7 +34,10 @@ BEGIN
         end;
 
     IF (class IS NULL) THEN
-        RAISE EXCEPTION 'reclada object class not specified';
+        perform reclada.raise_exception(
+                        'reclada object class not specified',
+                        _f_name
+                    ); 
     END IF;
 
     objid := CASE ver
@@ -50,7 +54,10 @@ BEGIN
     data := data - 'accessToken';
 
     IF (NOT(reclada_user.is_allowed(user_info, 'update', class))) THEN
-        RAISE EXCEPTION 'Insufficient permissions: user is not allowed to % %', 'update', class;
+        perform reclada.raise_exception(
+                        format('Insufficient permissions: user is not allowed to update %s', class),
+                        _f_name
+                    );
     END IF;
 
     if ver = '2' then
@@ -69,7 +76,7 @@ BEGIN
                     j.key   , 
                     j.value , 
                     o.data
-                from reclada.v_object o
+                from reclada.v_active_object o -- TODO: update archive object
                 join j
                     on true
                     where o.obj_id = 
@@ -80,11 +87,11 @@ BEGIN
         ),
         r as 
         (
-            select id,key,value,jsonb_set(t.data,t.key::text[],t.value) as u, t.data
+            select id,key,value,reclada.jsonb_deep_set(t.data,t.key::text[],t.value) as u, t.data
                 from t
                     where id = 1
             union
-            select t.id,t.key,t.value,jsonb_set(r.u   ,t.key::text[],t.value) as u, t.data
+            select t.id,t.key,t.value,reclada.jsonb_deep_set(r.u   ,t.key::text[],t.value) as u, t.data
                 from r
                 JOIN t
                     on t.id-1 = r.id
@@ -93,6 +100,14 @@ BEGIN
             from r
                 where id = (select max(j.id) from j)
             INTO data;
+
+        if data is null then
+            perform reclada.raise_exception(
+                        'GUID not found in database',
+                        _f_name
+                    );
+        end if;
+        
     end if;
     -- raise notice '%', data#>>'{}';
     SELECT reclada_object.update(data, user_info) INTO result;
