@@ -175,36 +175,36 @@ DROP VIEW IF EXISTS reclada.v_object_display;
 CREATE INDEX relationship_type_subject_object_index ON reclada.object USING btree ((attributes->>'type'), ((attributes->>'subject')::uuid), status, ((attributes->>'object')::uuid))
 WHERE attributes->>'subject' IS NOT NULL AND attributes->>'object' IS NOT NULL;
 
-DROP INDEX parent_guid_index;
+DROP INDEX IF EXISTS parent_guid_index;
 CREATE INDEX parent_guid_index ON reclada.object USING hash (parent_guid)
 WHERE parent_guid IS NOT NULL;
 
-DROP INDEX document_fileguid_index;
+DROP INDEX IF EXISTS document_fileguid_index;
 CREATE INDEX document_fileguid_index ON reclada.object USING btree ((attributes ->> 'fileGUID'))
 WHERE attributes ->> 'fileGUID' IS NOT NULL;
 
-DROP INDEX file_uri_index;
+DROP INDEX IF EXISTS file_uri_index;
 
-DROP INDEX job_status_index;
+DROP INDEX IF EXISTS job_status_index;
 CREATE INDEX job_status_index ON reclada.object USING btree ((attributes ->> 'status'))
 WHERE attributes ->> 'status' IS NOT NULL;
 
-DROP INDEX revision_index;
+DROP INDEX IF EXISTS revision_index;
 CREATE INDEX revision_index ON reclada.object USING btree ((attributes ->> 'revision'))
 WHERE attributes ->> 'revision' IS NOT NULL;
 
-DROP INDEX runner_type_index;
+DROP INDEX IF EXISTS runner_type_index;
 CREATE INDEX runner_type_index ON reclada.object USING btree ((attributes ->> 'type'))
 WHERE attributes ->> 'type' IS NOT NULL;
 
-DROP INDEX guid_index;
+DROP INDEX IF EXISTS guid_index;
 CREATE INDEX guid_index ON reclada.object USING hash (guid);
 
-DROP INDEX checksum_index_;
+DROP INDEX IF EXISTS checksum_index_;
 CREATE INDEX checksum_index_ ON reclada.object USING hash ((attributes ->> 'checksum'))
 WHERE attributes ->> 'checksum' IS NOT NULL;
 
-DROP INDEX uri_index_;
+DROP INDEX IF EXISTS uri_index_;
 CREATE INDEX uri_index_ ON reclada.object USING hash ((attributes ->> 'uri'))
 WHERE attributes ->> 'uri' IS NOT NULL;
 
