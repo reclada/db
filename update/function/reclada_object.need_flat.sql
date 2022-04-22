@@ -11,7 +11,7 @@ RETURNS bool AS $$
         (
             select true as r
                 from reclada.v_object_display d
-                join reclada_object.get_GUID_for_class(_class_name) tf
+                join reclada_object.get_guid_for_class(_class_name) tf
                     on tf.obj_id = d.class_guid
                 where d.table is not null
         )

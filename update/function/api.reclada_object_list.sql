@@ -152,7 +152,9 @@ BEGIN
             INTO _filter;
     END IF;
     
-    data := Jsonb_set(data,'{filter}', _filter);
+    IF _filter IS NOT NULL THEN
+        data := Jsonb_set(data,'{filter}', _filter);
+    END IF;
 
     SELECT reclada_user.auth_by_token(data->>'accessToken') INTO user_info;
     data := data - 'accessToken';
